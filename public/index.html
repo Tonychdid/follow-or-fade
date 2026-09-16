@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Follow or Fade — bet on Smart Money</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0f14'/><path d='M7 21l6-6 4 4 8-9' stroke='%2334d399' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="f">FOLLOW</span><span class="or">or</span><span class="x">FADE</span></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-view="replay">Replay</button>
+    <button class="tab" data-view="live">Live <i class="dot"></i></button>
+    <button class="tab" data-view="board">Leaderboard</button>
+  </nav>
+  <div class="me">
+    <span id="demoBadge" class="badge warn" hidden>DEMO DATA</span>
+    <div class="bank"><small>Bankroll</small><b id="bankroll">$10,000</b></div>
+  </div>
+</header>
+
+<main>
+  <!-- REPLAY -->
+  <section id="view-replay" class="view active">
+    <div class="grid">
+      <div class="stage">
+        <div id="dealing" class="card loading"><div class="spinner"></div><p>Pulling a Smart Money trade from Nansen…</p></div>
+
+        <div id="round" class="card round" hidden>
+          <div class="eyebrow">A Nansen Smart Money wallet opened</div>
+          <div class="trade">
+            <span id="rSide" class="side">LONG</span>
+            <span id="rCoin" class="coin">BTC</span>
+            <span class="size"><span id="rValue">$0</span> <small>@ <span id="rEntry">0</span></small></span>
+          </div>
+          <div class="meta"><span id="rWhen"></span> · <span id="rType"></span> order · settles <b id="rHorizon">4h</b> after entry</div>
+
+          <div class="intel">
+            <div class="stat"><small>Wallet win rate (30d before)</small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
+            <div class="stat"><small>Wallet realized PnL (30d)</small><b id="iPnl">–</b></div>
+            <div class="stat"><small>Smart Money flow (24h)</small><b id="iSm">–</b></div>
+            <div class="stat"><small>Crowd flow (24h)</small><b id="iCrowd">–</b></div>
+          </div>
+          <ul id="reasons" class="reasons"></ul>
+          <p class="legend">Nansen signals:<i style="background:var(--green)"></i>favors follow<i style="background:var(--red)"></i>favors fade</p>
+
+          <div class="prob">
+            <div class="probbar"><div id="pFollowBar" class="pf"></div></div>
+            <div class="problabels"><span>Model says follow wins <b id="pFollow">50%</b></span><span>fade <b id="pFade">50%</b></span></div>
+          </div>
+
+          <div class="stake">
+            <label for="stakeInput">Stake</label>
+            <div class="stakerow">
+              <input id="stakeInput" type="number" min="1" step="1" value="1000" inputmode="numeric">
+              <div class="chips">
+                <button data-pct="0.1">10%</button><button data-pct="0.25">25%</button><button data-pct="0.5">50%</button><button data-pct="1" class="allin">ALL IN</button>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="btnFollow" class="bet follow"><span>FOLLOW</span><small>x<b id="oFollow">2.00</b> · win <b id="wFollow">$0</b></small></button>
+            <button id="btnFade" class="bet fade"><span>FADE</span><small>x<b id="oFade">2.00</b> · win <b id="wFade">$0</b></small></button>
+          </div>
+        </div>
+
+        <div id="reveal" class="card reveal" hidden>
+          <div id="verdict" class="verdict"></div>
+          <div class="chartwrap"><svg id="chart" viewBox="0 0 600 220" preserveAspectRatio="none" aria-label="Price path after the trade"></svg></div>
+          <div class="revealgrid">
+            <div class="stat"><small>The wallet</small><b id="vTrader">–</b><a id="vLink" target="_blank" rel="noopener" class="sub">View on Nansen ↗</a></div>
+            <div class="stat"><small>Whale return after <span id="vH">4h</span></small><b id="vRet">–</b><span id="vExc" class="sub"></span></div>
+            <div class="stat"><small>Whale's paper PnL</small><b id="vWhale">–</b></div>
+            <div class="stat"><small>Your result</small><b id="vYou">–</b></div>
+          </div>
+          <div class="actions">
+            <button id="btnNext" class="primary">Next trade →</button>
+            <button id="btnShare" class="ghost">Share my card</button>
+          </div>
+        </div>
+        <p id="err" class="err" hidden></p>
+      </div>
+
+      <aside class="side-panel">
+        <div class="card mini">
+          <div class="eyebrow">This week on Hyperliquid</div>
+          <div class="big" id="smWin">–</div>
+          <p class="muted" id="smWinTxt">of Smart Money position opens were in profit after 4h</p>
+        </div>
+        <div class="card mini">
+          <div class="eyebrow">You</div>
+          <div class="kv"><span>Record</span><b id="sRecord">0–0</b></div>
+          <div class="kv"><span>Streak</span><b id="sStreak">0</b></div>
+          <div class="kv"><span>Best streak</span><b id="sBest">0</b></div>
+          <div class="kv"><span>Whales slain</span><b id="sSlain">0</b></div>
+          <div class="kv"><span>Busts</span><b id="sBusts">0</b></div>
+          <svg id="spark" class="spark" viewBox="0 0 200 40" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="card mini">
+          <div class="eyebrow">Powered by Nansen API</div>
+          <div class="kv"><span>API calls</span><b id="uCalls">0</b></div>
+          <div class="kv"><span>Credits used</span><b id="uCredits">0</b></div>
+          <div class="kv"><span>Odds trained on</span><b id="uModel">–</b></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- LIVE -->
+  <section id="view-live" class="view">
+    <div class="livehead">
+      <div>
+        <h2>Live Smart Money opens</h2>
+        <p class="muted">Positions opened by Nansen Smart Money in the last 6 hours. Bet on what happens next — settled on the Hyperliquid mid price.</p>
+      </div>
+      <button id="btnRefreshLive" class="ghost">Refresh</button>
+    </div>
+    <div id="liveList" class="livelist"></div>
+    <h3>Your live bets</h3>
+    <div id="liveBets" class="livebets"></div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section id="view-board" class="view">
+    <h2>Leaderboard</h2>
+    <table class="board"><thead><tr><th>#</th><th>Player</th><th>Bankroll</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table>
+  </section>
+</main>
+
+<dialog id="welcome">
+  <form method="dialog" id="welcomeForm">
+    <div class="brand big"><span class="f">FOLLOW</span><span class="or">or</span><span class="x">FADE</span></div>
+    <p>Real trades from Nansen's Smart Money on Hyperliquid. You get <b>$10,000</b> in play money.<br>Follow the whale or fade it. The odds come from Nansen data. The market decides.</p>
+    <input id="nameInput" maxlength="18" placeholder="Pick a trader name" required autocomplete="off">
+    <button class="primary" type="submit">Deal me in</button>
+  </form>
+</dialog>
+
+<dialog id="shareDlg">
+  <canvas id="shareCanvas" width="1200" height="675"></canvas>
+  <div class="actions">
+    <a id="shareDownload" class="primary" download="follow-or-fade.png">Download image</a>
+    <a id="shareX" class="ghost" target="_blank" rel="noopener">Post on X</a>
+    <button class="ghost" onclick="this.closest('dialog').close()">Close</button>
+  </div>
+</dialog>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
