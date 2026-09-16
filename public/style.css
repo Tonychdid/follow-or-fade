@@ -385,3 +385,61 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 .lbet .bottom{flex-wrap:wrap}
 .lbet .bottom .res{flex:1 1 auto}
 .lbet .cashout{flex:1 1 100%;min-width:0;justify-content:space-between}
+
+/* ================= whale alerts ================= */
+.bell{position:relative}
+.bell em{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:var(--ruby);color:#fff;font:700 11px/18px Inter,sans-serif;font-style:normal;box-shadow:0 0 10px rgba(224,68,90,.8)}
+.bell.ringing svg{animation:ring 1.8s ease-in-out infinite;transform-origin:50% 10%}
+@keyframes ring{0%,60%,100%{transform:rotate(0)}65%{transform:rotate(16deg)}75%{transform:rotate(-14deg)}85%{transform:rotate(8deg)}}
+.alert-panel{position:fixed;top:86px;right:18px;bottom:18px;width:min(460px,calc(100vw - 36px));z-index:40;overflow:auto;border-radius:22px;padding:18px;
+  background:linear-gradient(180deg,#1e171b,#0c090b);border:1px solid var(--gold);box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 40px rgba(212,175,55,.2);animation:fadein .25s ease}
+.ap-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.ap-head h3{font-family:var(--display);color:var(--gold-l);margin:0;font-size:22px;letter-spacing:.08em}
+.ap-head p{margin:4px 0 0;color:var(--read2);font-size:14px}
+.ap-status{margin:12px 0;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid var(--hair2);font-size:13.5px;color:var(--read)}
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--emerald);margin-right:6px;box-shadow:0 0 0 0 rgba(34,192,126,.7);animation:pulseDot 1.6s infinite}
+.live-dot.off{background:#6b7280;animation:none}
+@keyframes pulseDot{70%{box-shadow:0 0 0 8px rgba(34,192,126,0)}100%{box-shadow:0 0 0 0 rgba(34,192,126,0)}}
+.ap-settings{border:1px solid var(--hair2);border-radius:14px;padding:10px 12px;margin-bottom:12px;background:rgba(0,0,0,.2)}
+.ap-settings summary{cursor:pointer;font-family:var(--display);color:var(--gold-l);letter-spacing:.06em;font-size:14px}
+.ap-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.ap-grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--read2)}
+.ap-grid select{background:rgba(0,0,0,.45);border:1px solid var(--hair);border-radius:10px;padding:8px;color:var(--ivory);font:inherit;font-size:14px}
+.switch{flex-direction:row!important;align-items:center;gap:8px!important;color:var(--read)!important;font-size:13.5px!important;cursor:pointer}
+.switch input{accent-color:#d4af37;width:18px;height:18px}
+.switch span{display:none}
+.ap-cost{font-size:12.5px;color:var(--read2);margin:10px 0}
+.ap-channels{display:grid;gap:10px}
+.ch{border:1px solid var(--hair2);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.ch b{font-size:14px;color:var(--ivory)} .ch>span{grid-column:1;font-size:12.5px;color:var(--read2)}
+.ch>button{grid-column:2;grid-row:1/span 2}
+.ch.tg{grid-template-columns:1fr}
+.ch.tg>button{grid-column:1;grid-row:auto;justify-self:start}
+.tg-steps{font-size:13px;color:var(--read)} .tg-steps ol{margin:6px 0 8px 18px;padding:0} .tg-steps code{font-family:var(--mono);color:var(--gold-l)}
+.tg-steps .row{display:flex;gap:8px} .tg-steps input{flex:1;min-width:0;background:rgba(0,0,0,.45);border:1px solid var(--hair);border-radius:10px;padding:8px 10px;color:var(--ivory);font-family:var(--mono);font-size:13px}
+.ap-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.gold-btn.sm,.ghost-btn.sm{padding:7px 12px;font-size:12px;border-radius:10px}
+.link{color:var(--gold-l);font-size:13px;text-decoration:none;background:none;border:0}
+.alert-list{display:grid;gap:10px}
+.ap-empty{color:var(--read2);font-size:14px;text-align:center;padding:10px}
+.alert-item{display:grid;grid-template-columns:44px 1fr;gap:12px;padding:12px;border-radius:14px;border:1px solid var(--hair2);background:rgba(255,255,255,.03)}
+.alert-item.unread{border-color:var(--gold);box-shadow:0 0 18px rgba(212,175,55,.25);background:linear-gradient(90deg,rgba(212,175,55,.12),transparent)}
+.ai-title{font-size:15px;color:var(--ivory)} .ai-title .mono{font-family:var(--mono);color:var(--gold-l)}
+.ai-title .side,.alert-pop .side{font-family:var(--display);font-weight:900;letter-spacing:.1em;font-size:10.5px;padding:2px 8px;border-radius:99px;color:#fff;vertical-align:middle}
+.ai-who{font-size:13px;color:var(--read2);margin-top:2px}
+.ai-stats{font-size:13px;color:var(--read);margin-top:4px} .ai-stats b{font-family:var(--mono)}
+.ai-actions{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.alert-pop{position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;width:min(620px,calc(100vw - 32px));animation:dropin .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes dropin{from{transform:translate(-50%,-40px);opacity:0}}
+.ap-glow{position:absolute;inset:-12px;border-radius:30px;background:radial-gradient(closest-side,rgba(245,215,122,.35),transparent);filter:blur(10px);animation:pulse2 1.4s ease-in-out infinite}
+@keyframes pulse2{50%{opacity:.4}}
+.ap-inner{position:relative;border-radius:22px;padding:16px 18px;border:2px solid var(--gold);background:linear-gradient(180deg,#261d10,#0f0b08);box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.ap-kicker{font-family:var(--display);letter-spacing:.2em;font-size:12px;color:var(--gold-l);text-transform:uppercase;margin-bottom:8px}
+.ap-main{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:center;font-size:16px;color:var(--ivory)}
+.ap-main .grade{width:48px;height:48px;font-size:20px}
+.lcard.alerted{border-color:var(--gold-l);box-shadow:0 0 0 1px rgba(245,215,122,.4),0 0 40px rgba(212,175,55,.35),inset 0 0 40px rgba(0,0,0,.45)}
+.ribbon{position:absolute;top:-11px;left:18px;padding:3px 12px;border-radius:8px;font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.16em;color:#1a1204;background:linear-gradient(180deg,#fff0b8,var(--gold));box-shadow:0 4px 14px rgba(212,175,55,.5);animation:pulse2 1.6s ease-in-out infinite}
+.lcard.spotlight{animation:spot 1.2s ease-in-out 3}
+@keyframes spot{50%{box-shadow:0 0 0 3px var(--gold-l),0 0 60px rgba(245,215,122,.7)}}
+@media (max-width:760px){.ap-grid{grid-template-columns:1fr}.alert-panel{top:12px}}
+.alert-panel:not([hidden]) ~ .alert-pop, body:has(.alert-panel:not([hidden])) .alert-pop{left:calc(50% - 250px)}

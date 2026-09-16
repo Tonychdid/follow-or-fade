@@ -26,3 +26,7 @@ This week, only ~53% of Smart Money opens were green after 4h. Can you beat them
 
 Built for the #MeridianBuildathon
 github.com/tonychdid/follow-or-fade
+
+Note: the app now opens on the Live Floor. You can start the recording there (place a live bet first), then switch to The Table.
+
+Optional alert shot: open the bell, then Alert rules & channels, then click **Send a test alert**. The whale alert pops up with a sound. Click **Bet on it** and the pinned WHALE ALERT card lights up on the Live Floor.

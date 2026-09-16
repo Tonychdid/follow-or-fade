@@ -38,7 +38,9 @@ async function boot() {
   renderPlayer();
   refreshStatus(); setInterval(refreshStatus, 15000);
   pollLoop();
-  deal();
+  loadLive(); // the Live Floor is the front door
+  initAlerts();
+
 }
 
 // ================================================= sound toggle
@@ -390,6 +392,7 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + t.dataset.view));
   if (t.dataset.view === 'board') loadBoard();
   if (t.dataset.view === 'live') loadLive();
+  if (t.dataset.view === 'replay' && !round) deal();
 }));
 
 // ================================================= hall of fame
@@ -425,7 +428,7 @@ function liveCard(t) {
   liveItems.set(t.key, t);
   const k = esc(t.key), tr = t.record?.trust || { grade: '?', label: 'No track record' };
   const gradeCls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[tr.grade] || 'gc';
-  return `<div class="lcard" data-key="${k}">
+  return `<div class="lcard${t.alert ? ' alerted' : ''}" data-key="${k}">${t.alert ? '<div class="ribbon">WHALE ALERT</div>' : ''}
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
 
@@ -493,5 +496,123 @@ function wireLive() {
   });
 }
 $('btnRefreshLive').onclick = () => { sfx.deal(); loadLive(); };
+
+// ================================================= whale alerts
+let alertCfg = null, alertSince = 0, alertsCache = [];
+const seenAlerts = () => Number(store.get('fof_alerts_seen') || 0);
+const gradeClass = (g) => ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[g] || 'gc');
+const nansenTrade = (coin) => `https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(coin)}&chain=hyperliquid`;
+
+async function initAlerts() {
+  const r = await api('/api/alerts?since=0').catch(() => null);
+  if (!r) return;
+  alertsCache = r.alerts; alertCfg = r.config;
+  alertSince = alertsCache[0]?.t || Date.now();
+  renderAlertList(); renderAlertCfg(); updateBadge();
+  setInterval(pollAlerts, 10000);
+}
+async function pollAlerts() {
+  const r = await api('/api/alerts?since=' + alertSince).catch(() => null);
+  if (!r) return;
+  alertCfg = r.config; renderAlertStatus();
+  if (!r.alerts.length) return;
+  alertSince = r.alerts[0].t;
+  alertsCache = [...r.alerts, ...alertsCache].slice(0, 50);
+  renderAlertList(); updateBadge();
+  announceAlert(r.alerts[0], r.alerts.length);
+}
+function updateBadge() {
+  const n = alertsCache.filter((a) => a.t > seenAlerts()).length;
+  const el = $('alertCount'); el.hidden = !n; el.textContent = n > 9 ? '9+' : n;
+  $('alertBtn').classList.toggle('ringing', n > 0);
+}
+function alertLine(a) {
+  const d30 = a.record?.d30 || {}, d7 = a.record?.d7, tr = a.record?.trust || { grade: '?' };
+  return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
+    <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
+    <div class="ai-body">
+      <div class="ai-title"><span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
+      <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
+      <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.closed || 0} closes${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b>` : ''}</div>
+      <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div>
+    </div></div>`;
+}
+function renderAlertList() {
+  $('alertList').innerHTML = alertsCache.length ? alertsCache.map(alertLine).join('')
+    : '<p class="ap-empty">No alerts yet. The scanner checks Nansen Smart Money every few minutes and pings you when a whale matching your rules opens a position.</p>';
+}
+function renderAlertStatus() {
+  if (!alertCfg) return;
+  const last = alertCfg.lastScan ? `last scan ${ago(alertCfg.lastScan)}` : 'first scan starting';
+  $('apStatus').innerHTML = alertCfg.enabled
+    ? `<i class="live-dot"></i> Watching for <b>${alertCfg.minGrade === 'A+' ? 'A+' : alertCfg.minGrade + ' or better'}</b> whales opening <b>${compact(alertCfg.minSizeUsd)}+</b> · every ${alertCfg.intervalMin} min · ${last}${alertCfg.lastError ? ` · <span class="neg">${esc(alertCfg.lastError)}</span>` : ''}`
+    : '<i class="live-dot off"></i> Scanner is off';
+}
+function renderAlertCfg() {
+  if (!alertCfg) return;
+  $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
+  $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d;
+  $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
+  $('notifBtn').hidden = perm !== 'default';
+  const tgc = alertCfg.telegram;
+  $('tgState').textContent = tgc.connected ? `Connected to @${tgc.botName}` : tgc.hasToken ? 'Waiting for Start' : 'Off';
+  $('tgConnect').hidden = tgc.hasToken; $('tgVerify').hidden = !(tgc.hasToken && !tgc.connected); $('tgOff').hidden = !tgc.hasToken;
+  $('tgBotName').textContent = tgc.botName ? '@' + tgc.botName : 'your bot';
+  renderAlertStatus();
+}
+async function saveCfg() {
+  alertCfg = await api('/api/alerts/config', { enabled: $('cfgEnabled').checked, minGrade: $('cfgGrade').value, minWinRate: $('cfgWin').value,
+    minSizeUsd: $('cfgSize').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked }).catch((e) => { toast(e.message); return alertCfg; });
+  renderAlertCfg(); sfx.tick();
+}
+['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit'].forEach((id) => $(id).addEventListener('change', saveCfg));
+
+function openAlerts() {
+  $('alertPanel').hidden = false; sfx.tick();
+  store.set('fof_alerts_seen', String(alertsCache[0]?.t || Date.now()));
+  setTimeout(() => { updateBadge(); document.querySelectorAll('.alert-item.unread').forEach((x) => x.classList.remove('unread')); }, 1500);
+}
+$('alertBtn').onclick = () => ($('alertPanel').hidden ? openAlerts() : ($('alertPanel').hidden = true));
+$('alertClose').onclick = () => ($('alertPanel').hidden = true);
+$('notifBtn').onclick = async () => { if ('Notification' in window) await Notification.requestPermission(); renderAlertCfg(); };
+$('scanNow').onclick = async (e) => { e.target.disabled = true; const r = await api('/api/alerts/scan', {}).catch((err) => (toast(err.message), null)); e.target.disabled = false; if (r) { alertCfg = r.config; renderAlertStatus(); if (!r.created.length) toast('Scan done. No new whale matched your rules.'); else pollAlerts(); } };
+$('testAlert').onclick = async (e) => { e.target.disabled = true; await api('/api/alerts/test', {}).catch((err) => toast(err.message)); e.target.disabled = false; pollAlerts(); };
+$('tgSave').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram', { token: $('tgToken').value }); $('tgToken').value = ''; renderAlertCfg(); } catch (e) { toast(e.message); } };
+$('tgCheck').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram/verify', {}); renderAlertCfg(); toast('Telegram connected. Check your Telegram for a test message.'); sfx.ding(); } catch (e) { toast(e.message); } };
+$('tgOff').onclick = async () => { alertCfg = await api('/api/alerts/telegram/disconnect', {}); renderAlertCfg(); };
+
+// "Bet on it": jump to the Live Floor card for that trade
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-betalert]');
+  if (!b) return;
+  $('alertPanel').hidden = true; $('alertPop').hidden = true;
+  const key = b.dataset.betalert;
+  document.querySelector('.tab[data-view="live"]').click();
+  for (let i = 0; i < 60; i++) { if (document.querySelector('.lcard')) break; await sleep(250); }
+  const card = [...document.querySelectorAll('.lcard')].find((c) => c.dataset.key === key);
+  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 3500); }
+  else toast('That trade is no longer on the floor');
+});
+
+function announceAlert(a, count) {
+  const tr = a.record?.trust || { grade: '?' }, d30 = a.record?.d30 || {};
+  sfx.alarm();
+  const pop = $('alertPop');
+  pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
+    <div class="ap-kicker">Whale alert${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
+      <div><b>${esc(a.trader)}</b> just opened <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
+      <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · trust ${tr.score ?? '–'}/100</div></div></div>
+    <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><button class="link" id="popClose">Dismiss</button></div></div>`;
+  pop.hidden = false;
+  $('popClose').onclick = () => (pop.hidden = true);
+  clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const n = new Notification(`Whale alert · Grade ${tr.grade}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · 30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`, tag: a.id });
+    n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
+  }
+}
 
 boot();

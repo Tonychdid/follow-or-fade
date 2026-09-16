@@ -10,6 +10,7 @@ loadEnv(ROOT);
 
 const nansen = await import('./lib/nansen.js');
 const game = await import('./lib/game.js');
+const alerts = await import('./lib/alerts.js');
 const PORT = Number(process.env.PORT || 3000);
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
@@ -22,6 +23,13 @@ const routes = {
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/round': async (_, q) => game.newRound(q.get('player')),
   'POST /api/bet': async (b) => game.placeBet(b.player, b.roundId, b.choice, b.stake),
+  'GET /api/alerts': async (_, q) => ({ alerts: alerts.listAlerts(Number(q.get('since') || 0)), config: alerts.publicConfig() }),
+  'POST /api/alerts/config': async (b) => alerts.updateConfig(b),
+  'POST /api/alerts/scan': async () => ({ created: await alerts.scan({ force: true }), config: alerts.publicConfig() }),
+  'POST /api/alerts/test': async () => alerts.testAlert(),
+  'POST /api/alerts/telegram': async (b) => alerts.connectTelegram(b.token),
+  'POST /api/alerts/telegram/verify': async () => alerts.verifyTelegram(),
+  'POST /api/alerts/telegram/disconnect': async () => alerts.disconnectTelegram(),
   'GET /api/leaderboard': async () => game.leaderboard(),
   'GET /api/live': async () => game.liveFeed(),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
@@ -49,5 +57,7 @@ http.createServer(async (req, res) => {
 // Background jobs: calibrate odds on this week's Smart Money outcomes, settle live bets.
 const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds calibrated on ${m.n} resolved Smart Money trades`)).catch((e) => console.error('[calibrate]', e.message));
 setTimeout(calibrate, 2000);
+setTimeout(() => alerts.scan().catch(() => {}), 8000); // first whale scan shortly after start
+alerts.schedule();
 setInterval(calibrate, 60 * 60e3);
 setInterval(() => game.settleLive().catch(() => {}), 5e3);

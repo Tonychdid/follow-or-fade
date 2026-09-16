@@ -20,12 +20,13 @@
     <div class="est">The Smart Money Casino · Est. on Hyperliquid</div>
   </div>
   <nav class="tabs" role="tablist">
-    <button class="tab active" data-view="replay">The Table</button>
-    <button class="tab" data-view="live">Live Floor <i class="dot"></i></button>
+    <button class="tab active" data-view="live">Live Floor <i class="dot"></i></button>
+    <button class="tab" data-view="replay">The Table</button>
     <button class="tab" data-view="board">Hall of Fame</button>
   </nav>
   <div class="me">
     <span id="demoBadge" class="badge" hidden>DEMO DATA</span>
+    <button id="alertBtn" class="icon-btn bell" aria-label="Whale alerts" title="Whale alerts"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z" fill="currentColor"/></svg><em id="alertCount" hidden>0</em></button>
     <button id="muteBtn" class="icon-btn" aria-label="Sound on" title="Sound"><svg viewBox="0 0 24 24" width="20" height="20"><path id="muteIcon" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z" fill="currentColor"/></svg></button>
     <div class="bank">
       <div class="chipstack" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -37,7 +38,7 @@
 <div class="layout">
 <main>
   <!-- ============ THE TABLE (replay) ============ -->
-  <section id="view-replay" class="view active">
+  <section id="view-replay" class="view">
     <div class="felt">
       <div class="felt-inner">
         <div class="table-title">
@@ -117,7 +118,7 @@
   </section>
 
   <!-- ============ LIVE FLOOR ============ -->
-  <section id="view-live" class="view">
+  <section id="view-live" class="view active">
     <div class="floor-head">
       <div>
         <h2>The Live Floor</h2>
@@ -187,6 +188,43 @@
 </dialog>
 
 <div id="toast" class="toast" hidden></div>
+<div id="alertPop" class="alert-pop" hidden></div>
+
+<aside id="alertPanel" class="alert-panel" hidden>
+  <div class="ap-head">
+    <div><h3>Whale Alerts</h3><p>Get pinged the moment a top-graded Smart Money whale opens a position.</p></div>
+    <button class="icon-btn" id="alertClose" aria-label="Close">✕</button>
+  </div>
+  <div class="ap-status" id="apStatus"></div>
+  <details class="ap-settings" id="apSettings">
+    <summary>Alert rules &amp; channels</summary>
+    <div class="ap-grid">
+      <label class="switch"><input type="checkbox" id="cfgEnabled"><span></span> Scanner on</label>
+      <label>Minimum whale grade<select id="cfgGrade"><option value="A+">A+ only</option><option value="A">A or better</option><option value="B">B or better</option><option value="C">C or better</option></select></label>
+      <label>Minimum 30D win rate<select id="cfgWin"><option value="0">Any</option><option value="0.5">50%</option><option value="0.55">55%</option><option value="0.6">60%</option><option value="0.65">65%</option><option value="0.7">70%</option></select></label>
+      <label>Minimum position size<select id="cfgSize"><option value="10000">$10K</option><option value="25000">$25K</option><option value="50000">$50K</option><option value="100000">$100K</option><option value="250000">$250K</option><option value="1000000">$1M</option></select></label>
+      <label>Scan every<select id="cfgInt"><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option></select></label>
+      <label class="switch"><input type="checkbox" id="cfgProfit"><span></span> Whale must be profitable over 30D</label>
+    </div>
+    <p class="ap-cost" id="apCost"></p>
+    <div class="ap-channels">
+      <div class="ch"><b>Desktop notifications</b><span id="notifState"></span><button class="ghost-btn sm" id="notifBtn">Enable</button></div>
+      <div class="ch tg"><b>Telegram</b><span id="tgState"></span>
+        <div id="tgConnect" class="tg-steps">
+          <ol><li>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code>, pick any name.</li><li>Copy the token it gives you and paste it here.</li></ol>
+          <div class="row"><input id="tgToken" placeholder="123456789:AA..." autocomplete="off"><button class="ghost-btn sm" id="tgSave">Connect</button></div>
+        </div>
+        <div id="tgVerify" class="tg-steps" hidden>
+          <p>Now open <b id="tgBotName">your bot</b> in Telegram and press <b>Start</b>, then:</p>
+          <button class="gold-btn sm" id="tgCheck">I pressed Start</button>
+        </div>
+        <button class="ghost-btn sm" id="tgOff" hidden>Disconnect</button>
+      </div>
+    </div>
+    <div class="ap-actions"><button class="ghost-btn sm" id="scanNow">Scan now</button><button class="ghost-btn sm" id="testAlert">Send a test alert</button></div>
+  </details>
+  <div id="alertList" class="alert-list"></div>
+</aside>
 <div id="banner" class="banner" hidden></div>
 <script src="/app.js" type="module"></script>
 </body>

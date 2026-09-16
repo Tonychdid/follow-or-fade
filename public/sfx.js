@@ -60,6 +60,9 @@ export const sfx = {
   cashout() { noise(0, 0.06, { freq: 2500, q: 2, gain: 0.4 }); tone(1318, 0.06, 0.5, { type: 'triangle', gain: 0.25 }); tone(1760, 0.14, 0.7, { type: 'triangle', gain: 0.22 }); noise(0.12, 0.25, { freq: 7000, q: 1, gain: 0.08 }); },
   /** quick whoosh getting out the door */
   escape() { tone(300, 0, 0.35, { type: 'sine', gain: 0.18, slide: 3 }); noise(0, 0.3, { freq: 1200, q: 0.7, gain: 0.25 }); },
+  /** whale alert: deep horn swell + two bright bells */
+  alarm() { tone(98, 0, 0.9, { type: 'sawtooth', gain: 0.12, attack: 0.25, slide: 1.5 }); tone(147, 0.05, 0.9, { type: 'sine', gain: 0.18, attack: 0.25, slide: 1.5 });
+    [1319, 1760].forEach((f, i) => { tone(f, 0.75 + i * 0.16, 0.8, { type: 'sine', gain: 0.2 }); tone(f * 2, 0.75 + i * 0.16, 0.4, { type: 'sine', gain: 0.05 }); }); },
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)
