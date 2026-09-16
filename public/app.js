@@ -435,7 +435,7 @@ function liveCard(t) {
     <div class="dossier-box">
       <div class="dossier-top">
         <div class="grade ${gradeCls}" title="Trust score ${tr.score ?? '–'}/100, from realized return, win rate and sample size (30d), adjusted by the last 7 days">${tr.grade}</div>
-        <div class="dossier-title"><b>Whale track record</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
+        <div class="dossier-title"><b>Whale track record${tr.specialist ? ' <span class="spec-tag">SPECIALIST</span>' : ''}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
         <div class="rec-tabs" role="tablist"><button class="on" data-win="d7">7D</button><button data-win="d30">30D</button></div>
       </div>
       <div class="rec-body" data-panel="d7">${recordHtml(t.record?.d7)}</div>
@@ -531,8 +531,9 @@ function alertLine(a) {
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
     <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
     <div class="ai-body">
-      <div class="ai-title"><span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
+      <div class="ai-title"><span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
+      ${a.specialist ? `<div class="ai-spec">${esc(a.coin)} specialist: ${Math.round(a.specialist.share * 100)}% of trades, <b class="pos">+${compact(a.specialist.pnl)}</b> realized on ${esc(a.coin)} (${(a.specialist.roi * 100).toFixed(1)}% return) in 30D</div>` : ''}
       <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
       <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div>
     </div></div>`;
@@ -545,13 +546,13 @@ function renderAlertStatus() {
   if (!alertCfg) return;
   const last = alertCfg.lastScan ? `last scan ${ago(alertCfg.lastScan)}` : 'first scan starting';
   $('apStatus').innerHTML = alertCfg.enabled
-    ? `<i class="live-dot"></i> Watching for <b>${alertCfg.minGrade === 'A+' ? 'A+' : alertCfg.minGrade + ' or better'}</b> whales opening <b>${compact(alertCfg.minSizeUsd)}+</b> · <b>${alertCfg.minCoins7d || 'any'}+/${alertCfg.minCoins30d || 'any'}+</b> coins (7D/30D) · every ${alertCfg.intervalMin} min · ${last}${alertCfg.lastError ? ` · <span class="neg">${esc(alertCfg.lastError)}</span>` : ''}`
+    ? `<i class="live-dot"></i> Watching for <b>${alertCfg.minGrade === 'A+' ? 'A+' : alertCfg.minGrade + ' or better'}</b> whales opening <b>${compact(alertCfg.minSizeUsd)}+</b> · <b>${alertCfg.minCoins7d || 'any'}+/${alertCfg.minCoins30d || 'any'}+</b> coins (7D/30D)${alertCfg.allowSpecialists !== false ? ' or proven specialists' : ''} · every ${alertCfg.intervalMin} min · ${last}${alertCfg.lastError ? ` · <span class="neg">${esc(alertCfg.lastError)}</span>` : ''}`
     : '<i class="live-dot off"></i> Scanner is off';
 }
 function renderAlertCfg() {
   if (!alertCfg) return;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
-  $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d;
+  $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d; $('cfgSpec').checked = alertCfg.allowSpecialists !== false;
   $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
@@ -564,10 +565,10 @@ function renderAlertCfg() {
 }
 async function saveCfg() {
   alertCfg = await api('/api/alerts/config', { enabled: $('cfgEnabled').checked, minGrade: $('cfgGrade').value, minWinRate: $('cfgWin').value,
-    minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked }).catch((e) => { toast(e.message); return alertCfg; });
+    minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked, allowSpecialists: $('cfgSpec').checked }).catch((e) => { toast(e.message); return alertCfg; });
   renderAlertCfg(); sfx.tick();
 }
-['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30'].forEach((id) => $(id).addEventListener('change', saveCfg));
+['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30', 'cfgSpec'].forEach((id) => $(id).addEventListener('change', saveCfg));
 
 function openAlerts() {
   $('alertPanel').hidden = false; sfx.tick();
@@ -601,16 +602,16 @@ function announceAlert(a, count) {
   sfx.alarm();
   const pop = $('alertPop');
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">Whale alert${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
       <div><b>${esc(a.trader)}</b> just opened <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
-      <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · trust ${tr.score ?? '–'}/100</div></div></div>
+      <div class="ai-stats">${a.specialist ? `${esc(a.coin)} specialist · <b class="pos">+${compact(a.specialist.pnl)}</b> on ${esc(a.coin)} · ${Math.round(a.specialist.share * 100)}% of trades` : `30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins`} · trust ${tr.score ?? '–'}/100</div></div></div>
     <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><button class="link" id="popClose">Dismiss</button></div></div>`;
   pop.hidden = false;
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`Whale alert · Grade ${tr.grade}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · 30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`, tag: a.id });
+    const n = new Notification(`Whale alert · Grade ${tr.grade}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
