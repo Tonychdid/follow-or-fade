@@ -6,22 +6,24 @@ Built for the Nansen Meridian Buildathon.
 
 ---
 
+![Live Floor](docs/live-floor.jpg)
+
 ## Run it in under 5 minutes
 
 Requirements: [Node.js 18+](https://nodejs.org). No `npm install`, no build step, zero dependencies.
 
+**macOS / Linux**
+
 ```bash
 git clone https://github.com/tonychdid/follow-or-fade.git
 cd follow-or-fade
-cp .env.example .env        # then paste your key: NANSEN_API_KEY=...
-npm start                   # opens on http://localhost:3000
+echo "NANSEN_API_KEY=your_key_here" > .env
+npm start                   # then open http://localhost:3000
 ```
 
-Windows: double-click `start.bat`. On first run it asks for your key and writes `.env`.
+**Windows:** download the repo (Code → Download ZIP), unzip it and double-click `start.bat`. On first run it asks for your key and opens the browser.
 
-No key yet? Leave `NANSEN_API_KEY` empty and the app runs in **demo mode**: Nansen-shaped sample wallets on top of real Hyperliquid prices, with a `DEMO DATA` badge.
-
----
+No key yet? Skip the `.env` step and the app runs in **demo mode**: Nansen-shaped sample wallets on top of real Hyperliquid prices, with a `DEMO DATA` badge.
 
 ## How it plays
 
@@ -33,9 +35,14 @@ The app opens on the **Live Floor**.
 | **Live Floor** | Smart Money opens from the last 6 hours, with where Smart Money is positioned on that coin right now. Pick a table: **Espresso Shot (15 min)**, **Champagne Round (30 min)** or **Cigar Lounge (60 min)**. The bet settles on the Hyperliquid mid price. Each whale shows a **7D and 30D track record** from Nansen (realized PnL, return, win rate, best and worst coin) and a **trust grade** (A+ to F). One click opens the market in **Nansen's trading app** if you want to take the trade for real. |
 | **Your Table** (always on screen) | Only your open live bets, grouped by table, with countdown rings and a live meme face: a money-printing face when you are winning and a crying face when you are losing, getting more intense as the bet moves. Settled bets move to Recent hands. |
 | **Cash Out** | End a live bet early. The offer is the bet's fair value: stake × odds × the probability you are still winning at the bell, starting from the probability the odds were priced at and updated with how far price has moved, the time left and the coin's current 1-minute volatility on Hyperliquid, with no extra fee beyond the 3% house edge built into the odds. Cashing out the second you bet returns about 97% of your stake. Cash out in profit: *"The whale is my exit liquidity."* Cash out at a loss: *"Cashing out before the whale gets rekt."* |
-| **Whale Alerts** (bell icon) | A background scanner checks Nansen Smart Money perp opens every few minutes, grades each whale's 7D and 30D track record, and alerts you when a top whale (default: grade A or better, 55%+ win rate, profitable over 30D, **3+ coins traded in 7D and 5+ in 30D** so win rates can't be inflated by one-coin wallets, $50K+ position). **Specialists** are the exception: a whale trading only 1–2 coins still gets through, tagged SPECIALIST, if the coin they're opening is one of their main coins (40%+ of their closes) with $25K+ realized profit and a 3%+ return on it over 30D, and no losing week on it. They're judged on money made, not win rate opens a trade. You get a sound, an on-screen alert, optional desktop notifications and optional **Telegram** messages. Each alert has **Bet on it** (jumps to the trade, pinned at the top of the Live Floor) and **Join on Nansen** (opens the market in Nansen's trading app). |
+| **Whale Alerts** (bell icon) | A background scanner checks Nansen Smart Money perp opens every few minutes, grades each whale's 7D and 30D track record, and alerts you when a top whale opens a trade. Default rules: grade A or better, 55%+ win rate, profitable over 30D, $50K+ position, and **3+ coins traded in 7D and 5+ in 30D** so win rates can't be inflated by one-coin wallets. **Specialists** are the exception: a whale trading only 1–2 coins still gets through, tagged SPECIALIST, if the coin they're opening is one of their main coins (40%+ of their closes) with $25K+ realized profit and a 3%+ return on it over 30D, and no losing week on it. You get a sound, an on-screen alert, optional desktop notifications and optional **Telegram** messages. Each alert has **Bet on it** (jumps to the trade, pinned at the top of the Live Floor) and **Join on Nansen** (opens the market in Nansen's trading app). |
 | **Hall of Fame** | Bankroll ranking, win rate, best streak, **whales slain** (correct fades of trades the model favored). |
 | **Share card** | One-click PNG plus a prefilled X post. |
+
+| | |
+|---|---|
+| ![The Table](docs/the-table.jpg) | ![Whale alert](docs/whale-alert.jpg) |
+| ![Cash out](docs/cash-out.jpg) | ![Your Table](docs/your-table.jpg) |
 
 Go below $10 and you're **REKT**: the bankroll resets and a bust is recorded.
 
@@ -68,12 +75,12 @@ Hyperliquid candles (public API) ──► settles every bet, fairly, after the 
 
 | Endpoint | Credits | Used for |
 |---|---|---|
-| `POST /api/v1/smart-money/perp-trades` | 5 | Round pool (7d) and live feed (2h) |
+| `POST /api/v1/smart-money/perp-trades` | 5 | Round pool (7d), Live Floor feed (6h) |
 | `POST /api/v1/profiler/perp-pnl-summary` | 1 | Wallet track record before the trade (odds), plus 7D and 30D whale track record and trust grade (live) |
 | `POST /api/v1/smart-money/perp-trades` (1h lookback) | 5 | Whale Alerts scanner (every 2–30 min, configurable) |
 | `POST /api/v1/perp-screener` (`trader_type: sm` and `all`) | 1 | Smart Money vs crowd net flow, funding, and current Smart Money long/short positioning (live) |
 
-Credit use is kept low with caching: history windows are cached, and the live feed is cached for 2 minutes. The sidebar shows real API calls and credits used.
+Credit use is kept low with caching: whale and market data are cached per hour, and the Live Floor feed for 15 minutes. The sidebar shows real API calls and credits used.
 
 ---
 
