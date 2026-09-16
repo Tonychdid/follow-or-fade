@@ -182,7 +182,7 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 .lane-head .count{margin-left:auto;font-style:normal;font-family:var(--mono);font-size:12px;min-width:24px;height:24px;border-radius:99px;display:grid;place-items:center;background:rgba(212,175,55,.15);color:var(--gold-l)}
 .lane-body{display:grid;gap:8px;padding:0 10px 10px}
 .lane-body:empty::after{content:"No chips on this table";display:block;color:rgba(167,157,137,.6);font-size:12.5px;padding:2px 4px 0;font-style:italic;font-family:var(--serif);font-size:14px}
-.lbet{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:background .3s}
+.lbet{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:background .3s}
 .lbet.winning{border-color:rgba(34,192,126,.45);background:rgba(34,192,126,.07)}
 .lbet.losing{border-color:rgba(224,68,90,.4);background:rgba(224,68,90,.06)}
 .lbet.won{border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.18),transparent);animation:glow 1.4s ease-in-out 3}
@@ -272,3 +272,22 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
   .felt-inner{padding:18px}
   .logo{font-size:19px}.tabs{margin-left:0;overflow-x:auto}
 }
+
+/* ---------- cash out ---------- */
+.lbet .cashout{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-top:2px;padding:7px 12px;border-radius:10px;
+  font-family:var(--display);font-weight:900;letter-spacing:.12em;font-size:12px;color:#dbeafe;border:1px solid rgba(96,165,250,.5);
+  background:linear-gradient(180deg,rgba(96,165,250,.22),rgba(30,64,175,.25));transition:filter .15s,transform .1s}
+.lbet .cashout b{font-family:var(--mono);font-size:13px;letter-spacing:0}
+.lbet .cashout.up{color:#1a1204;border-color:#fff0b8;background:linear-gradient(180deg,#fff0b8,var(--gold) 60%,var(--gold-d));box-shadow:0 0 16px rgba(212,175,55,.35)}
+.lbet .cashout:hover:not(:disabled){filter:brightness(1.12)} .lbet .cashout:active{transform:scale(.98)}
+.lbet .cashout:disabled{opacity:.45;cursor:not-allowed}
+.lbet.cashed{border-color:rgba(96,165,250,.45);background:linear-gradient(90deg,rgba(96,165,250,.12),transparent)}
+.banner{position:fixed;inset:0;z-index:65;display:grid;place-items:center;pointer-events:auto;background:radial-gradient(circle,rgba(0,0,0,.25),rgba(0,0,0,.7));animation:fadein .25s ease}
+.banner .rays{position:absolute;width:1400px;height:1400px;background:repeating-conic-gradient(rgba(245,215,122,.13) 0 8deg,transparent 8deg 24deg);border-radius:50%;animation:spin 18s linear infinite;mask:radial-gradient(circle,#000 20%,transparent 60%);-webkit-mask:radial-gradient(circle,#000 20%,transparent 60%)}
+.banner.save .rays{background:repeating-conic-gradient(rgba(96,165,250,.14) 0 8deg,transparent 8deg 24deg)}
+.banner-card{position:relative;text-align:center;padding:34px 44px;border-radius:26px;max-width:min(760px,92vw);border:2px solid var(--gold);
+  background:linear-gradient(180deg,#221a10,#0c090b);box-shadow:0 0 90px rgba(212,175,55,.45);animation:pop .55s cubic-bezier(.2,1.6,.4,1)}
+.banner.save .banner-card{border-color:#60a5fa;box-shadow:0 0 90px rgba(96,165,250,.4)}
+.banner-card h2{font-size:clamp(26px,4.4vw,46px);line-height:1.1;margin:0 0 10px;background:linear-gradient(100deg,var(--gold-d),var(--gold-l) 30%,#fff6d6 40%,var(--gold) 55%,var(--gold-l));background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 3s linear infinite}
+.banner.save .banner-card h2{background:linear-gradient(100deg,#93c5fd,#e0f2fe 35%,#60a5fa 60%,#dbeafe);-webkit-background-clip:text;background-clip:text;background-size:250% 100%}
+.banner-card p{margin:0;font-family:var(--mono);color:var(--ivory);font-size:16px}

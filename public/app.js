@@ -63,7 +63,7 @@ function renderPlayer() {
   $('sStreak').textContent = player.streak;
   $('sSlain').textContent = player.whalesSlain;
   const hands = player.history.slice(-8).reverse();
-  $('recentHands').innerHTML = hands.length ? hands.map((h) => `<div class="hand"><span>${h.live ? LANES[h.minutes] || 'Live' : 'Table'} · ${h.choice === 'follow' ? 'Followed' : 'Faded'} ${esc(h.coin)}</span><b class="${h.delta >= 0 ? 'pos' : 'neg'}">${h.delta >= 0 ? '+' : ''}${usd(h.delta)}</b></div>`).join('')
+  $('recentHands').innerHTML = hands.length ? hands.map((h) => `<div class="hand"><span>${h.live ? LANES[h.minutes] || 'Live' : 'Table'} · ${h.cashed ? 'Cashed out' : h.choice === 'follow' ? 'Followed' : 'Faded'} ${esc(h.coin)}</span><b class="${h.delta >= 0 ? 'pos' : 'neg'}">${h.delta >= 0 ? '+' : ''}${usd(h.delta)}</b></div>`).join('')
     : '<p class="muted" style="font-family:var(--serif);font-style:italic;font-size:15px;margin:0">No hands played yet.</p>';
   updatePotential();
 }
@@ -103,13 +103,87 @@ function renderLanes() {
   for (const min of [15, 30, 60]) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
     const mine = bets.filter((b) => (b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) === min)
-      .filter((b) => b.status === 'open' || now - b.settleAt < 30 * 60e3).slice(0, 6);
+      .filter((b) => b.status === 'open' || now - (b.cashedAt || b.settleAt) < 30 * 60e3).slice(0, 6);
     lane.querySelector('.count').textContent = mine.filter((b) => b.status === 'open').length;
     lane.classList.toggle('empty', !mine.length);
-    lane.querySelector('.lane-body').innerHTML = mine.map((b) => betRow(b, now)).join('');
+    const body = lane.querySelector('.lane-body');
+    const sig = mine.map((b) => b.id + b.status).join('|');
+    if (body.dataset.sig !== sig) { body.dataset.sig = sig; body.innerHTML = mine.map((b) => betRow(b)).join(''); }
+    for (const b of mine) updateRow(body.querySelector(`[data-id="${b.id}"]`), b, now);
   }
 }
 setInterval(renderLanes, 1000);
+
+const RING = 2 * Math.PI * 18;
+function betRow(b) {
+  return `<div class="lbet" data-id="${b.id}">
+    <div class="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle class="arc" cx="22" cy="22" r="18" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="${RING}"/></svg><span class="lbl"></span></div>
+    <div class="mid"><div class="l1"><span class="pill ${b.choice}">${b.choice.toUpperCase()}</span>${esc(b.coin)} ${b.whaleSide.toLowerCase()}</div>
+    <div class="l2"></div></div>
+    <div class="res"></div>
+    ${b.status === 'open' ? `<button class="cashout" data-cashout="${b.id}" aria-label="Cash out this bet"><span>CASH OUT</span><b></b></button>` : ''}
+  </div>`;
+}
+function updateRow(row, b, now) {
+  if (!row) return;
+  const total = b.settleAt - b.placedAt, left = Math.max(0, b.settleAt - now);
+  const open = b.status === 'open';
+  const frac = open ? left / total : 0;
+  const col = open ? (b.winningNow == null ? '#d4af37' : b.winningNow ? '#22c07e' : '#e0445a') : b.status === 'won' ? '#f5d77a' : b.status === 'cashed' ? '#60a5fa' : '#6b6255';
+  const arc = row.querySelector('.arc'); arc.setAttribute('stroke', col); arc.setAttribute('stroke-dashoffset', RING * (1 - frac));
+  const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
+  row.querySelector('.lbl').textContent = open ? `${mm}:${String(ss).padStart(2, '0')}` : ({ won: 'WON', lost: 'LOST', push: 'PUSH', cashed: 'CASHED' })[b.status];
+  row.className = 'lbet ' + (open ? (b.winningNow == null ? '' : b.winningNow ? 'winning' : 'losing') : b.status);
+  row.querySelector('.l2').textContent = `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : b.exit ? ' → ' + price(b.exit) : ''}`;
+  const res = row.querySelector('.res');
+  if (open) {
+    const potential = Math.round(b.stake * (b.price - 1));
+    res.innerHTML = b.winningNow == null ? `<span>${usd(b.stake)}</span><small>flat</small>` : b.winningNow ? `<span class="pos">+${usd(potential)}</span><small>winning now</small>` : `<span class="neg">-${usd(b.stake)}</span><small>losing now</small>`;
+    const btn = row.querySelector('.cashout');
+    if (btn) {
+      const ok = b.cashOut != null && left > 6000;
+      btn.disabled = !ok || btn.dataset.busy === '1';
+      btn.querySelector('b').textContent = ok ? usd(b.cashOut) : '—';
+      btn.classList.toggle('up', ok && b.cashOut >= b.stake);
+    }
+  } else {
+    const net = (b.payout ?? 0) - b.stake;
+    res.innerHTML = `<span class="${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : ''}${usd(net)}</span><small>${b.status === 'cashed' ? 'cashed out' : 'settled'}</small>`;
+  }
+}
+
+// Cash out (event delegation so the 1s refresh never swallows the click)
+$('lanes').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-cashout]');
+  if (!btn || btn.disabled) return;
+  btn.dataset.busy = '1'; btn.disabled = true;
+  try {
+    const r = await api('/api/live/cashout', { player: player.id, betId: btn.dataset.cashout });
+    prevStatus.set(r.bet.id, 'cashed');
+    const idx = lastBets.findIndex((x) => x.id === r.bet.id); if (idx >= 0) lastBets[idx] = r.bet;
+    player = r.player; renderPlayer(); renderLanes();
+    const rect = btn.getBoundingClientRect();
+    if (r.net >= 0) {
+      sfx.cashout(); setTimeout(() => sfx.win(r.net > 1000), 250); coinRain(r.net > 1000 ? 100 : 60);
+      burst(rect.left + rect.width / 2, rect.top, 70);
+      banner('The whale is my exit liquidity', `Cashed out ${r.bet.coin} for +${usd(r.net)}`, 'win');
+    } else {
+      sfx.cashout(); setTimeout(() => sfx.escape(), 150);
+      burst(rect.left + rect.width / 2, rect.top, 40, ['#60a5fa', '#f5d77a', '#f3ead7']);
+      banner('Cashing out before the whale gets rekt', `Saved ${usd(r.bet.payout)} of your ${usd(r.bet.stake)} on ${r.bet.coin}`, 'save');
+    }
+  } catch (err) { toast(err.message); btn.dataset.busy = ''; }
+});
+
+function banner(title, sub, kind) {
+  const el = $('banner');
+  el.className = 'banner ' + kind;
+  el.innerHTML = `<div class="rays"></div><div class="banner-card"><h2>${esc(title)}</h2><p>${esc(sub)}</p></div>`;
+  el.hidden = false;
+  clearTimeout(el._h); el._h = setTimeout(() => (el.hidden = true), 3200);
+}
+$('banner')?.addEventListener('click', () => ($('banner').hidden = true));
+
 async function announceSettled(settledNow) {
   {
     const prev = player.bankroll;
@@ -124,29 +198,6 @@ async function announceSettled(settledNow) {
     if (prev === player.bankroll) renderPlayer();
   }
 }
-function betRow(b, now) {
-  const total = b.settleAt - b.placedAt, left = Math.max(0, b.settleAt - now);
-  const frac = b.status === 'open' ? left / total : 0;
-  const C = 2 * Math.PI * 18;
-  const col = b.status === 'open' ? (b.winningNow == null ? '#d4af37' : b.winningNow ? '#22c07e' : '#e0445a') : b.status === 'won' ? '#f5d77a' : '#6b6255';
-  const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
-  const label = b.status === 'open' ? `${mm}:${String(ss).padStart(2, '0')}` : b.status === 'won' ? 'WON' : b.status === 'lost' ? 'LOST' : 'PUSH';
-  const cls = b.status === 'open' ? (b.winningNow == null ? '' : b.winningNow ? 'winning' : 'losing') : b.status;
-  let res;
-  if (b.status === 'open') {
-    const potential = Math.round(b.stake * (b.price - 1));
-    res = b.winningNow == null ? `<span>${usd(b.stake)}</span><small>flat</small>` : b.winningNow ? `<span class="pos">+${usd(potential)}</span><small>winning now</small>` : `<span class="neg">-${usd(b.stake)}</span><small>losing now</small>`;
-  } else {
-    const net = (b.payout ?? 0) - b.stake;
-    res = `<span class="${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : ''}${usd(net)}</span><small>settled</small>`;
-  }
-  return `<div class="lbet ${cls}">
-    <div class="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}"/></svg><span>${label}</span></div>
-    <div><div class="l1"><span class="pill ${b.choice}">${b.choice.toUpperCase()}</span>${esc(b.coin)} ${b.whaleSide.toLowerCase()}</div>
-    <div class="l2">${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : b.exit ? ' → ' + price(b.exit) : ''}</div></div>
-    <div class="res">${res}</div></div>`;
-}
-
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.hidden = false;
   t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';

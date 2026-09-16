@@ -25,6 +25,7 @@ const routes = {
   'GET /api/leaderboard': async () => game.leaderboard(),
   'GET /api/live': async () => game.liveFeed(),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
+  'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
   'GET /api/live/bets': async (_, q) => { await game.settleLive(); return game.liveBetsFor(q.get('player')); },
 };
 

@@ -56,6 +56,10 @@ export const sfx = {
   ding() { tone(1568, 0, 0.9, { type: 'sine', gain: 0.18 }); tone(2093, 0.02, 0.7, { type: 'sine', gain: 0.08 }); },
   /** soft tick */
   tick() { noise(0, 0.015, { freq: 6000, q: 8, gain: 0.18 }); },
+  /** cash register ka-ching */
+  cashout() { noise(0, 0.06, { freq: 2500, q: 2, gain: 0.4 }); tone(1318, 0.06, 0.5, { type: 'triangle', gain: 0.25 }); tone(1760, 0.14, 0.7, { type: 'triangle', gain: 0.22 }); noise(0.12, 0.25, { freq: 7000, q: 1, gain: 0.08 }); },
+  /** quick whoosh getting out the door */
+  escape() { tone(300, 0, 0.35, { type: 'sine', gain: 0.18, slide: 3 }); noise(0, 0.3, { freq: 1200, q: 0.7, gain: 0.25 }); },
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)

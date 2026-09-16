@@ -30,6 +30,7 @@ No key yet? Leave `NANSEN_API_KEY` empty and the app runs in **demo mode**: Nans
 | **Replay** | You're dealt a real Smart Money position open from the last 7 days (coin, side, size, entry). The wallet is hidden. You see the Nansen intel, the model's probability and the odds. Stake, pick **Follow** or **Fade**, and the app reveals the next 4 hours of price, the wallet and your payout. |
 | **Live Floor** | Smart Money opens from the last 6 hours, with where Smart Money is positioned on that coin right now. Pick a table: **Espresso Shot (15 min)**, **Champagne Round (30 min)** or **Cigar Lounge (60 min)**. The bet settles on the Hyperliquid mid price. One click opens the market on Hyperliquid if you want to take the trade for real. |
 | **Your Table** (always on screen) | Your open live bets, grouped by table, with countdown rings, whether you are winning right now, and payouts with sound and coin effects when they settle. |
+| **Cash Out** | End a live bet early. The offer is the bet's fair value: stake × odds × the probability you are still winning at the bell, based on how far price has moved, the time left and the coin's current 1-minute volatility on Hyperliquid, minus a 5% margin. Cash out in profit: *"The whale is my exit liquidity."* Cash out at a loss: *"Cashing out before the whale gets rekt."* |
 | **Hall of Fame** | Bankroll ranking, win rate, best streak, **whales slain** (correct fades of trades the model favored). |
 | **Share card** | One-click PNG plus a prefilled X post. |
 
