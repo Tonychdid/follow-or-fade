@@ -533,7 +533,7 @@ function alertLine(a) {
     <div class="ai-body">
       <div class="ai-title"><span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
-      <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.closed || 0} closes${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b>` : ''}</div>
+      <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
       <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div>
     </div></div>`;
 }
@@ -545,13 +545,13 @@ function renderAlertStatus() {
   if (!alertCfg) return;
   const last = alertCfg.lastScan ? `last scan ${ago(alertCfg.lastScan)}` : 'first scan starting';
   $('apStatus').innerHTML = alertCfg.enabled
-    ? `<i class="live-dot"></i> Watching for <b>${alertCfg.minGrade === 'A+' ? 'A+' : alertCfg.minGrade + ' or better'}</b> whales opening <b>${compact(alertCfg.minSizeUsd)}+</b> · every ${alertCfg.intervalMin} min · ${last}${alertCfg.lastError ? ` · <span class="neg">${esc(alertCfg.lastError)}</span>` : ''}`
+    ? `<i class="live-dot"></i> Watching for <b>${alertCfg.minGrade === 'A+' ? 'A+' : alertCfg.minGrade + ' or better'}</b> whales opening <b>${compact(alertCfg.minSizeUsd)}+</b> · <b>${alertCfg.minCoins7d || 'any'}+/${alertCfg.minCoins30d || 'any'}+</b> coins (7D/30D) · every ${alertCfg.intervalMin} min · ${last}${alertCfg.lastError ? ` · <span class="neg">${esc(alertCfg.lastError)}</span>` : ''}`
     : '<i class="live-dot off"></i> Scanner is off';
 }
 function renderAlertCfg() {
   if (!alertCfg) return;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
-  $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d;
+  $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d;
   $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
@@ -564,10 +564,10 @@ function renderAlertCfg() {
 }
 async function saveCfg() {
   alertCfg = await api('/api/alerts/config', { enabled: $('cfgEnabled').checked, minGrade: $('cfgGrade').value, minWinRate: $('cfgWin').value,
-    minSizeUsd: $('cfgSize').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked }).catch((e) => { toast(e.message); return alertCfg; });
+    minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked }).catch((e) => { toast(e.message); return alertCfg; });
   renderAlertCfg(); sfx.tick();
 }
-['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit'].forEach((id) => $(id).addEventListener('change', saveCfg));
+['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30'].forEach((id) => $(id).addEventListener('change', saveCfg));
 
 function openAlerts() {
   $('alertPanel').hidden = false; sfx.tick();
