@@ -37,7 +37,7 @@ async function boot() {
   shownBank = player.bankroll;
   renderPlayer();
   refreshStatus(); setInterval(refreshStatus, 15000);
-  pollBets(); setInterval(pollBets, 5000);
+  pollLoop();
   deal();
 }
 
@@ -59,7 +59,8 @@ function renderPlayer() {
     setTimeout(() => (b.className = ''), 1400);
     shownBank = player.bankroll;
   } else b.textContent = usd(player.bankroll);
-  $('sRecord').textContent = `${player.wins}–${player.bets - player.wins}`;
+  const losses = player.bets - player.wins - (player.pushes || 0);
+  $('sRecord').textContent = `${player.wins}–${losses}` + (player.pushes ? `–${player.pushes}` : '');
   $('sStreak').textContent = player.streak;
   $('sSlain').textContent = player.whalesSlain;
   const hands = player.history.slice(-8).reverse();
@@ -93,63 +94,102 @@ async function pollBets() {
     if (before === 'open' && b.status !== 'open') settledNow.push(b);
     prevStatus.set(b.id, b.status);
   }
-  lastBets = bets;
+  const fresh = lastBets.filter((x) => x.status === 'open' && Date.now() - x.placedAt < 10e3 && !bets.some((y) => y.id === x.id));
+  lastBets = [...fresh, ...bets];
   renderLanes();
   if (settledNow.length) await announceSettled(settledNow);
 }
 let lastBets = [];
+let pending = [];            // optimistic bets shown instantly while the server confirms
+async function pollLoop() {
+  await pollBets().catch(() => {});
+  const anyOpen = lastBets.some((b) => b.status === 'open');
+  setTimeout(pollLoop, anyOpen ? 2000 : 5000); // faster refresh while chips are on the table
+}
 function renderLanes() {
-  const bets = lastBets, now = Date.now();
+  const now = Date.now();
+  const open = [...pending, ...lastBets.filter((b) => b.status === 'open')];
+  let total = 0;
   for (const min of [15, 30, 60]) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
-    const mine = bets.filter((b) => (b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) === min)
-      .filter((b) => b.status === 'open' || now - (b.cashedAt || b.settleAt) < 30 * 60e3).slice(0, 6);
-    lane.querySelector('.count').textContent = mine.filter((b) => b.status === 'open').length;
+    const mine = open.filter((b) => (b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) === min);
+    total += mine.length;
+    lane.querySelector('.count').textContent = mine.length;
     lane.classList.toggle('empty', !mine.length);
+    lane.classList.toggle('hot', mine.length > 0);
     const body = lane.querySelector('.lane-body');
-    const sig = mine.map((b) => b.id + b.status).join('|');
+    const sig = mine.map((b) => b.id).join('|');
     if (body.dataset.sig !== sig) { body.dataset.sig = sig; body.innerHTML = mine.map((b) => betRow(b)).join(''); }
     for (const b of mine) updateRow(body.querySelector(`[data-id="${b.id}"]`), b, now);
   }
+  $('lanes').classList.toggle('none-open', total === 0);
 }
 setInterval(renderLanes, 1000);
 
 const RING = 2 * Math.PI * 18;
+const FACE = `
+<svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+  <defs><radialGradient id="fg" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#fff1a8"/><stop offset=".6" stop-color="#ffc94a"/><stop offset="1" stop-color="#d98e0b"/></radialGradient></defs>
+  <circle cx="32" cy="32" r="27" fill="url(#fg)" stroke="#7a4f06" stroke-width="2"/>
+  <g class="st rich">
+    <text x="21" y="31" text-anchor="middle" font-size="15" font-weight="900" fill="#0f7a3d" font-family="Inter,Arial">$</text>
+    <text x="43" y="31" text-anchor="middle" font-size="15" font-weight="900" fill="#0f7a3d" font-family="Inter,Arial">$</text>
+    <path d="M15 22 q6 -5 12 -1 M37 21 q6 -4 12 1" stroke="#5a3a05" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M17 37 Q32 58 47 37 Z" fill="#4a1d06"/><path d="M20 38 H44 L42 42 H22 Z" fill="#fff"/>
+    <ellipse cx="14" cy="38" rx="4" ry="2.5" fill="#ff8a65" opacity=".6"/><ellipse cx="50" cy="38" rx="4" ry="2.5" fill="#ff8a65" opacity=".6"/>
+  </g>
+  <g class="st cry">
+    <path d="M14 20 l11 5 M50 20 l-11 5" stroke="#5a3a05" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M16 30 q5 4 10 0 M38 30 q5 4 10 0" stroke="#5a3a05" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M20 50 Q32 36 44 50 Q32 44 20 50 Z" fill="#4a1d06"/>
+    <path d="M17 33 v20 M47 33 v20" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+  </g>
+  <g class="st meh">
+    <circle cx="22" cy="28" r="3.2" fill="#5a3a05"/><circle cx="42" cy="28" r="3.2" fill="#5a3a05"/>
+    <path d="M22 44 H42" stroke="#5a3a05" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>`;
 function betRow(b) {
-  return `<div class="lbet" data-id="${b.id}">
-    <div class="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle class="arc" cx="22" cy="22" r="18" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="${RING}"/></svg><span class="lbl"></span></div>
-    <div class="mid"><div class="l1"><span class="pill ${b.choice}">${b.choice.toUpperCase()}</span>${esc(b.coin)} ${b.whaleSide.toLowerCase()}</div>
-    <div class="l2"></div></div>
-    <div class="res"></div>
-    ${b.status === 'open' ? `<button class="cashout" data-cashout="${b.id}" aria-label="Cash out this bet"><span>CASH OUT</span><b></b></button>` : ''}
+  return `<div class="lbet${b.pending ? ' pending' : ''}" data-id="${b.id}">
+    <div class="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle class="arc" cx="22" cy="22" r="18" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="${RING}"/></svg><span class="lbl"></span></div>
+    <div class="mid"><div class="l1"><span class="pill ${b.choice}">${b.choice.toUpperCase()}</span>${esc(b.coin)} ${b.whaleSide.toLowerCase()}</div><div class="l2"></div></div>
+    <div class="avatar meh" data-level="0">${FACE}<div class="fly"></div></div>
+    <div class="bottom"><div class="res"></div>
+    <button class="cashout" data-cashout="${b.id}" aria-label="Cash out this bet"><span>CASH OUT</span><b></b></button></div>
   </div>`;
 }
 function updateRow(row, b, now) {
   if (!row) return;
   const total = b.settleAt - b.placedAt, left = Math.max(0, b.settleAt - now);
-  const open = b.status === 'open';
-  const frac = open ? left / total : 0;
-  const col = open ? (b.winningNow == null ? '#d4af37' : b.winningNow ? '#22c07e' : '#e0445a') : b.status === 'won' ? '#f5d77a' : b.status === 'cashed' ? '#60a5fa' : '#6b6255';
+  const frac = left / total;
+  const mood = b.pending || b.winningNow == null ? 'meh' : b.winningNow ? 'rich' : 'cry';
+  const col = mood === 'meh' ? '#d4af37' : mood === 'rich' ? '#22c07e' : '#e0445a';
   const arc = row.querySelector('.arc'); arc.setAttribute('stroke', col); arc.setAttribute('stroke-dashoffset', RING * (1 - frac));
   const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
-  row.querySelector('.lbl').textContent = open ? `${mm}:${String(ss).padStart(2, '0')}` : ({ won: 'WON', lost: 'LOST', push: 'PUSH', cashed: 'CASHED' })[b.status];
-  row.className = 'lbet ' + (open ? (b.winningNow == null ? '' : b.winningNow ? 'winning' : 'losing') : b.status);
-  row.querySelector('.l2').textContent = `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : b.exit ? ' → ' + price(b.exit) : ''}`;
-  const res = row.querySelector('.res');
-  if (open) {
-    const potential = Math.round(b.stake * (b.price - 1));
-    res.innerHTML = b.winningNow == null ? `<span>${usd(b.stake)}</span><small>flat</small>` : b.winningNow ? `<span class="pos">+${usd(potential)}</span><small>winning now</small>` : `<span class="neg">-${usd(b.stake)}</span><small>losing now</small>`;
-    const btn = row.querySelector('.cashout');
-    if (btn) {
-      const ok = b.cashOut != null && left > 6000;
-      btn.disabled = !ok || btn.dataset.busy === '1';
-      btn.querySelector('b').textContent = ok ? usd(b.cashOut) : '—';
-      btn.classList.toggle('up', ok && b.cashOut >= b.stake);
-    }
-  } else {
-    const net = (b.payout ?? 0) - b.stake;
-    res.innerHTML = `<span class="${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : ''}${usd(net)}</span><small>${b.status === 'cashed' ? 'cashed out' : 'settled'}</small>`;
+  row.querySelector('.lbl').textContent = `${mm}:${String(ss).padStart(2, '0')}`;
+  // intensity 0..3 from how confidently the bet is winning or losing right now
+  const conf = b.pWin == null ? 0 : Math.abs(b.pWin - 0.5) * 2;
+  const level = mood === 'meh' ? 0 : conf > 0.75 ? 3 : conf > 0.4 ? 2 : 1;
+  row.className = `lbet ${b.pending ? 'pending ' : ''}${mood === 'rich' ? 'winning' : mood === 'cry' ? 'losing' : ''} lvl${level}`;
+  const av = row.querySelector('.avatar');
+  if (!av.classList.contains(mood) || av.dataset.level !== String(level)) {
+    av.className = `avatar ${mood}`; av.dataset.level = level;
+    const fly = av.querySelector('.fly');
+    const n = mood === 'rich' ? level * 3 : mood === 'cry' ? level * 3 : 0;
+    fly.innerHTML = Array.from({ length: n }, (_, i) => mood === 'rich'
+      ? `<i class="bill" style="--d:${(i * 0.23).toFixed(2)}s;--x:${(Math.random() * 60 - 30).toFixed(0)}px;--r:${(Math.random() * 80 - 40).toFixed(0)}deg;--s:${(1.6 - level * 0.3).toFixed(2)}s">$</i>`
+      : `<i class="tear" style="--d:${(i * 0.19).toFixed(2)}s;--x:${i % 2 ? 14 : -14}px;--s:${(1.4 - level * 0.25).toFixed(2)}s"></i>`).join('');
   }
+  row.querySelector('.l2').textContent = b.pending ? `${usd(b.stake)} @ x${b.price.toFixed(2)} · placing chips…`
+    : `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : ''}${b.myRet != null ? ' (' + pct(b.myRet, 2) + ')' : ''}`;
+  const potential = Math.round(b.stake * (b.price - 1));
+  row.querySelector('.res').innerHTML = mood === 'meh' ? `<span>${usd(b.stake)}</span> <small>flat</small>`
+    : mood === 'rich' ? `<span class="pos">+${usd(potential)}</span> <small>if it ends now</small>` : `<span class="neg">-${usd(b.stake)}</span> <small>if it ends now</small>`;
+  const btn = row.querySelector('.cashout');
+  const ok = !b.pending && b.cashOut != null && left > 6000;
+  btn.disabled = !ok || btn.dataset.busy === '1';
+  btn.querySelector('b').textContent = ok ? usd(b.cashOut) : '—';
+  btn.classList.toggle('up', ok && b.cashOut >= b.stake);
 }
 
 // Cash out (event delegation so the 1s refresh never swallows the click)
@@ -160,8 +200,9 @@ $('lanes').addEventListener('click', async (e) => {
   try {
     const r = await api('/api/live/cashout', { player: player.id, betId: btn.dataset.cashout });
     prevStatus.set(r.bet.id, 'cashed');
-    const idx = lastBets.findIndex((x) => x.id === r.bet.id); if (idx >= 0) lastBets[idx] = r.bet;
-    player = r.player; renderPlayer(); renderLanes();
+    const row = btn.closest('.lbet'); row?.classList.add('leaving');
+    setTimeout(() => { const idx = lastBets.findIndex((x) => x.id === r.bet.id); if (idx >= 0) lastBets[idx] = r.bet; renderLanes(); }, 550);
+    player = r.player; renderPlayer();
     const rect = btn.getBoundingClientRect();
     if (r.net >= 0) {
       sfx.cashout(); setTimeout(() => sfx.win(r.net > 1000), 250); coinRain(r.net > 1000 ? 100 : 60);
@@ -274,7 +315,7 @@ function showReveal(res, choice) {
   const v = res.reveal, r = round;
   $('suspense').hidden = true; $('reveal').hidden = false;
   const big = res.result === 'win' && (res.whaleSlain || res.price >= 2.2 || res.delta >= 5000);
-  const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Push. Chips returned.';
+  const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Push. Your chips are back.';
   const sub = `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)}`;
   const vd = $('verdict'); vd.className = 'verdict ' + res.result; vd.innerHTML = `${esc(title)}<small>${esc(sub)}</small>`;
   void vd.offsetWidth; vd.classList.add('pop');
@@ -333,7 +374,7 @@ $('btnShare').onclick = () => {
   const ch = (p.bankroll - 10000) / 10000;
   g.fillStyle = ch >= 0 ? '#34d399' : '#f06377'; g.font = '700 40px "JetBrains Mono", monospace'; g.fillText(`${pct(ch, 0)} from $10k`, 600, 390);
   g.fillStyle = '#f3ead7'; g.font = '600 30px Inter, sans-serif';
-  g.fillText(`${p.wins}–${p.bets - p.wins} record  ·  best streak ${p.bestStreak}  ·  ${p.whalesSlain} whales slain`, 600, 465);
+  g.fillText(`${p.wins}–${p.bets - p.wins - (p.pushes || 0)} record  ·  best streak ${p.bestStreak}  ·  ${p.whalesSlain} whales slain`, 600, 465);
   if (L) { g.fillStyle = 'rgba(243,234,215,.75)'; g.font = '500 26px Inter, sans-serif'; g.fillText(`Last hand: ${L.choice === 'follow' ? 'followed' : 'faded'} a ${compact(L.round.valueUsd)} ${L.round.coin} ${L.round.side.toLowerCase()} → ${L.delta >= 0 ? '+' : ''}${usd(L.delta)}`, 600, 520); }
   g.fillStyle = 'rgba(245,215,122,.8)'; g.font = '600 20px Cinzel, Georgia, serif'; g.fillText('REAL HYPERLIQUID TRADES · NANSEN SMART MONEY · ODDS BY NANSEN API', 600, 605);
   c.toBlob((b) => { $('shareDownload').href = URL.createObjectURL(b); });
@@ -369,11 +410,35 @@ async function loadLive() {
     wireLive();
   } catch (e) { $('liveList').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
-function liveCard(t, idx) {
-  const k = esc(t.key);
+const liveItems = new Map();
+function recordHtml(r) {
+  if (!r || !r.closed) return '<div class="rec-empty">No closed perp trades in this window</div>';
+  return `<div class="rec-grid">
+    <div><small>Realized PnL</small><b class="${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+' : ''}${compact(r.pnl)}</b></div>
+    <div><small>Return on closes</small><b class="${r.roi >= 0 ? 'pos' : 'neg'}">${pct(r.roi, 1)}</b></div>
+    <div><small>Win rate</small><b>${r.winRate != null ? Math.round(r.winRate * 100) + '%' : 'n/a'}</b></div>
+    <div><small>Closed trades</small><b>${r.closed.toLocaleString()}</b></div>
+  </div>
+  <div class="rec-coins">${r.best ? `Best: <b class="${r.best.pnl >= 0 ? 'pos' : 'neg'}">${esc(r.best.coin)} ${r.best.pnl >= 0 ? '+' : ''}${compact(r.best.pnl)}</b>` : ''}${r.worst ? ` · Worst: <b class="neg">${esc(r.worst.coin)} ${compact(r.worst.pnl)}</b>` : ''} · ${r.coins} coins traded</div>`;
+}
+function liveCard(t) {
+  liveItems.set(t.key, t);
+  const k = esc(t.key), tr = t.record?.trust || { grade: '?', label: 'No track record' };
+  const gradeCls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[tr.grade] || 'gc';
   return `<div class="lcard" data-key="${k}">
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
+
+    <div class="dossier-box">
+      <div class="dossier-top">
+        <div class="grade ${gradeCls}" title="Trust score ${tr.score ?? '–'}/100, from realized return, win rate and sample size (30d), adjusted by the last 7 days">${tr.grade}</div>
+        <div class="dossier-title"><b>Whale track record</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
+        <div class="rec-tabs" role="tablist"><button class="on" data-win="d7">7D</button><button data-win="d30">30D</button></div>
+      </div>
+      <div class="rec-body" data-panel="d7">${recordHtml(t.record?.d7)}</div>
+      <div class="rec-body" data-panel="d30" hidden>${recordHtml(t.record?.d30)}</div>
+    </div>
+
     <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('')}</ul>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
     <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
@@ -385,25 +450,45 @@ function liveCard(t, idx) {
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
-    <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale on Nansen ↗</a><a href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(t.coin)}" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Hyperliquid ↗</a></div>
+    <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale profile on Nansen ↗</a><a class="trade-nansen" href="https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(t.coin)}&chain=hyperliquid" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Nansen ↗</a></div>
   </div>`;
 }
 function wireLive() {
   document.querySelectorAll('.lcard').forEach((card) => {
     const input = card.querySelector('input');
+    card.querySelectorAll('.rec-tabs button').forEach((tb) => tb.onclick = () => {
+      card.querySelectorAll('.rec-tabs button').forEach((x) => x.classList.toggle('on', x === tb));
+      card.querySelectorAll('.rec-body').forEach((p) => (p.hidden = p.dataset.panel !== tb.dataset.win));
+      sfx.tick();
+    });
     card.querySelectorAll('.hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
     card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => { input.value = Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add)); sfx.chip(); });
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
       const minutes = Number(card.querySelector('.hz.on').dataset.min);
-      btn.disabled = true; sfx.bet();
+      const stake = Math.floor(Number(input.value));
+      const t = liveItems.get(card.dataset.key);
+      if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
+      const choice = btn.dataset.choice;
+      // 1) show it on Your Table instantly
+      const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: t.coin, whaleSide: t.side, choice, stake,
+        price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + minutes * 60e3, minutes, status: 'open' };
+      pending.push(tmp); renderLanes();
+      player.bankroll -= stake; renderPlayer();
+      sfx.bet(); sparkleAt(btn, 26);
+      // 2) confirm with the server
       try {
-        const b = await api('/api/live/bet', { player: player.id, key: card.dataset.key, choice: btn.dataset.choice, stake: input.value, minutes });
+        const b = await api('/api/live/bet', { player: player.id, key: card.dataset.key, choice, stake, minutes });
         prevStatus.set(b.id, 'open');
-        sparkleAt(btn, 26); sfx.chip();
-        toast(`Chips down at the ${LANES[minutes]}: ${btn.dataset.choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
-        player = await api('/api/player?id=' + player.id); renderPlayer(); pollBets();
-      } catch (e) { toast(e.message); }
-      btn.disabled = false;
+        pending = pending.filter((x) => x !== tmp);
+        lastBets = [b, ...lastBets]; renderLanes();
+        sfx.chip();
+        toast(`Chips down at the ${LANES[minutes]}: ${choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
+        pollBets();
+      } catch (e) {
+        pending = pending.filter((x) => x !== tmp); renderLanes();
+        player.bankroll += stake; renderPlayer();
+        toast(e.message);
+      }
     });
   });
 }
