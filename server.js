@@ -49,4 +49,4 @@ http.createServer(async (req, res) => {
 const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds calibrated on ${m.n} resolved Smart Money trades`)).catch((e) => console.error('[calibrate]', e.message));
 setTimeout(calibrate, 2000);
 setInterval(calibrate, 60 * 60e3);
-setInterval(() => game.settleLive().catch(() => {}), 30e3);
+setInterval(() => game.settleLive().catch(() => {}), 5e3);

@@ -1,3 +1,6 @@
+import { sfx, isMuted, setMuted } from './sfx.js';
+import { coinRain, burst, sparkleAt, countTo } from './fx.js';
+
 const $ = (id) => document.getElementById(id);
 const api = async (path, body) => {
   const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -10,13 +13,18 @@ const compact = (n) => (n < 0 ? '-' : '') + '$' + Intl.NumberFormat('en-US', { n
 const pct = (x, d = 1) => (x > 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
 const price = (p) => p >= 1000 ? p.toLocaleString('en-US', { maximumFractionDigits: 1 }) : p >= 1 ? p.toFixed(3) : p.toPrecision(4);
 const ago = (iso) => { const m = (Date.now() - Date.parse(iso)) / 60e3; return m < 60 ? `${Math.round(m)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
-const coinHtml = (c) => c.includes(':') ? `<small class="dex">${c.split(':')[0]}</small>${c.split(':')[1]}` : c;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const coinHtml = (c) => c.includes(':') ? `<small class="dex">${esc(c.split(':')[0])}</small>${esc(c.split(':')[1])}` : esc(c);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const LANES = { 15: 'Espresso Shot', 30: 'Champagne Round', 60: 'Cigar Lounge' };
 
 let player = null, round = null, lastResult = null;
+let shownBank = 10000;
 
-// ------------------------------------------------ boot
+// ================================================= boot
 async function boot() {
+  syncMute();
   const id = store.get('fof_player');
   if (id) player = await api('/api/player?id=' + id).catch(() => null);
   if (!player) {
@@ -24,23 +32,39 @@ async function boot() {
     await new Promise((r) => $('welcomeForm').addEventListener('submit', r, { once: true }));
     player = await api('/api/player', { name: $('nameInput').value });
     store.set('fof_player', player.id);
+    sfx.chip(); coinRain(40);
   }
+  shownBank = player.bankroll;
   renderPlayer();
   refreshStatus(); setInterval(refreshStatus, 15000);
+  pollBets(); setInterval(pollBets, 5000);
   deal();
 }
 
-function renderPlayer(prev) {
+// ================================================= sound toggle
+function syncMute() {
+  $('muteBtn').classList.toggle('off', isMuted());
+  $('muteIcon').setAttribute('d', isMuted()
+    ? 'M4 9v6h4l5 4V5L8 9H4zm12.6 3 2.4 2.4-1.2 1.2-2.4-2.4-2.4 2.4-1.2-1.2 2.4-2.4-2.4-2.4 1.2-1.2 2.4 2.4 2.4-2.4 1.2 1.2z'
+    : 'M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z');
+}
+$('muteBtn').onclick = () => { setMuted(!isMuted()); syncMute(); if (!isMuted()) sfx.chip(); };
+
+// ================================================= player + rail
+function renderPlayer() {
   const b = $('bankroll');
-  b.textContent = usd(player.bankroll);
-  if (prev !== undefined && prev !== player.bankroll) { b.className = player.bankroll > prev ? 'up' : 'down'; setTimeout(() => (b.className = ''), 1200); }
+  if (player.bankroll !== shownBank) {
+    b.className = player.bankroll > shownBank ? 'up' : 'down';
+    countTo(b, shownBank, player.bankroll, (v) => usd(Math.round(v)));
+    setTimeout(() => (b.className = ''), 1400);
+    shownBank = player.bankroll;
+  } else b.textContent = usd(player.bankroll);
   $('sRecord').textContent = `${player.wins}–${player.bets - player.wins}`;
-  $('sStreak').textContent = player.streak; $('sBest').textContent = player.bestStreak;
-  $('sSlain').textContent = player.whalesSlain; $('sBusts').textContent = player.busts;
-  const h = [10000, ...player.history.map((x) => x.bankroll)];
-  const min = Math.min(...h), max = Math.max(...h), span = max - min || 1;
-  const pts = h.map((v, i) => `${(i / Math.max(1, h.length - 1)) * 200},${38 - ((v - min) / span) * 36}`).join(' ');
-  $('spark').innerHTML = `<polyline points="${pts}" fill="none" stroke="${player.bankroll >= 10000 ? '#34d399' : '#f87171'}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  $('sStreak').textContent = player.streak;
+  $('sSlain').textContent = player.whalesSlain;
+  const hands = player.history.slice(-8).reverse();
+  $('recentHands').innerHTML = hands.length ? hands.map((h) => `<div class="hand"><span>${h.live ? LANES[h.minutes] || 'Live' : 'Table'} · ${h.choice === 'follow' ? 'Followed' : 'Faded'} ${esc(h.coin)}</span><b class="${h.delta >= 0 ? 'pos' : 'neg'}">${h.delta >= 0 ? '+' : ''}${usd(h.delta)}</b></div>`).join('')
+    : '<p class="muted" style="font-family:var(--serif);font-style:italic;font-size:15px;margin:0">No hands played yet.</p>';
   updatePotential();
 }
 
@@ -50,23 +74,94 @@ async function refreshStatus() {
   $('demoBadge').hidden = !s.usage.demo;
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
-  $('uModel').textContent = s.model.n ? `${s.model.n} trades` : 'prior';
+  $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
-    const tail = s.smWinRate < 0.55 ? ' Following blindly is not a strategy.' : ' The edge is real, but not on every trade.';
-    $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money position opens were in profit ${s.horizonHours}h later.` + tail;
+    $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were green ${s.horizonHours}h later`;
   }
 }
 
-// ------------------------------------------------ replay
-async function deal() {
-  $('round').hidden = true; $('reveal').hidden = true; $('err').hidden = true; $('dealing').hidden = false;
-  try {
-    round = await api('/api/round?player=' + player.id);
-  } catch (e) {
-    $('dealing').hidden = true; showErr(e.message + ' — '); return;
+// ---- live bets rail (polled every 5s, visible on every tab)
+const prevStatus = new Map();
+async function pollBets() {
+  if (!player) return;
+  const bets = await api('/api/live/bets?player=' + player.id).catch(() => null);
+  if (!bets) return;
+  let settledNow = [];
+  for (const b of bets) {
+    const before = prevStatus.get(b.id);
+    if (before === 'open' && b.status !== 'open') settledNow.push(b);
+    prevStatus.set(b.id, b.status);
   }
+  lastBets = bets;
+  renderLanes();
+  if (settledNow.length) await announceSettled(settledNow);
+}
+let lastBets = [];
+function renderLanes() {
+  const bets = lastBets, now = Date.now();
+  for (const min of [15, 30, 60]) {
+    const lane = document.querySelector(`.lane[data-min="${min}"]`);
+    const mine = bets.filter((b) => (b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) === min)
+      .filter((b) => b.status === 'open' || now - b.settleAt < 30 * 60e3).slice(0, 6);
+    lane.querySelector('.count').textContent = mine.filter((b) => b.status === 'open').length;
+    lane.classList.toggle('empty', !mine.length);
+    lane.querySelector('.lane-body').innerHTML = mine.map((b) => betRow(b, now)).join('');
+  }
+}
+setInterval(renderLanes, 1000);
+async function announceSettled(settledNow) {
+  {
+    const prev = player.bankroll;
+    player = await api('/api/player?id=' + player.id);
+    renderPlayer();
+    for (const b of settledNow) {
+      const net = (b.payout ?? 0) - b.stake;
+      if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${LANES[b.minutes] || 'Live bet'} paid out: +${usd(net)} on ${b.coin}`); }
+      else if (b.status === 'lost') { sfx.lose(); toast(`${LANES[b.minutes] || 'Live bet'} lost on ${b.coin}: ${usd(net)}`); }
+      else { sfx.push(); toast(`Push on ${b.coin}: stake returned`); }
+    }
+    if (prev === player.bankroll) renderPlayer();
+  }
+}
+function betRow(b, now) {
+  const total = b.settleAt - b.placedAt, left = Math.max(0, b.settleAt - now);
+  const frac = b.status === 'open' ? left / total : 0;
+  const C = 2 * Math.PI * 18;
+  const col = b.status === 'open' ? (b.winningNow == null ? '#d4af37' : b.winningNow ? '#22c07e' : '#e0445a') : b.status === 'won' ? '#f5d77a' : '#6b6255';
+  const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
+  const label = b.status === 'open' ? `${mm}:${String(ss).padStart(2, '0')}` : b.status === 'won' ? 'WON' : b.status === 'lost' ? 'LOST' : 'PUSH';
+  const cls = b.status === 'open' ? (b.winningNow == null ? '' : b.winningNow ? 'winning' : 'losing') : b.status;
+  let res;
+  if (b.status === 'open') {
+    const potential = Math.round(b.stake * (b.price - 1));
+    res = b.winningNow == null ? `<span>${usd(b.stake)}</span><small>flat</small>` : b.winningNow ? `<span class="pos">+${usd(potential)}</span><small>winning now</small>` : `<span class="neg">-${usd(b.stake)}</span><small>losing now</small>`;
+  } else {
+    const net = (b.payout ?? 0) - b.stake;
+    res = `<span class="${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}">${net >= 0 ? '+' : ''}${usd(net)}</span><small>settled</small>`;
+  }
+  return `<div class="lbet ${cls}">
+    <div class="ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}"/></svg><span>${label}</span></div>
+    <div><div class="l1"><span class="pill ${b.choice}">${b.choice.toUpperCase()}</span>${esc(b.coin)} ${b.whaleSide.toLowerCase()}</div>
+    <div class="l2">${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : b.exit ? ' → ' + price(b.exit) : ''}</div></div>
+    <div class="res">${res}</div></div>`;
+}
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
+  clearTimeout(t._h); t._h = setTimeout(() => (t.hidden = true), 4200);
+}
+
+// ================================================= THE TABLE (replay)
+async function deal() {
+  $('round').hidden = true; $('reveal').hidden = true; $('suspense').hidden = true; $('err').hidden = true; $('dealing').hidden = false;
+  try { round = await api('/api/round?player=' + player.id); }
+  catch (e) { $('dealing').hidden = true; return showErr(e.message + ' — '); }
   const r = round;
+  const card = $('playcard');
+  card.className = 'playcard ' + r.side;
+  $('cSideShort').textContent = $('cSideShort2').textContent = r.side === 'Long' ? 'L' : 'S';
   $('rSide').textContent = r.side.toUpperCase(); $('rSide').className = 'side ' + r.side;
   $('rCoin').innerHTML = coinHtml(r.coin); $('rValue').textContent = compact(r.valueUsd); $('rEntry').textContent = price(r.entryPrice);
   $('rWhen').textContent = new Date(r.openedAt).toUTCString().slice(5, 22) + ' UTC (' + ago(r.openedAt) + ')';
@@ -77,18 +172,20 @@ async function deal() {
   setStat('iPnl', i.walletPnl30d != null ? compact(i.walletPnl30d) : 'n/a', i.walletPnl30d != null ? i.walletPnl30d >= 0 : null);
   setStat('iSm', i.smFlow24h != null ? compact(i.smFlow24h) : 'n/a', i.smFlow24h != null ? i.smFlow24h >= 0 : null);
   setStat('iCrowd', i.crowdFlow24h != null ? compact(i.crowdFlow24h) : 'n/a', i.crowdFlow24h != null ? i.crowdFlow24h >= 0 : null);
-  $('reasons').innerHTML = r.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${x.text}</li>`).join('');
-  $('pFollowBar').style.width = (r.pFollow * 100).toFixed(1) + '%';
+  $('reasons').innerHTML = r.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('');
+  $('pFollowBar').style.width = '50%'; $('needle').style.left = '50%';
   $('pFollow').textContent = Math.round(r.pFollow * 100) + '%'; $('pFade').textContent = Math.round((1 - r.pFollow) * 100) + '%';
   $('oFollow').textContent = r.odds.follow.toFixed(2); $('oFade').textContent = r.odds.fade.toFixed(2);
-  const s = Math.min(Number($('stakeInput').value) || 1000, player.bankroll);
-  $('stakeInput').value = Math.max(1, Math.floor(s));
+  $('stakeInput').value = Math.max(1, Math.floor(Math.min(Number($('stakeInput').value) || 1000, player.bankroll)));
   updatePotential();
   $('btnFollow').disabled = $('btnFade').disabled = false;
   $('dealing').hidden = true; $('round').hidden = false;
+  card.classList.remove('dealt'); void card.offsetWidth; card.classList.add('dealt');
+  sfx.deal();
+  setTimeout(() => { $('pFollowBar').style.width = (r.pFollow * 100).toFixed(1) + '%'; $('needle').style.left = `calc(${(r.pFollow * 100).toFixed(1)}% - 1px)`; }, 350);
 }
-function setStat(id, text, good) { const el = $(id); el.textContent = text; el.className = good == null ? '' : good ? 'pos' : 'neg'; }
-function showErr(msg) { const e = $('err'); e.hidden = false; e.innerHTML = `${msg}<a href="#" id="retry">Try again</a>`; $('retry').onclick = (ev) => { ev.preventDefault(); deal(); }; }
+function setStat(id, text, good) { const el = $(id); el.textContent = text; el.classList.remove('pos', 'neg'); if (good != null) el.classList.add(good ? 'pos' : 'neg'); }
+function showErr(msg) { const e = $('err'); e.hidden = false; e.innerHTML = `${esc(msg)}<a href="#" id="retry">Try again</a>`; $('retry').onclick = (ev) => { ev.preventDefault(); deal(); }; }
 
 function updatePotential() {
   if (!round || !player) return;
@@ -96,41 +193,55 @@ function updatePotential() {
   $('wFollow').textContent = usd(s * (round.odds.follow - 1));
   $('wFade').textContent = usd(s * (round.odds.fade - 1));
 }
-$('stakeInput').addEventListener('input', updatePotential);
-document.querySelectorAll('.chips button').forEach((b) => b.addEventListener('click', () => {
-  $('stakeInput').value = Math.max(1, Math.floor(player.bankroll * Number(b.dataset.pct))); updatePotential();
+$('stakeInput').addEventListener('input', () => { document.querySelectorAll('.chip').forEach((c) => c.classList.remove('picked')); updatePotential(); });
+document.querySelectorAll('.chips-row .chip').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('picked', c === b));
+  $('stakeInput').value = Math.max(1, Math.floor(player.bankroll * Number(b.dataset.pct)));
+  sfx.chip(); updatePotential();
+  if (b.dataset.pct === '1') { sparkleAt(b, 30); toast('All in. The house respects it.'); }
 }));
 
-async function bet(choice) {
+async function bet(choice, btn) {
   const stake = Math.floor(Number($('stakeInput').value));
   if (!(stake >= 1) || stake > player.bankroll) return showErr('Stake must be between $1 and your bankroll. ');
   $('btnFollow').disabled = $('btnFade').disabled = true;
+  sfx.bet(); sparkleAt(btn, 18);
   let res;
   try { res = await api('/api/bet', { player: player.id, roundId: round.roundId, choice, stake }); }
   catch (e) { $('btnFollow').disabled = $('btnFade').disabled = false; return showErr(e.message + ' — '); }
-  const prev = player.bankroll; player = res.player; lastResult = { ...res, round, choice };
-  showReveal(res, choice); renderPlayer(prev); refreshStatus();
+  // suspense: spin the wheel before the reveal
+  $('round').hidden = true; $('suspense').hidden = false; sfx.roll(1.2);
+  await sleep(1300);
+  player = res.player; lastResult = { ...res, round, choice };
+  showReveal(res, choice); renderPlayer(); refreshStatus();
 }
-$('btnFollow').onclick = () => bet('follow');
-$('btnFade').onclick = () => bet('fade');
-$('btnNext').onclick = deal;
+$('btnFollow').onclick = (e) => bet('follow', e.currentTarget);
+$('btnFade').onclick = (e) => bet('fade', e.currentTarget);
+$('btnNext').onclick = () => { sfx.chip(); deal(); };
 
 function showReveal(res, choice) {
   const v = res.reveal, r = round;
-  $('round').hidden = true; $('reveal').hidden = false;
-  const card = $('reveal'); card.classList.remove('flash-win', 'flash-loss'); void card.offsetWidth;
-  if (res.result !== 'push') card.classList.add(res.result === 'win' ? 'flash-win' : 'flash-loss');
-  const title = res.busted ? 'REKT. Bankroll reset.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain.' : 'You called it.') : res.result === 'loss' ? 'Wrong side.' : 'Push. Stake returned.';
+  $('suspense').hidden = true; $('reveal').hidden = false;
+  const big = res.result === 'win' && (res.whaleSlain || res.price >= 2.2 || res.delta >= 5000);
+  const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Push. Chips returned.';
   const sub = `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)}`;
-  $('verdict').className = 'verdict ' + res.result;
-  $('verdict').innerHTML = `${title}<small>${sub}</small>`;
-  $('vTrader').textContent = v.trader; $('vLink').href = v.nansenUrl;
-  $('vH').textContent = r.horizonHours + 'h';
+  const vd = $('verdict'); vd.className = 'verdict ' + res.result; vd.innerHTML = `${esc(title)}<small>${esc(sub)}</small>`;
+  void vd.offsetWidth; vd.classList.add('pop');
+  $('vTrader').textContent = v.trader; $('vLink').href = v.nansenUrl; $('vH').textContent = r.horizonHours + 'h';
   setStat('vRet', pct(v.ret, 2), v.ret >= 0);
   $('vExc').textContent = `best ${pct(v.mfe, 1)} · worst ${pct(v.mae, 1)}`;
   setStat('vWhale', (v.whalePnlUsd >= 0 ? '+' : '') + compact(v.whalePnlUsd), v.whalePnlUsd >= 0);
   setStat('vYou', (res.delta >= 0 ? '+' : '') + usd(res.delta), res.delta >= 0);
   drawChart(v.path, r.entryPrice, res.result !== 'loss');
+  const felt = document.querySelector('.felt');
+  if (res.result === 'win') {
+    sfx.win(big);
+    const rect = vd.getBoundingClientRect(); burst(rect.left + rect.width / 2, rect.top + 30, big ? 120 : 60);
+    if (big) coinRain(110);
+  } else if (res.result === 'loss') {
+    sfx.lose(); felt.classList.remove('shake'); void felt.offsetWidth; felt.classList.add('shake');
+    if (res.busted) toast('Busted. Fresh $10,000 on the house.');
+  } else sfx.push();
 }
 
 function drawChart(path, entry, userGood) {
@@ -140,110 +251,111 @@ function drawChart(path, entry, userGood) {
   const x = (i) => pad + (i / (path.length - 1)) * (W - pad * 2);
   const y = (v) => Hh - pad - ((v - min) / span) * (Hh - pad * 2);
   const last = path[path.length - 1][1];
-  const col = userGood ? '#34d399' : '#f87171';
+  const col = userGood ? '#f5d77a' : '#e0445a';
   const d = path.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
   svg.innerHTML = `
-    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".25"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-    <line x1="${pad}" x2="${W - pad}" y1="${y(entry)}" y2="${y(entry)}" stroke="#8b98a8" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>
-    <text x="${pad + 4}" y="${y(entry) - 6}" fill="#8b98a8" font-size="11" font-family="JetBrains Mono">whale entry ${price(entry)}</text>
+    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".3"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${pad}" x2="${W - pad}" y1="${y(entry)}" y2="${y(entry)}" stroke="rgba(243,234,215,.5)" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>
+    <text x="${pad + 4}" y="${y(entry) - 6}" fill="rgba(243,234,215,.7)" font-size="11" font-family="JetBrains Mono">whale entry ${price(entry)}</text>
     <path d="${d}L${x(path.length - 1)},${Hh}L${pad},${Hh}Z" fill="url(#g)" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".4s" fill="freeze"/></path>
     <path id="line" pathLength="1" d="${d}" fill="none" stroke="${col}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-    <circle cx="${x(path.length - 1)}" cy="${y(last)}" r="4" fill="${col}" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".2s" fill="freeze"/></circle>`;
+    <circle cx="${x(path.length - 1)}" cy="${y(last)}" r="5" fill="${col}" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".2s" fill="freeze"/></circle>`;
   const line = svg.querySelector('#line');
   line.style.strokeDasharray = '1 1';
   line.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 1100, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
 }
 
-// ------------------------------------------------ share card
+// ================================================= share card
 $('btnShare').onclick = () => {
+  sfx.chip();
   const c = $('shareCanvas'), g = c.getContext('2d'), p = player, L = lastResult;
-  const grd = g.createLinearGradient(0, 0, 1200, 675); grd.addColorStop(0, '#07090d'); grd.addColorStop(1, '#101722');
-  g.fillStyle = grd; g.fillRect(0, 0, 1200, 675);
-  g.fillStyle = 'rgba(52,211,153,.10)'; g.beginPath(); g.arc(120, 80, 320, 0, 7); g.fill();
-  g.fillStyle = 'rgba(248,113,113,.08)'; g.beginPath(); g.arc(1120, 620, 300, 0, 7); g.fill();
-  g.font = '800 44px Inter'; g.fillStyle = '#34d399'; g.fillText('FOLLOW', 70, 110);
-  g.fillStyle = '#8b98a8'; g.font = '500 30px Inter'; g.fillText('or', 262, 110);
-  g.fillStyle = '#f87171'; g.font = '800 44px Inter'; g.fillText('FADE', 305, 110);
-  g.fillStyle = '#8b98a8'; g.font = '600 24px Inter'; g.fillText(p.name, 70, 180);
-  g.fillStyle = '#e6edf3'; g.font = '700 120px JetBrains Mono'; g.fillText(usd(p.bankroll), 66, 320);
+  const bg = g.createRadialGradient(600, 200, 50, 600, 340, 800); bg.addColorStop(0, '#146b4b'); bg.addColorStop(0.55, '#0d4a35'); bg.addColorStop(1, '#041a12');
+  g.fillStyle = bg; g.fillRect(0, 0, 1200, 675);
+  const rim = g.createLinearGradient(0, 0, 1200, 675); rim.addColorStop(0, '#8a6d1d'); rim.addColorStop(0.45, '#f5d77a'); rim.addColorStop(1, '#8a6d1d');
+  g.strokeStyle = rim; g.lineWidth = 18; g.strokeRect(9, 9, 1182, 657);
+  g.strokeStyle = 'rgba(245,215,122,.4)'; g.lineWidth = 2; g.strokeRect(34, 34, 1132, 607);
+  g.textAlign = 'center';
+  g.fillStyle = rim; g.font = '900 54px Cinzel, Georgia, serif'; g.fillText('FOLLOW ◆ FADE', 600, 120);
+  g.fillStyle = 'rgba(243,234,215,.75)'; g.font = 'italic 500 28px "Cormorant Garamond", Georgia, serif'; g.fillText(`${p.name} at the Smart Money Casino`, 600, 165);
+  g.fillStyle = '#f5d77a'; g.font = '700 130px "JetBrains Mono", monospace'; g.shadowColor = 'rgba(245,215,122,.5)'; g.shadowBlur = 30;
+  g.fillText(usd(p.bankroll), 600, 330); g.shadowBlur = 0;
   const ch = (p.bankroll - 10000) / 10000;
-  g.fillStyle = ch >= 0 ? '#34d399' : '#f87171'; g.font = '700 40px JetBrains Mono'; g.fillText(`${pct(ch, 0)} from $10k`, 70, 380);
-  g.fillStyle = '#c9d4df'; g.font = '500 30px Inter';
-  g.fillText(`${p.wins}–${p.bets - p.wins} record · best streak ${p.bestStreak} · ${p.whalesSlain} whales slain`, 70, 460);
-  if (L) {
-    g.fillStyle = '#8b98a8'; g.font = '500 26px Inter';
-    g.fillText(`Last call: ${L.choice === 'follow' ? 'followed' : 'faded'} a ${compact(L.round.valueUsd)} ${L.round.coin} ${L.round.side.toLowerCase()} → ${L.delta >= 0 ? '+' : ''}${usd(L.delta)}`, 70, 520);
-  }
-  g.fillStyle = '#8b98a8'; g.font = '500 22px Inter'; g.fillText('Real Hyperliquid trades from Nansen Smart Money · odds powered by Nansen API', 70, 620);
+  g.fillStyle = ch >= 0 ? '#34d399' : '#f06377'; g.font = '700 40px "JetBrains Mono", monospace'; g.fillText(`${pct(ch, 0)} from $10k`, 600, 390);
+  g.fillStyle = '#f3ead7'; g.font = '600 30px Inter, sans-serif';
+  g.fillText(`${p.wins}–${p.bets - p.wins} record  ·  best streak ${p.bestStreak}  ·  ${p.whalesSlain} whales slain`, 600, 465);
+  if (L) { g.fillStyle = 'rgba(243,234,215,.75)'; g.font = '500 26px Inter, sans-serif'; g.fillText(`Last hand: ${L.choice === 'follow' ? 'followed' : 'faded'} a ${compact(L.round.valueUsd)} ${L.round.coin} ${L.round.side.toLowerCase()} → ${L.delta >= 0 ? '+' : ''}${usd(L.delta)}`, 600, 520); }
+  g.fillStyle = 'rgba(245,215,122,.8)'; g.font = '600 20px Cinzel, Georgia, serif'; g.fillText('REAL HYPERLIQUID TRADES · NANSEN SMART MONEY · ODDS BY NANSEN API', 600, 605);
   c.toBlob((b) => { $('shareDownload').href = URL.createObjectURL(b); });
   const text = `I turned $10k into ${usd(p.bankroll)} betting for and against @nansen_ai Smart Money on Hyperliquid. ${p.whalesSlain} whales slain. Follow or fade?`;
   $('shareX').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text);
   $('shareDlg').showModal();
 };
 
-// ------------------------------------------------ tabs
+// ================================================= tabs
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+  sfx.tick();
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + t.dataset.view));
   if (t.dataset.view === 'board') loadBoard();
   if (t.dataset.view === 'live') loadLive();
 }));
 
+// ================================================= hall of fame
 async function loadBoard() {
   const rows = await api('/api/leaderboard');
+  const podium = [rows[1], rows[0], rows[2]];
+  $('podium').innerHTML = rows.length ? podium.map((r, i) => r ? `<div class="pod p${[2, 1, 3][i]}"><div class="medal">${[2, 1, 3][i]}</div><b>${esc(r.name)}</b><em>${usd(r.bankroll)}</em><div class="muted">${Math.round(r.winRate * 100)}% win rate</div></div>` : '<div></div>').join('') : '';
   $('boardBody').innerHTML = rows.length ? rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td class="${r.bankroll >= 10000 ? 'pos' : 'neg'}">${usd(r.bankroll)}</td><td>${r.bets}</td><td>${Math.round(r.winRate * 100)}%</td><td>${r.bestStreak}</td><td>${r.whalesSlain}</td></tr>`).join('')
-    : '<tr><td colspan="7" class="muted">No bets yet. Be the first.</td></tr>';
+    : '<tr><td colspan="7" class="muted">No bets yet. Be the first legend.</td></tr>';
 }
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// ------------------------------------------------ live
-let liveTimer = null;
+// ================================================= live floor
 async function loadLive() {
-  $('liveList').innerHTML = '<div class="card loading" style="min-height:160px"><div class="spinner"></div></div>';
+  $('liveList').innerHTML = '<div class="dealing" style="min-height:200px"><div class="deck"><i></i><i></i><i></i></div><p>Scanning the floor for whales…</p></div>';
   try {
     const items = await api('/api/live');
-    $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No Smart Money opens in the last 2 hours. Check back soon.</p>';
-    document.querySelectorAll('[data-live]').forEach((b) => b.addEventListener('click', () => liveBet(b)));
+    $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No whales opened positions in the last 6 hours. Check back soon.</p>';
+    wireLive();
   } catch (e) { $('liveList').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
-  loadLiveBets();
-  clearInterval(liveTimer); liveTimer = setInterval(loadLiveBets, 20000);
 }
-function liveCard(t) {
-  return `<div class="card lcard">
-    <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span> <span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
-    <div class="meta">${esc(t.trader || 'Smart Money wallet')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} · now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">(${pct(t.moveSinceEntry, 2)})</span></div>
-    <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${x.text}</li>`).join('')}</ul>
-    <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div></div>
-    <div class="problabels"><span>follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>fade <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
-    <div class="ctrl">
-      <input type="number" min="1" value="500" aria-label="Stake" data-stake="${t.key}">
-      <select data-mins="${t.key}" aria-label="Settle after"><option value="15">15m</option><option value="60" selected>1h</option><option value="240">4h</option></select>
+function liveCard(t, idx) {
+  const k = esc(t.key);
+  return `<div class="lcard" data-key="${k}">
+    <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
+    <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
+    <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('')}</ul>
+    <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
+    <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
+    <div class="horizons">
+      <button class="hz on" data-min="15"><b>Espresso</b><small>15 min</small></button>
+      <button class="hz" data-min="30"><b>Champagne</b><small>30 min</small></button>
+      <button class="hz" data-min="60"><b>Cigar</b><small>60 min</small></button>
     </div>
-    <div class="actions"><button class="bet follow" data-live="${t.key}" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
-    <button class="bet fade" data-live="${t.key}" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
-    <div class="links"><a href="https://app.nansen.ai/profiler?address=${t.address}&chain=hyperliquid" target="_blank" rel="noopener">Wallet on Nansen ↗</a><a href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(t.coin)}" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Hyperliquid ↗</a></div>
+    <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button></div>
+    <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
+    <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
+    <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale on Nansen ↗</a><a href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(t.coin)}" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Hyperliquid ↗</a></div>
   </div>`;
 }
-async function liveBet(btn) {
-  const key = btn.dataset.live;
-  const stake = document.querySelector(`[data-stake="${CSS.escape(key)}"]`).value;
-  const minutes = document.querySelector(`[data-mins="${CSS.escape(key)}"]`).value;
-  btn.disabled = true;
-  try { await api('/api/live/bet', { player: player.id, key, choice: btn.dataset.choice, stake, minutes }); player = await api('/api/player?id=' + player.id); renderPlayer(); loadLiveBets(); }
-  catch (e) { alertInline(btn, e.message); }
-  btn.disabled = false;
+function wireLive() {
+  document.querySelectorAll('.lcard').forEach((card) => {
+    const input = card.querySelector('input');
+    card.querySelectorAll('.hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
+    card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => { input.value = Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add)); sfx.chip(); });
+    card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
+      const minutes = Number(card.querySelector('.hz.on').dataset.min);
+      btn.disabled = true; sfx.bet();
+      try {
+        const b = await api('/api/live/bet', { player: player.id, key: card.dataset.key, choice: btn.dataset.choice, stake: input.value, minutes });
+        prevStatus.set(b.id, 'open');
+        sparkleAt(btn, 26); sfx.chip();
+        toast(`Chips down at the ${LANES[minutes]}: ${btn.dataset.choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
+        player = await api('/api/player?id=' + player.id); renderPlayer(); pollBets();
+      } catch (e) { toast(e.message); }
+      btn.disabled = false;
+    });
+  });
 }
-function alertInline(el, msg) { const p = document.createElement('p'); p.className = 'err'; p.textContent = msg; el.closest('.lcard').append(p); setTimeout(() => p.remove(), 4000); }
-async function loadLiveBets() {
-  const bets = await api('/api/live/bets?player=' + player.id).catch(() => []);
-  const prev = player.bankroll; player = await api('/api/player?id=' + player.id); renderPlayer(prev);
-  $('liveBets').innerHTML = bets.length ? bets.map((b) => {
-    const left = b.settleAt - Date.now();
-    const status = b.status === 'open' ? `settles in ${Math.max(0, Math.ceil(left / 60e3))}m` : b.status.toUpperCase();
-    const cls = b.status === 'won' ? 'pos' : b.status === 'lost' ? 'neg' : '';
-    return `<div class="lb"><span>${b.choice.toUpperCase()} ${b.coin} ${b.whaleSide.toLowerCase()}</span><span>${usd(b.stake)} @ x${b.price.toFixed(2)}</span><span>entry ${price(b.entry)}</span><span>${b.exit ? 'exit ' + price(b.exit) : ''}</span><span class="${cls}">${status}${b.payout != null && b.status !== 'open' ? ' · ' + usd(b.payout - b.stake) : ''}</span></div>`;
-  }).join('') : '<p class="muted">No live bets yet.</p>';
-}
-$('btnRefreshLive').onclick = loadLive;
+$('btnRefreshLive').onclick = () => { sfx.deal(); loadLive(); };
 
 boot();

@@ -28,11 +28,14 @@ No key yet? Leave `NANSEN_API_KEY` empty and the app runs in **demo mode**: Nans
 | Mode | What happens |
 |---|---|
 | **Replay** | You're dealt a real Smart Money position open from the last 7 days (coin, side, size, entry). The wallet is hidden. You see the Nansen intel, the model's probability and the odds. Stake, pick **Follow** or **Fade**, and the app reveals the next 4 hours of price, the wallet and your payout. |
-| **Live** | Smart Money opens from the last 6 hours, with where Smart Money is positioned on that coin right now. Bet on what happens next over 15m, 1h or 4h. The bet settles on the Hyperliquid mid price. One click opens the market on Hyperliquid if you want to take the trade for real. |
-| **Leaderboard** | Bankroll ranking, win rate, best streak, **whales slain** (correct fades of trades the model favored). |
+| **Live Floor** | Smart Money opens from the last 6 hours, with where Smart Money is positioned on that coin right now. Pick a table: **Espresso Shot (15 min)**, **Champagne Round (30 min)** or **Cigar Lounge (60 min)**. The bet settles on the Hyperliquid mid price. One click opens the market on Hyperliquid if you want to take the trade for real. |
+| **Your Table** (always on screen) | Your open live bets, grouped by table, with countdown rings, whether you are winning right now, and payouts with sound and coin effects when they settle. |
+| **Hall of Fame** | Bankroll ranking, win rate, best streak, **whales slain** (correct fades of trades the model favored). |
 | **Share card** | One-click PNG plus a prefilled X post. |
 
 Go below $10 and you're **REKT**: the bankroll resets and a bust is recorded.
+
+The theme is a luxury casino, with sound effects synthesized in the browser (Web Audio, no audio files) and a mute button in the header.
 
 ---
 
@@ -88,7 +91,7 @@ lib/odds.js          features -> probability -> odds, plus calibration
 lib/game.js          rounds, bets, bankroll, live bets, leaderboard
 lib/hyperliquid.js   public price and candle API used for settlement
 lib/demo.js          demo data in Nansen response shapes
-public/              the game UI (vanilla JS, no build)
+public/              the game UI (vanilla JS, no build): app.js, sfx.js (Web Audio), fx.js (particles)
 ```
 
 ## Disclaimer

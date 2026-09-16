@@ -1,6 +1,6 @@
 # 45-second demo recording (no narration needed)
 
-Record at 1920x1080 with the Xbox Game Bar (press Win+Alt+R to start and stop). Browser zoom 100%.
+Turn sound ON (Game Bar records system audio). Record at 1920x1080 with the Xbox Game Bar (press Win+Alt+R to start and stop). Browser zoom 100%.
 
 | Time | On screen |
 |---|---|
@@ -9,7 +9,7 @@ Record at 1920x1080 with the Xbox Game Bar (press Win+Alt+R to start and stop). 
 | 10–15s | Click 25%, then click **FADE** (or FOLLOW, whichever the odds make more interesting). |
 | 15–22s | The chart draws itself and the verdict appears. Hover the wallet name and "View on Nansen". |
 | 22–28s | Click **Next trade**, bet again quickly and show a second reveal. |
-| 28–38s | Live tab: point at "Smart Money is net long…" and place a 1h bet. Show it under "Your live bets". |
+| 28–38s | Live Floor: point at "Smart Money is net long…", pick Espresso (15 min) and place a bet. Show it appear in Your Table on the right. |
 | 38–42s | Leaderboard tab. |
 | 42–45s | Back to Replay, click **Share my card** and show the card. |
 
