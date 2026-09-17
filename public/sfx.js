@@ -63,6 +63,8 @@ export const sfx = {
   /** whale alert: deep horn swell + two bright bells */
   alarm() { tone(98, 0, 0.9, { type: 'sawtooth', gain: 0.12, attack: 0.25, slide: 1.5 }); tone(147, 0.05, 0.9, { type: 'sine', gain: 0.18, attack: 0.25, slide: 1.5 });
     [1319, 1760].forEach((f, i) => { tone(f, 0.75 + i * 0.16, 0.8, { type: 'sine', gain: 0.2 }); tone(f * 2, 0.75 + i * 0.16, 0.4, { type: 'sine', gain: 0.05 }); }); },
+  /** grand entrance: velvet whoosh + rising chord */
+  enter() { noise(0, 0.6, { freq: 600, q: 0.5, gain: 0.25, type: 'lowpass' }); [262, 330, 392, 523].forEach((f, i) => tone(f, 0.15 + i * 0.12, 0.9, { type: 'triangle', gain: 0.1 })); tone(1047, 0.7, 1, { type: 'sine', gain: 0.06 }); },
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)

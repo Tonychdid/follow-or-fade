@@ -21,7 +21,7 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `NANSEN_API_KEY` | your Nansen key | live Nansen data |
 | `PUBLIC` | `1` | turns on public-site protections |
 | `ADMIN_TOKEN` | a long random password you invent (e.g. 30+ letters and numbers) | lets only you change alert rules and Telegram |
-| `DAILY_CREDIT_CAP` | `10000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
+| `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
 | `DATA_DIR` | `/data` | where bankrolls, bets and the leaderboard are saved |
 
 ## 4. Add a volume (so data survives redeploys)
@@ -38,6 +38,6 @@ Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is s
 
 ## Good to know
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".
-- **Credits:** with the site open 24/7, background odds training and the whale scanner use roughly 2,000–3,000 credits a day, plus a few credits per training hand played. Check usage at https://app.nansen.ai/api.
+- **Credits:** with the site open 24/7, background odds training and the whale scanner use roughly 2,000–3,000 credits a day, plus a few credits per training hand played. To leave more of a 5,000 cap for players, set the alert scan to every 10 minutes (bell → Alert rules), which saves about 700 credits a day. Check usage at https://app.nansen.ai/api.
 - **Updating:** upload new files to GitHub → Railway redeploys in about a minute.
 - **Custom domain (optional):** buy one (e.g. on Namecheap), then Settings → Networking → Custom Domain and follow Railway's DNS instructions. Update `PUBLIC_URL` to match.

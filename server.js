@@ -104,3 +104,6 @@ setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
 setInterval(calibrate, 60 * 60e3);
 setInterval(() => game.settleLive().catch(() => {}), 5e3);
+// keep the Live Floor warm (whale data is cached per hour, the trade feed per 15 min)
+setTimeout(() => game.liveFeed().catch(() => {}), 5000);
+setInterval(() => game.liveFeed().catch(() => {}), 5 * 60e3);

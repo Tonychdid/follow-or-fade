@@ -49,6 +49,7 @@ async function boot() {
   refreshStatus(); setInterval(refreshStatus, 15000);
   pollLoop();
   deal(); // training starts at the table
+  setTimeout(() => fetchLive().catch(() => {}), 1500); // warm the Live Floor in the background
   initAlerts();
   refreshReport();
 
@@ -432,13 +433,41 @@ async function loadBoard() {
 }
 
 // ================================================= live floor
-async function loadLive() {
-  $('liveList').innerHTML = '<div class="dealing" style="min-height:200px"><div class="deck"><i></i><i></i><i></i></div><p>Scanning the floor for whales…</p></div>';
-  try {
-    const items = await api('/api/live');
-    $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No whales opened positions in the last 6 hours. Check back soon.</p>';
-    wireLive();
-  } catch (e) { $('liveList').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+// The Live Floor: prefetched in the background, entered through a short "welcome" curtain the first time.
+let liveCache = null, livePromise = null, liveShownOnce = false;
+function fetchLive() {
+  livePromise ??= api('/api/live').then((items) => { liveCache = { t: Date.now(), items }; return items; }).finally(() => { livePromise = null; });
+  return livePromise;
+}
+function renderLive(items) {
+  $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No whales opened positions in the last 6 hours. Check back soon.</p>';
+  wireLive();
+}
+async function loadLive({ refresh = false } = {}) {
+  const fresh = liveCache && Date.now() - liveCache.t < 60e3;
+  if (liveCache && !refresh) renderLive(liveCache.items);                    // show what we have instantly
+  if (!liveShownOnce) { liveShownOnce = true; return enterFloor(fresh); }
+  if (fresh && !refresh) return;
+  if (!liveCache) $('liveList').innerHTML = '<div class="dealing" style="min-height:200px"><div class="deck"><i></i><i></i><i></i></div><p>Scanning the floor for whales…</p></div>';
+  try { renderLive(await fetchLive()); } catch (e) { if (!liveCache) $('liveList').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+async function enterFloor(ready = false) {
+  const el = $('floorIntro');
+  const lines = ['Scanning Nansen Smart Money…', 'Pulling whale track records…', 'Grading every whale A+ to F…', 'Checking live Hyperliquid prices…', 'Setting the odds…'];
+  let i = 0;
+  const status = el.querySelector('.fi-status');
+  status.textContent = lines[0];
+  const ticker = setInterval(() => { i = (i + 1) % lines.length; status.classList.remove('swap'); void status.offsetWidth; status.textContent = lines[i]; status.classList.add('swap'); }, 700);
+  el.hidden = false; el.classList.remove('open'); void el.offsetWidth; el.classList.add('show');
+  sfx.enter();
+  const minShow = sleep(ready ? 1400 : 1900);
+  let items = null, err = null;
+  try { [items] = await Promise.all([ready ? Promise.resolve(liveCache.items) : fetchLive(), minShow]); } catch (e) { err = e; await minShow; }
+  clearInterval(ticker);
+  if (items) renderLive(items); else if (err && !liveCache) $('liveList').innerHTML = `<p class="err">${esc(err.message)}</p>`;
+  status.textContent = 'The floor is open.';
+  el.classList.add('open'); sfx.chip();
+  setTimeout(() => { el.hidden = true; el.classList.remove('show', 'open'); }, 900);
 }
 const liveItems = new Map();
 function recordHtml(r) {
@@ -522,7 +551,7 @@ function wireLive() {
     });
   });
 }
-$('btnRefreshLive').onclick = () => { sfx.deal(); loadLive(); };
+$('btnRefreshLive').onclick = () => { sfx.deal(); loadLive({ refresh: true }); };
 
 // ================================================= whale alerts
 let alertCfg = null, alertSince = 0, alertsCache = [];
