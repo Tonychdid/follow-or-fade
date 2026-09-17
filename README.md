@@ -89,6 +89,7 @@ Smart Money perp trades ──► the pool of playable trades (HIP-3 markets too
 Hyperliquid public fills + candles ──► follow each whale's position to its real exit and settle every bet
 ```
 
+- **Two questions, two entries:** the Training Table asks *was the whale right?* and deals the trade at the whale's own entry. The Live Floor asks *is it still worth following now?* and uses today's price (betting from the whale's old entry would let players bet on a result that is already partly known). Live odds include how far the whale has already moved (a late-entry weight that starts at zero and is learned from settled live bets), and settled bets show your result next to the whale's.
 - **Point-in-time, no look-ahead:** every feature uses only data from *before* the trade was opened.
 - **Server-side outcomes:** the result is computed on the server and only revealed after the bet, so you can't peek in the network tab.
 - **Self-calibrating odds:** each hour the app resolves a sample of this week's Smart Money opens (on the whale's real exit, max 48h) and refits the model, with an L2 pull toward a sensible prior so small samples stay stable. The sidebar shows how many trades the odds were trained on and what share of Smart Money opens were actually in profit when the whale exited.

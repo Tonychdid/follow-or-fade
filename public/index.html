@@ -61,7 +61,7 @@
     <div class="felt">
       <div class="felt-inner">
         <div class="table-title">
-          <span class="line"></span><span>Training hand · a real Smart Money trade from this week</span><span class="line"></span>
+          <span class="line"></span><span>Training hand · <b class="sec-q">Was the whale right?</b></span><button class="intro-help" data-intro="replay" aria-label="What is this section?" title="What is this section?">?</button><span class="line"></span>
         </div>
 
         <div id="dealing" class="dealing"><div class="deck"><i></i><i></i><i></i></div><p>The dealer is pulling a trade from Nansen…</p></div>
@@ -143,7 +143,8 @@
   <section id="view-live" class="view">
     <div class="floor-head">
       <div>
-        <h2>The Live Floor</h2>
+        <h2>The Live Floor <button class="intro-help" data-intro="live" aria-label="What is this section?" title="What is this section?">?</button></h2>
+        <div class="sec-q-pill">Is this whale still worth following now? <span>You enter at today's price</span></div>
         <p class="muted">Whales who opened positions in the last 6 hours. Pick your table, place your chips, watch it settle on the Hyperliquid price.</p>
       </div>
       <button id="btnRefreshLive" class="ghost-btn">Refresh the floor</button>
@@ -154,7 +155,7 @@
 
   <!-- ============ SKILL REPORT ============ -->
   <section id="view-report" class="view">
-    <div class="floor-head"><div><h2>Your Whale Reading Report</h2><p class="muted">Practice on real Smart Money trades with play money. This report shows which signals you read well and where you leak, so you know when you're ready to trade for real.</p></div></div>
+    <div class="floor-head"><div><h2>Your Whale Reading Report <button class="intro-help" data-intro="report" aria-label="What is this section?" title="What is this section?">?</button></h2><div class="sec-q-pill">Are you ready to trade for real?</div><p class="muted">Practice on real Smart Money trades with play money. This report shows which signals you read well and where you leak, so you know when you're ready to trade for real.</p></div></div>
     <div id="reportBody"></div>
   </section>
 
@@ -273,6 +274,21 @@
     <button class="gold-btn" type="submit">Take a seat</button>
   </form>
 </dialog>
+
+<div id="introOverlay" class="intro" hidden>
+  <div class="intro-card" role="dialog" aria-modal="true" aria-labelledby="introQ">
+    <div class="intro-kicker" id="introKicker"></div>
+    <h2 class="intro-q" id="introQ"></h2>
+    <ol class="intro-steps" id="introSteps"></ol>
+    <div class="intro-how" id="introHow"></div>
+    <div class="intro-compare">
+      <div data-sec="replay"><small>Training Table</small><b>Was the whale right?</b><span>Entry: the whale's price</span></div>
+      <div data-sec="live"><small>Live Floor</small><b>Still worth following now?</b><span>Entry: today's price</span></div>
+      <div data-sec="report"><small>Skill Report</small><b>Ready to trade for real?</b><span>Your strengths and leaks</span></div>
+    </div>
+    <button class="gold-btn" id="introGo"></button>
+  </div>
+</div>
 
 <dialog id="shareDlg">
   <canvas id="shareCanvas" width="1200" height="675"></canvas>

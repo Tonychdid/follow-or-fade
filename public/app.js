@@ -70,6 +70,7 @@ async function boot() {
     setTimeout(() => document.querySelector(`.tab[data-view="${startView}"]`).click(), 50);
   }
   deal(); // training starts at the table
+  if (!startTrade && (!startView || startView === 'replay')) setTimeout(() => showIntro('replay'), 900);
   setTimeout(() => fetchLive().catch(() => {}), 1500); // warm the Live Floor in the background
   initAlerts();
   refreshReport();
@@ -222,7 +223,7 @@ function updateRow(row, b, now) {
       : `<i class="tear" style="--d:${(i * 0.19).toFixed(2)}s;--x:${i % 2 ? 14 : -14}px;--s:${(1.4 - level * 0.25).toFixed(2)}s"></i>`).join('');
   }
   row.querySelector('.l2').textContent = b.pending ? `${usd(b.stake)} @ x${b.price.toFixed(2)} · placing chips…`
-    : `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : ''}${b.myRet != null ? ' (' + pct(b.myRet, 2) + ')' : ''}${b.ride ? ` · ends when the whale exits${b.whaleTrims ? ` · whale trimmed ${b.whaleTrims}x` : ''} · max ${hh}h${String(rm).padStart(2, '0')} left` : ''}`;
+    : `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : ''}${b.myRet != null ? ' (you ' + pct(b.myRet, 2) + ')' : ''}${b.whaleTradeRet != null && !b.pick ? ` · whale ${pct(b.whaleTradeRet, 2)} from their entry` : ''}${b.ride ? ` · ends when the whale exits${b.whaleTrims ? ` · whale trimmed ${b.whaleTrims}x` : ''} · max ${hh}h${String(rm).padStart(2, '0')} left` : ''}`;
   const potential = Math.round(b.stake * (b.price - 1));
   row.querySelector('.res').innerHTML = mood === 'meh' ? `<span>${usd(b.stake)}</span> <small>flat</small>`
     : mood === 'rich' ? `<span class="pos">+${usd(potential)}</span> <small>if it ends now</small>` : `<span class="neg">-${usd(b.stake)}</span> <small>if it ends now</small>`;
@@ -274,9 +275,12 @@ async function announceSettled(settledNow) {
     renderPlayer();
     for (const b of settledNow) {
       const net = (b.payout ?? 0) - b.stake;
+      const dirMul = b.whaleSide === 'Long' ? 1 : -1;
+      const mine = b.exit && b.entry ? (b.choice === 'follow' ? 1 : -1) * dirMul * (b.exit - b.entry) / b.entry : null;
+      const both = mine != null && b.whaleTradeRet != null && !b.pick ? ` · you ${pct(mine, 2)} from your entry, whale ${pct(b.whaleTradeRet, 2)} from theirs` : '';
       const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap on ${b.coin}`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
-      if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}`); }
-      else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}`); }
+      if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}${both}`); }
+      else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}${both}`); }
       else { sfx.push(); toast(b.band >= 0.001 || b.ride || b.pick ? `Too close to call on ${b.coin} (under ±${((b.band || 0.002) * 100).toFixed(1)}%): stake returned` : `Push on ${b.coin}: stake returned`); }
     }
     if (prev === player.bankroll) renderPlayer();
@@ -733,6 +737,7 @@ document.addEventListener('click', async (e) => {
 });
 /** Open the Live Floor and bring one whale's card into view (alerts, Telegram "Bet on it" links). */
 async function goToTrade(key) {
+  suppressIntro = true; setTimeout(() => (suppressIntro = false), 8000);
   if (history.replaceState) history.replaceState(null, '', location.pathname);
   collapsePick();
   document.querySelector('.tab[data-view="live"]').click();
@@ -1034,3 +1039,59 @@ function renderPick() {
     } catch (e) { pending = pending.filter((x) => x !== tmp); renderLanes(); player.bankroll += stake; renderPlayer(); toast(e.message); }
   });
 }
+
+
+// ================================================= section intros ("what question does this page answer?")
+const INTROS = {
+  replay: { kicker: 'Training Table', q: 'Was the whale right?', go: 'Deal me in',
+    steps: ['You get a real Smart Money trade from this week, at the <b>whale\'s exact entry</b>. The wallet and the ending are hidden.',
+      'Read Nansen\'s tells: the whale\'s track record, Smart Money flow, the crowd and funding.',
+      '<b>Follow</b> if you think the whale was right, <b>Fade</b> if not. It\'s judged on when the whale really closed (held 1h+, max 48h).',
+      'After every hand you see which signal called it, and which one was the trap.'],
+    how: 'Entry: <b>the whale\'s price</b> · Judged on: <b>the whale\'s real exit</b>' },
+  live: { kicker: 'Live Floor', q: 'Is this whale still worth following now?', go: 'Take me to the floor',
+    steps: ['Whales who opened in the last 6 hours and <b>still hold the position</b>, graded A+ to F by their Nansen track record.',
+      'You enter at <b>today\'s price</b>, like copying the trade for real. Each card shows how far the whale is already up or down.',
+      'Pick a table: <b>Espresso</b> (15 min), <b>Cigar Lounge</b> (4 hours) or <b>Ride the Whale</b> (ends when they exit, max 48h). Cash out anytime.',
+      'Plus the <b>Insider Pick</b>: a stock where company insiders are buying, held 1 week to 6 months.'],
+    how: 'Entry: <b>today\'s price</b> · Judged on: <b>your table\'s timer</b> or <b>the whale\'s exit</b>' },
+  report: { kicker: 'Skill Report', q: 'Are you ready to trade for real?', go: 'Show my report',
+    steps: ['Every Training hand, Cigar Lounge and Ride the Whale bet is analysed (Espresso is just for fun).',
+      'See which Nansen signals you read well, where you leak, and whether you beat the odds.',
+      'Climb from <b>Rookie</b> to <b>Ready for real trades</b>, then take what you learned to Nansen.'],
+    how: 'Play money only. Practice here before you risk real money.' },
+};
+const introSeen = (v) => store.get('fof_intro_' + v) === '1';
+let introOpen = false, suppressIntro = false;
+function showIntro(view, { force = false } = {}) {
+  const it = INTROS[view];
+  if (!it || introOpen || (!force && (introSeen(view) || suppressIntro))) return;
+  if ($('welcome').open) return;
+  introOpen = true;
+  $('introKicker').textContent = it.kicker;
+  $('introQ').textContent = it.q;
+  $('introSteps').innerHTML = it.steps.map((x) => `<li>${x}</li>`).join('');
+  $('introHow').innerHTML = it.how;
+  $('introGo').textContent = it.go;
+  document.querySelectorAll('.intro-compare [data-sec]').forEach((d) => d.classList.toggle('on', d.dataset.sec === view));
+  const o = $('introOverlay'); o.hidden = false; o.classList.remove('show'); void o.offsetWidth; o.classList.add('show');
+  sfx.deal();
+}
+function closeIntro() {
+  const o = $('introOverlay');
+  const view = document.querySelector('.view.active')?.id.replace('view-', '');
+  document.querySelectorAll('.intro-compare [data-sec].on').forEach((d) => store.set('fof_intro_' + d.dataset.sec, '1'));
+  o.hidden = true; introOpen = false; sfx.chip();
+  void view;
+}
+$('introGo').onclick = closeIntro;
+$('introOverlay').addEventListener('click', (e) => { if (e.target === $('introOverlay')) closeIntro(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && introOpen) closeIntro(); });
+// the small "?" next to each section title reopens its intro
+document.querySelectorAll('[data-intro]').forEach((b) => b.addEventListener('click', () => showIntro(b.dataset.intro, { force: true })));
+// show each intro the first time a section is opened
+document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+  const v = t.dataset.view;
+  if (v === 'live') setTimeout(() => showIntro('live'), liveShownOnce && !$('floorIntro').hidden ? 2400 : 400);
+  else setTimeout(() => showIntro(v), 250);
+}));
