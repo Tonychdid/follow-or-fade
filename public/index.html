@@ -3,8 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Follow or Fade — The Smart Money Casino</title>
+<title>Follow or Fade — The Smart Money Academy</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23d4af37'/><circle cx='16' cy='16' r='10' fill='%23120d06'/><path d='M16 9l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6z' fill='%23f5d77a'/></svg>">
+<meta name="description" content="The Smart Money Academy, disguised as a casino. Follow or fade real Nansen Smart Money whale trades on Hyperliquid with play money, learn which signal called it, then trade for real on Nansen.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Follow or Fade · The Smart Money Academy">
+<meta property="og:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Trade for real on Nansen.">
+<meta property="og:image" content="{{PUBLIC_URL}}/og.jpg">
+<meta property="og:url" content="{{PUBLIC_URL}}/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Follow or Fade · The Smart Money Academy">
+<meta name="twitter:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Trade for real on Nansen.">
+<meta name="twitter:image" content="{{PUBLIC_URL}}/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -17,11 +27,12 @@
 <header class="top">
   <div class="brand">
     <div class="logo"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
-    <div class="est">The Smart Money Casino · Est. on Hyperliquid</div>
+    <div class="est">The Smart Money Academy, disguised as a casino</div>
   </div>
   <nav class="tabs" role="tablist">
-    <button class="tab active" data-view="live">Live Floor <i class="dot"></i></button>
-    <button class="tab" data-view="replay">The Table</button>
+    <button class="tab active" data-view="replay">Training Table</button>
+    <button class="tab" data-view="live">Live Floor <i class="dot"></i></button>
+    <button class="tab" data-view="report">Skill Report</button>
     <button class="tab" data-view="board">Hall of Fame</button>
   </nav>
   <div class="me">
@@ -38,11 +49,11 @@
 <div class="layout">
 <main>
   <!-- ============ THE TABLE (replay) ============ -->
-  <section id="view-replay" class="view">
+  <section id="view-replay" class="view active">
     <div class="felt">
       <div class="felt-inner">
         <div class="table-title">
-          <span class="line"></span><span>A Smart Money whale just sat down</span><span class="line"></span>
+          <span class="line"></span><span>Training hand · a real Smart Money trade from this week</span><span class="line"></span>
         </div>
 
         <div id="dealing" class="dealing"><div class="deck"><i></i><i></i><i></i></div><p>The dealer is pulling a trade from Nansen…</p></div>
@@ -60,7 +71,7 @@
           </div>
 
           <div class="dossier">
-            <div class="meta"><span id="rWhen"></span> · <span id="rType"></span> order · settles <b id="rHorizon">4h</b> later</div>
+            <div class="meta"><span id="rGrade" class="grade-chip"></span> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
             <div class="intel">
               <div class="stat"><small>Whale win rate · 30d before</small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
               <div class="stat"><small>Whale realized PnL · 30d</small><b id="iPnl">–</b></div>
@@ -97,13 +108,15 @@
           <div class="chartwrap"><svg id="chart" viewBox="0 0 600 220" preserveAspectRatio="none" aria-label="Price path after the trade"></svg></div>
           <div class="intel">
             <div class="stat"><small>The whale</small><b id="vTrader" class="name">–</b><a id="vLink" target="_blank" rel="noopener" class="sub">View on Nansen ↗</a></div>
-            <div class="stat"><small>Whale return after <span id="vH">4h</span></small><b id="vRet">–</b><span id="vExc" class="sub"></span></div>
+            <div class="stat"><small>Whale's result <span id="vH"></span></small><b id="vRet">–</b><span id="vExc" class="sub"></span></div>
             <div class="stat"><small>Whale's paper PnL</small><b id="vWhale">–</b></div>
             <div class="stat"><small>Your result</small><b id="vYou">–</b></div>
           </div>
+          <div id="lesson" class="lesson"></div>
           <div class="actions">
             <button id="btnNext" class="gold-btn">Deal the next hand</button>
             <button id="btnShare" class="ghost-btn">Share my card</button>
+            <a id="btnRealTrade" class="nansen-btn" target="_blank" rel="noopener" hidden>Trade it for real on Nansen ↗</a>
           </div>
         </div>
         <p id="err" class="err" hidden></p>
@@ -118,7 +131,7 @@
   </section>
 
   <!-- ============ LIVE FLOOR ============ -->
-  <section id="view-live" class="view active">
+  <section id="view-live" class="view">
     <div class="floor-head">
       <div>
         <h2>The Live Floor</h2>
@@ -127,6 +140,12 @@
       <button id="btnRefreshLive" class="ghost-btn">Refresh the floor</button>
     </div>
     <div id="liveList" class="livelist"></div>
+  </section>
+
+  <!-- ============ SKILL REPORT ============ -->
+  <section id="view-report" class="view">
+    <div class="floor-head"><div><h2>Your Whale Reading Report</h2><p class="muted">Practice on real Smart Money trades with play money. This report shows which signals you read well and where you leak, so you know when you're ready to trade for real.</p></div></div>
+    <div id="reportBody"></div>
   </section>
 
   <!-- ============ HALL OF FAME ============ -->
@@ -142,6 +161,7 @@
   <div class="rail-head">
     <h3>Your Table</h3>
     <div class="record"><span>Record <b id="sRecord">0–0</b></span><span>Streak <b id="sStreak">0</b></span><span>Whales slain <b id="sSlain">0</b></span></div>
+    <button class="level-mini" id="levelMini" title="Open your Skill Report"><span class="lm-top"><b id="lvlName">Rookie</b><em id="lvlHands">0 hands</em></span><span class="lm-bar"><i id="lvlBar"></i></span></button>
   </div>
   <div class="lanes" id="lanes">
     <div class="lane" data-min="15">
@@ -149,14 +169,14 @@
         <div><b>Espresso Shot</b><small>15 min · in and out before it gets cold</small></div><em class="count">0</em></div>
       <div class="lane-body"></div>
     </div>
-    <div class="lane" data-min="30">
-      <div class="lane-head"><svg viewBox="0 0 24 24"><path d="M8 3h8l-.6 6a3.4 3.4 0 0 1-6.8 0L8 3zm4 9.5V20m-3.5 1h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="6.5" r=".8" fill="currentColor"/><circle cx="13.5" cy="5" r=".6" fill="currentColor"/></svg>
-        <div><b>Champagne Round</b><small>30 min · just enough time to pop a bottle</small></div><em class="count">0</em></div>
+    <div class="lane" data-min="240">
+      <div class="lane-head"><svg viewBox="0 0 24 24"><rect x="2.5" y="13" width="15" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 13v4M20 16.5v.5M19 9c0 1.5 2 1.5 2 3M16.5 8c0 1.5 2 1.5 2 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div><b>Cigar Lounge</b><small>4 hours · sit back and let the whale cook</small></div><em class="count">0</em></div>
       <div class="lane-body"></div>
     </div>
-    <div class="lane" data-min="60">
-      <div class="lane-head"><svg viewBox="0 0 24 24"><rect x="2.5" y="13" width="15" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 13v4M20 16.5v.5M19 9c0 1.5 2 1.5 2 3M16.5 8c0 1.5 2 1.5 2 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <div><b>Cigar Lounge</b><small>60 min · sit back and let the whale cook</small></div><em class="count">0</em></div>
+    <div class="lane" data-min="ride">
+      <div class="lane-head"><svg viewBox="0 0 24 24"><path d="M2.5 13.5c2.5-4.5 8-6 12.5-4.2 1.9.8 3.3 2.2 4 3.7.4-1 1.2-2.4 2.5-3-.2 1.6-.6 3-1.5 4 .6 1.8.2 3.3-1.3 4-3.8 1.9-12.7 1.4-16.2-4.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.5" cy="12.8" r=".9" fill="currentColor"/><path d="M11 6.5c0-1.4.8-2.5 2-3M13 6.2c.6-1 1.6-1.6 2.8-1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <div><b>Ride the Whale</b><small>ends when the whale exits · max 24h</small></div><em class="count">0</em></div>
       <div class="lane-body"></div>
     </div>
   </div>
@@ -171,8 +191,8 @@
   <form method="dialog" id="welcomeForm">
     <div class="rope" aria-hidden="true"></div>
     <div class="logo big"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
-    <div class="est">Welcome to the Smart Money Casino</div>
-    <p>Every hand is a real trade from Nansen Smart Money on Hyperliquid. The house gives you <b>$10,000</b> in chips. Follow the whale or fade it. Nansen data sets the odds. The market settles the bet.</p>
+    <div class="est">Welcome to the Smart Money Academy, disguised as a casino</div>
+    <p>Learn to read Smart Money before you risk real money. Every hand is a <b>real whale trade</b> from Nansen on Hyperliquid, and the house gives you <b>$10,000</b> in play chips. Follow the whale or fade it, learn the tell after every hand, and trade for real on Nansen when your Skill Report says you're ready.</p>
     <input id="nameInput" maxlength="18" placeholder="Your nickname" required autocomplete="off">
     <button class="gold-btn" type="submit">Take a seat</button>
   </form>
@@ -196,6 +216,8 @@
     <button class="icon-btn" id="alertClose" aria-label="Close">✕</button>
   </div>
   <div class="ap-status" id="apStatus"></div>
+  <p class="ap-public" id="apPublicNote" hidden>Alerts on this public table follow the house rules above. Click <b>Enable</b> below to get desktop notifications, or run your own copy from GitHub to set your own rules and Telegram alerts.</p>
+  <div class="ch" id="apPublicNotif" hidden><b>Desktop notifications</b><span id="notifState2"></span><button class="ghost-btn sm" id="notifBtn2">Enable</button></div>
   <details class="ap-settings" id="apSettings">
     <summary>Alert rules &amp; channels</summary>
     <div class="ap-grid">

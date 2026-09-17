@@ -2,8 +2,16 @@ import { sfx, isMuted, setMuted } from './sfx.js';
 import { coinRain, burst, sparkleAt, countTo } from './fx.js';
 
 const $ = (id) => document.getElementById(id);
+// Host admin: open the site once with ?admin=YOUR_TOKEN to manage alert rules on the public version
+try {
+  const u = new URL(location.href);
+  if (u.searchParams.get('admin')) { localStorage.setItem('fof_admin', u.searchParams.get('admin')); u.searchParams.delete('admin'); history.replaceState(null, '', u.pathname + u.search); }
+} catch {}
+const adminToken = () => { try { return localStorage.getItem('fof_admin') || ''; } catch { return ''; } };
 const api = async (path, body) => {
-  const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const headers = { 'x-admin-token': adminToken() };
+  if (body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
   const data = await res.json();
   if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status });
   return data;
@@ -17,7 +25,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const coinHtml = (c) => c.includes(':') ? `<small class="dex">${esc(c.split(':')[0])}</small>${esc(c.split(':')[1])}` : esc(c);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const LANES = { 15: 'Espresso Shot', 30: 'Champagne Round', 60: 'Cigar Lounge' };
+const LANES = { 15: 'Espresso Shot', 30: 'Espresso Shot', 60: 'Cigar Lounge', 240: 'Cigar Lounge', ride: 'Ride the Whale' };
+const laneOf = (b) => (b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
+const hrs = (ms) => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`; };
 
 let player = null, round = null, lastResult = null;
 let shownBank = 10000;
@@ -38,8 +48,9 @@ async function boot() {
   renderPlayer();
   refreshStatus(); setInterval(refreshStatus, 15000);
   pollLoop();
-  loadLive(); // the Live Floor is the front door
+  deal(); // training starts at the table
   initAlerts();
+  refreshReport();
 
 }
 
@@ -74,13 +85,15 @@ function renderPlayer() {
 async function refreshStatus() {
   const s = await api('/api/status').catch(() => null);
   if (!s) return;
-  $('demoBadge').hidden = !s.usage.demo;
+  $('demoBadge').hidden = !(s.usage.demo || s.usage.capped);
+  $('demoBadge').textContent = s.usage.capped ? 'DEMO DATA · daily cap reached' : 'DEMO DATA';
+  $('demoBadge').title = s.usage.capped ? "Today's Nansen credit budget for the public site is used up. Cached whale data and demo whales until midnight UTC." : 'No Nansen API key: sample whales on real Hyperliquid prices';
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
   $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
-    $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were green ${s.horizonHours}h later`;
+    $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were in profit when the whale exited${s.medianHoldHours ? ` · median hold ${hrs(s.medianHoldHours * 3600e3)}` : ''}`;
   }
 }
 
@@ -112,9 +125,9 @@ function renderLanes() {
   const now = Date.now();
   const open = [...pending, ...lastBets.filter((b) => b.status === 'open')];
   let total = 0;
-  for (const min of [15, 30, 60]) {
+  for (const min of ['15', '240', 'ride']) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
-    const mine = open.filter((b) => (b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) === min);
+    const mine = open.filter((b) => laneOf(b) === min);
     total += mine.length;
     lane.querySelector('.count').textContent = mine.length;
     lane.classList.toggle('empty', !mine.length);
@@ -168,7 +181,8 @@ function updateRow(row, b, now) {
   const col = mood === 'meh' ? '#d4af37' : mood === 'rich' ? '#22c07e' : '#e0445a';
   const arc = row.querySelector('.arc'); arc.setAttribute('stroke', col); arc.setAttribute('stroke-dashoffset', RING * (1 - frac));
   const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
-  row.querySelector('.lbl').textContent = `${mm}:${String(ss).padStart(2, '0')}`;
+  const hh = Math.floor(left / 3600e3), rm = Math.floor((left % 3600e3) / 60e3);
+  row.querySelector('.lbl').textContent = b.ride ? 'RIDE' : left >= 3600e3 ? `${hh}h${String(rm).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
   // intensity 0..3 from how confidently the bet is winning or losing right now
   const conf = b.pWin == null ? 0 : Math.abs(b.pWin - 0.5) * 2;
   const level = mood === 'meh' ? 0 : conf > 0.75 ? 3 : conf > 0.4 ? 2 : 1;
@@ -183,7 +197,7 @@ function updateRow(row, b, now) {
       : `<i class="tear" style="--d:${(i * 0.19).toFixed(2)}s;--x:${i % 2 ? 14 : -14}px;--s:${(1.4 - level * 0.25).toFixed(2)}s"></i>`).join('');
   }
   row.querySelector('.l2').textContent = b.pending ? `${usd(b.stake)} @ x${b.price.toFixed(2)} · placing chips…`
-    : `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : ''}${b.myRet != null ? ' (' + pct(b.myRet, 2) + ')' : ''}`;
+    : `${usd(b.stake)} @ x${b.price.toFixed(2)} · ${price(b.entry)}${b.now ? ' → ' + price(b.now) : ''}${b.myRet != null ? ' (' + pct(b.myRet, 2) + ')' : ''}${b.ride ? ` · ends when the whale exits${b.whaleTrims ? ` · whale trimmed ${b.whaleTrims}x` : ''} · max ${hh}h${String(rm).padStart(2, '0')} left` : ''}`;
   const potential = Math.round(b.stake * (b.price - 1));
   row.querySelector('.res').innerHTML = mood === 'meh' ? `<span>${usd(b.stake)}</span> <small>flat</small>`
     : mood === 'rich' ? `<span class="pos">+${usd(potential)}</span> <small>if it ends now</small>` : `<span class="neg">-${usd(b.stake)}</span> <small>if it ends now</small>`;
@@ -204,7 +218,7 @@ $('lanes').addEventListener('click', async (e) => {
     prevStatus.set(r.bet.id, 'cashed');
     const row = btn.closest('.lbet'); row?.classList.add('leaving');
     setTimeout(() => { const idx = lastBets.findIndex((x) => x.id === r.bet.id); if (idx >= 0) lastBets[idx] = r.bet; renderLanes(); }, 550);
-    player = r.player; renderPlayer();
+    player = r.player; renderPlayer(); refreshReport();
     const rect = btn.getBoundingClientRect();
     if (r.net >= 0) {
       sfx.cashout(); setTimeout(() => sfx.win(r.net > 1000), 250); coinRain(r.net > 1000 ? 100 : 60);
@@ -228,14 +242,16 @@ function banner(title, sub, kind) {
 $('banner')?.addEventListener('click', () => ($('banner').hidden = true));
 
 async function announceSettled(settledNow) {
+  refreshReport();
   {
     const prev = player.bankroll;
     player = await api('/api/player?id=' + player.id);
     renderPlayer();
     for (const b of settledNow) {
       const net = (b.payout ?? 0) - b.stake;
-      if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${LANES[b.minutes] || 'Live bet'} paid out: +${usd(net)} on ${b.coin}`); }
-      else if (b.status === 'lost') { sfx.lose(); toast(`${LANES[b.minutes] || 'Live bet'} lost on ${b.coin}: ${usd(net)}`); }
+      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `24h cap on ${b.coin}`) : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
+      if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}`); }
+      else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}`); }
       else { sfx.push(); toast(`Push on ${b.coin}: stake returned`); }
     }
     if (prev === player.bankroll) renderPlayer();
@@ -259,7 +275,10 @@ async function deal() {
   $('rSide').textContent = r.side.toUpperCase(); $('rSide').className = 'side ' + r.side;
   $('rCoin').innerHTML = coinHtml(r.coin); $('rValue').textContent = compact(r.valueUsd); $('rEntry').textContent = price(r.entryPrice);
   $('rWhen').textContent = new Date(r.openedAt).toUTCString().slice(5, 22) + ' UTC (' + ago(r.openedAt) + ')';
-  $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = r.horizonHours + 'h';
+  $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`;
+  const gr = r.grade || { grade: '?' };
+  $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}`;
+  $('rGrade').className = 'grade-chip ' + ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[gr.grade] || 'gc');
   const i = r.intel;
   setStat('iWin', i.walletWinRate != null ? Math.round(i.walletWinRate * 100) + '%' : 'n/a', i.walletWinRate != null ? i.walletWinRate >= 0.5 : null);
   $('iClosed').textContent = i.walletClosedTrades ? `${i.walletClosedTrades} closed trades` : 'no history';
@@ -318,15 +337,21 @@ function showReveal(res, choice) {
   $('suspense').hidden = true; $('reveal').hidden = false;
   const big = res.result === 'win' && (res.whaleSlain || res.price >= 2.2 || res.delta >= 5000);
   const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Push. Your chips are back.';
-  const sub = `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)}`;
+  const sub = `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)} · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}`;
   const vd = $('verdict'); vd.className = 'verdict ' + res.result; vd.innerHTML = `${esc(title)}<small>${esc(sub)}</small>`;
   void vd.offsetWidth; vd.classList.add('pop');
-  $('vTrader').textContent = v.trader; $('vLink').href = v.nansenUrl; $('vH').textContent = r.horizonHours + 'h';
+  $('vTrader').textContent = v.trader; $('vLink').href = v.nansenUrl; $('vH').textContent = v.closed ? `· closed after ${hrs(v.heldMs)}` : `· still holding at ${v.maxHoldHours}h`;
   setStat('vRet', pct(v.ret, 2), v.ret >= 0);
-  $('vExc').textContent = `best ${pct(v.mfe, 1)} · worst ${pct(v.mae, 1)}`;
+  $('vExc').textContent = `${v.trims > 1 ? `scaled out in ${v.trims} fills · ` : ''}best ${pct(v.mfe, 1)} · worst ${pct(v.mae, 1)}`;
   setStat('vWhale', (v.whalePnlUsd >= 0 ? '+' : '') + compact(v.whalePnlUsd), v.whalePnlUsd >= 0);
   setStat('vYou', (res.delta >= 0 ? '+' : '') + usd(res.delta), res.delta >= 0);
-  drawChart(v.path, r.entryPrice, res.result !== 'loss');
+  drawChart(v.path, r.entryPrice, res.result !== 'loss', v.closed ? `whale exit · ${hrs(v.heldMs)}` : `still holding · ${v.maxHoldHours}h mark`);
+  renderLesson(res.lesson);
+  const rt = $('btnRealTrade');
+  rt.href = `https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(r.coin)}&chain=hyperliquid`;
+  rt.textContent = res.result === 'win' ? `You read it right. Trade ${r.coin} for real on Nansen ↗` : `Study ${r.coin} on Nansen ↗`;
+  rt.hidden = false;
+  refreshReport();
   const felt = document.querySelector('.felt');
   if (res.result === 'win') {
     sfx.win(big);
@@ -338,7 +363,7 @@ function showReveal(res, choice) {
   } else sfx.push();
 }
 
-function drawChart(path, entry, userGood) {
+function drawChart(path, entry, userGood, exitLabel = '') {
   const svg = $('chart'), W = 600, Hh = 220, pad = 14;
   const ys = path.map((p) => p[1]).concat(entry);
   const min = Math.min(...ys), max = Math.max(...ys), span = max - min || 1;
@@ -353,7 +378,8 @@ function drawChart(path, entry, userGood) {
     <text x="${pad + 4}" y="${y(entry) - 6}" fill="rgba(243,234,215,.7)" font-size="11" font-family="JetBrains Mono">whale entry ${price(entry)}</text>
     <path d="${d}L${x(path.length - 1)},${Hh}L${pad},${Hh}Z" fill="url(#g)" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".4s" fill="freeze"/></path>
     <path id="line" pathLength="1" d="${d}" fill="none" stroke="${col}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-    <circle cx="${x(path.length - 1)}" cy="${y(last)}" r="5" fill="${col}" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".2s" fill="freeze"/></circle>`;
+    <circle cx="${x(path.length - 1)}" cy="${y(last)}" r="5" fill="${col}" opacity="0"><animate attributeName="opacity" from="0" to="1" begin="1.1s" dur=".2s" fill="freeze"/></circle>
+    ${exitLabel ? `<text x="${W - pad - 4}" y="${Math.max(14, y(last) - 10)}" text-anchor="end" fill="${col}" font-size="11" font-family="JetBrains Mono" opacity="0">${esc(exitLabel)}<animate attributeName="opacity" from="0" to="1" begin="1.2s" dur=".3s" fill="freeze"/></text>` : ''}`;
   const line = svg.querySelector('#line');
   line.style.strokeDasharray = '1 1';
   line.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 1100, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
@@ -393,6 +419,7 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   if (t.dataset.view === 'board') loadBoard();
   if (t.dataset.view === 'live') loadLive();
   if (t.dataset.view === 'replay' && !round) deal();
+  if (t.dataset.view === 'report') refreshReport(true);
 }));
 
 // ================================================= hall of fame
@@ -446,9 +473,9 @@ function liveCard(t) {
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
     <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
     <div class="horizons">
-      <button class="hz on" data-min="15"><b>Espresso</b><small>15 min</small></button>
-      <button class="hz" data-min="30"><b>Champagne</b><small>30 min</small></button>
-      <button class="hz" data-min="60"><b>Cigar</b><small>60 min</small></button>
+      <button class="hz" data-min="15" title="Quick and just for fun: doesn't count toward your Skill Report"><b>Espresso</b><small>15 min</small></button>
+      <button class="hz" data-min="240"><b>Cigar Lounge</b><small>4 hours</small></button>
+      <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 24h)"><b>Ride the Whale</b><small>until exit</small></button>
     </div>
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
@@ -467,14 +494,14 @@ function wireLive() {
     card.querySelectorAll('.hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
     card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => { input.value = Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add)); sfx.chip(); });
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
-      const minutes = Number(card.querySelector('.hz.on').dataset.min);
+      const minRaw = card.querySelector('.hz.on').dataset.min; const minutes = minRaw === 'ride' ? 'ride' : Number(minRaw);
       const stake = Math.floor(Number(input.value));
       const t = liveItems.get(card.dataset.key);
       if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
       const choice = btn.dataset.choice;
       // 1) show it on Your Table instantly
       const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: t.coin, whaleSide: t.side, choice, stake,
-        price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + minutes * 60e3, minutes, status: 'open' };
+        price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + (minutes === 'ride' ? 24 * 3600e3 : minutes * 60e3), minutes, ride: minutes === 'ride', status: 'open' };
       pending.push(tmp); renderLanes();
       player.bankroll -= stake; renderPlayer();
       sfx.bet(); sparkleAt(btn, 26);
@@ -551,12 +578,16 @@ function renderAlertStatus() {
 }
 function renderAlertCfg() {
   if (!alertCfg) return;
+  $('apSettings').hidden = alertCfg.canAdmin === false;
+  $('apPublicNote').hidden = alertCfg.canAdmin !== false;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
   $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d; $('cfgSpec').checked = alertCfg.allowSpecialists !== false;
   $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
   $('notifBtn').hidden = perm !== 'default';
+  $('apPublicNotif').hidden = alertCfg.canAdmin !== false;
+  $('notifState2').textContent = $('notifState').textContent; $('notifBtn2').hidden = perm !== 'default';
   const tgc = alertCfg.telegram;
   $('tgState').textContent = tgc.connected ? `Connected to @${tgc.botName}` : tgc.hasToken ? 'Waiting for Start' : 'Off';
   $('tgConnect').hidden = tgc.hasToken; $('tgVerify').hidden = !(tgc.hasToken && !tgc.connected); $('tgOff').hidden = !tgc.hasToken;
@@ -578,6 +609,7 @@ function openAlerts() {
 $('alertBtn').onclick = () => ($('alertPanel').hidden ? openAlerts() : ($('alertPanel').hidden = true));
 $('alertClose').onclick = () => ($('alertPanel').hidden = true);
 $('notifBtn').onclick = async () => { if ('Notification' in window) await Notification.requestPermission(); renderAlertCfg(); };
+$('notifBtn2').onclick = async () => { if ('Notification' in window) await Notification.requestPermission(); renderAlertCfg(); };
 $('scanNow').onclick = async (e) => { e.target.disabled = true; const r = await api('/api/alerts/scan', {}).catch((err) => (toast(err.message), null)); e.target.disabled = false; if (r) { alertCfg = r.config; renderAlertStatus(); if (!r.created.length) toast('Scan done. No new whale matched your rules.'); else pollAlerts(); } };
 $('testAlert').onclick = async (e) => { e.target.disabled = true; await api('/api/alerts/test', {}).catch((err) => toast(err.message)); e.target.disabled = false; pollAlerts(); };
 $('tgSave').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram', { token: $('tgToken').value }); $('tgToken').value = ''; renderAlertCfg(); } catch (e) { toast(e.message); } };
@@ -615,5 +647,64 @@ function announceAlert(a, count) {
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
+
+// ================================================= coach: lessons + skill report
+function renderLesson(l) {
+  const el = $('lesson');
+  if (!l) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="lesson-head"><span>What the data said</span><b>${esc(l.headline)}</b></div>
+    ${l.tell ? `<div class="lesson-row tell"><i></i><div><p>${esc(l.tell.text)}</p>${l.tell.stat ? `<small>${esc(l.tell.stat)}</small>` : ''}</div></div>` : ''}
+    ${l.trap ? `<div class="lesson-row trap"><i></i><div><p>${esc(l.trap.text)}</p>${l.trap.stat ? `<small>${esc(l.trap.stat)}</small>` : ''}</div></div>` : ''}
+    ${l.model ? `<div class="lesson-foot">${esc(l.model)} <b>${esc(l.you || '')}</b></div>` : ''}`;
+}
+let lastReport = null;
+async function refreshReport(render = false) {
+  if (!player) return;
+  const r = await api('/api/report?player=' + player.id).catch(() => null);
+  if (!r) return;
+  const leveledUp = lastReport && r.level.index > lastReport.level.index;
+  lastReport = r;
+  $('lvlName').textContent = r.level.name;
+  $('lvlHands').textContent = `${r.hands} hand${r.hands === 1 ? '' : 's'}`;
+  $('lvlBar').style.width = (r.level.progress * 100).toFixed(0) + '%';
+  $('levelMini').classList.toggle('ready', r.level.index === 3);
+  if (leveledUp) { sfx.win(true); coinRain(80); banner(`Level up: ${r.level.name}`, r.level.index === 3 ? 'Your reads beat the odds. Time to trade for real on Nansen.' : 'Your Skill Report has new insights.', 'win'); }
+  if (render || document.getElementById('view-report').classList.contains('active')) renderReport(r);
+}
+function renderReport(r) {
+  const body = $('reportBody');
+  const steps = ['Rookie', 'Learning the tells', 'Sharp reader', 'Ready for real trades'];
+  const ladder = steps.map((nm, i) => `<div class="step${i < r.level.index ? ' done' : i === r.level.index ? ' now' : ''}"><i>${i + 1}</i><span>${nm}</span></div>`).join('');
+  const pat = (x) => `<div class="pat"><div class="pat-top"><span>${esc(x.label)}</span><b class="${x.n < 3 ? 'muted' : x.winRate >= 0.55 ? 'pos' : x.winRate <= 0.45 ? 'neg' : ''}">${x.winRate == null ? '–' : Math.round(x.winRate * 100) + '%'}</b></div>
+    <div class="pat-bar"><i style="width:${x.winRate == null ? 0 : Math.round(x.winRate * 100)}%"></i></div><small>${x.n} hand${x.n === 1 ? '' : 's'} · ${x.pnl >= 0 ? '+' : ''}${usd(x.pnl)}</small></div>`;
+  if (r.hands < 3) {
+    body.innerHTML = `<div class="report-card empty"><div class="ladder">${ladder}</div><h3>Play a few hands to get your first reading</h3><p>Every bet on the Training Table or the Live Floor is analyzed: which Nansen signals you followed, which whales you trusted, and whether you beat the odds.</p><button class="gold-btn" id="goTrain">Deal a training hand</button></div>`;
+    $('goTrain').onclick = () => document.querySelector('.tab[data-view="replay"]').click();
+    return;
+  }
+  body.innerHTML = `
+    <div class="report-card">
+      <p class="counts-note">Counts training hands (judged on the whale's real exit), 4-hour and Ride the Whale bets${r.funHands ? `. ${r.funHands} Espresso bet${r.funHands === 1 ? ' is' : 's are'} just for fun and not counted` : ''}.</p>
+      <div class="level-row"><div class="level-badge l${r.level.index}">${r.level.index + 1}</div><div><small>Your level</small><h3>${esc(r.level.name)}</h3><p>${r.level.next ? 'Next: ' + esc(r.level.next) : 'You beat the odds consistently. Take the reads you are best at to real trades on Nansen.'}</p></div></div>
+      <div class="ladder">${ladder}</div>
+      <div class="kpis">
+        <div><small>Hands analyzed</small><b>${r.hands}</b></div>
+        <div><small>Your win rate</small><b>${Math.round(r.winRate * 100)}%</b></div>
+        <div><small>What the odds expected</small><b>${Math.round(r.expected * 100)}%</b></div>
+        <div><small>Your edge over the odds</small><b class="${r.edge >= 0 ? 'pos' : 'neg'}">${r.edge >= 0 ? '+' : ''}${(r.edge * 100).toFixed(1)} pts</b></div>
+        <div><small>Play-money PnL</small><b class="${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+' : ''}${usd(r.pnl)}</b></div>
+      </div>
+      ${r.advice.length ? `<div class="advice"><b>Coach says</b>${r.advice.map((a) => `<p>${esc(a)}</p>`).join('')}</div>` : ''}
+    </div>
+    <div class="report-cols">
+      <div class="report-card"><h4 class="pos-h">Your strengths</h4>${r.strengths.length ? r.strengths.map(pat).join('') : '<p class="muted">Keep playing: a pattern needs 3+ hands and a 60%+ win rate to show here.</p>'}</div>
+      <div class="report-card"><h4 class="neg-h">Your leaks</h4>${r.leaks.length ? r.leaks.map(pat).join('') : '<p class="muted">No leaks found yet. Patterns with a 45% or lower win rate (3+ hands) show here.</p>'}</div>
+    </div>
+    <div class="report-card"><h4>Every pattern we track</h4><div class="pat-grid">${r.patterns.map(pat).join('')}</div></div>
+    <div class="report-card cta"><div><h4>Ready to use what you learned?</h4><p>Nansen has the same Smart Money data and a built-in trading app for Hyperliquid perps. Practice here, then trade the patterns you are best at for real.</p></div>
+      <a class="nansen-btn big" href="https://app.nansen.ai/token-god-mode?tokenAddress=BTC&chain=hyperliquid" target="_blank" rel="noopener">Open Nansen trading ↗</a></div>
+    <p class="disclaimer">Play money only. Past results in a game do not guarantee real trading results. Not financial advice.</p>`;
+}
+$('levelMini').onclick = () => document.querySelector('.tab[data-view="report"]').click();
 
 boot();
