@@ -108,7 +108,6 @@ function renderPlayer() {
 async function refreshStatus() {
   const s = await api('/api/status').catch(() => null);
   if (!s) return;
-  renderBeta(s.beta);
   if (s.ref?.url) { REF = s.ref; document.querySelectorAll('a.ref-link').forEach((a) => (a.href = REF.url)); document.querySelectorAll('.ref-code').forEach((b) => (b.textContent = REF.code)); }
   $('demoBadge').hidden = !(s.usage.demo || s.usage.capped);
   $('demoBadge').textContent = s.usage.capped ? 'DEMO DATA · daily cap reached' : 'DEMO DATA';
@@ -868,13 +867,6 @@ boot();
 
 
 // ================================================= free beta + plans
-function renderBeta(b) {
-  if (!b) return;
-  const d = b.daysLeft;
-  $('betaDays').textContent = d == null || d <= 0 ? '' : ` · ${d} day${d === 1 ? '' : 's'} left`;
-  const ends = Date.parse(b.ends + 'T12:00:00Z');
-  if (d > 0 && Number.isFinite(ends)) $('betaEnds').textContent = new Date(ends).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-}
 $('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
 let wantPlan = 'premium';
 document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', () => {

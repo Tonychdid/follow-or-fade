@@ -124,7 +124,6 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | Nansen referral link used for every "New to Nansen? Sign up" link and in Telegram alerts |
 | `NANSEN_PROMO_CODE` | `AVYRION` | Code shown next to the referral link |
 | `AGENT_DAILY_CREDITS` | `1600` | Daily Nansen credits for the Research Desk (Nansen Agent). `0` turns it off |
-| `BETA_ENDS` | `2026-10-11` | Last day of the free beta (UTC, YYYY-MM-DD). Drives the countdown on the site; nothing gets locked |
 | `DAILY_CREDIT_CAP` | none | Max Nansen credits per UTC day. Above it the app serves cached data and demo whales, and pauses odds training and alerts |
 | `PUBLIC` | 0 | `1` for a public deployment: per-IP rate limits, alert rules and Telegram become admin-only |
 | `ADMIN_TOKEN` | none | With `PUBLIC=1`, open `/?admin=TOKEN` once to manage alerts |
@@ -143,7 +142,7 @@ Answers are cached and shared by every player (12h per company, one screen per d
 
 ## Free beta and plans
 
-Everything is free during the beta. The **Plans** page shows where the Academy is heading, and players can join a waitlist (no payment is taken):
+Everything is free during the beta, with paid plans coming soon. The **Plans** page shows where the Academy is heading, and players can join a waitlist (no payment is taken):
 
 | Plan | Price | What it unlocks |
 |---|---|---|
