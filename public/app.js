@@ -2,6 +2,17 @@ import { sfx, isMuted, setMuted } from './sfx.js';
 import { coinRain, burst, sparkleAt, countTo } from './fx.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Auto-fit: scale the desktop layout so the whole Training Table (card, tells, chips, FOLLOW/FADE) and
+// Your Table fit on screen without scrolling. 100% on big monitors, ~80% on 1080p, never below 70%.
+const DESIGN_W = 1500, DESIGN_H = 850;
+function autoFit() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const fit = w < 1100 ? 1 : Math.max(0.7, Math.min(1, (h - 8) / DESIGN_H, w / DESIGN_W));
+  document.documentElement.style.setProperty('--fit', fit.toFixed(3));
+}
+autoFit();
+window.addEventListener('resize', autoFit);
 // Host admin: open the site once with ?admin=YOUR_TOKEN to manage alert rules on the public version
 try {
   const u = new URL(location.href);
@@ -145,6 +156,7 @@ function renderLanes() {
     for (const b of mine) updateRow(body.querySelector(`[data-id="${b.id}"]`), b, now);
   }
   $('lanes').classList.toggle('none-open', total === 0);
+  const bc = $('betsCount'); bc.hidden = !total; bc.textContent = total;
 }
 setInterval(renderLanes, 1000);
 
@@ -421,7 +433,9 @@ $('btnShare').onclick = () => {
 // ================================================= tabs
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   sfx.tick();
-  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.dataset.view === t.dataset.view));
+  closeSheet();
+  if (t.classList.contains('bn')) window.scrollTo({ top: 0 });
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + t.dataset.view));
   if (t.dataset.view === 'board') loadBoard();
   if (t.dataset.view === 'live') loadLive();
@@ -494,6 +508,8 @@ function liveCard(t) {
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
 
+    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
+    <div class="lc-more">
     <div class="dossier-box">
       <div class="dossier-top">
         <div class="grade ${gradeCls}" title="Trust score ${tr.score ?? '–'}/100, from realized return, win rate and sample size (30d), adjusted by the last 7 days">${tr.grade}</div>
@@ -505,6 +521,7 @@ function liveCard(t) {
     </div>
 
     <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('')}</ul>
+    </div>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
     <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
     <div class="horizons">
@@ -512,7 +529,7 @@ function liveCard(t) {
       <button class="hz" data-min="240"><b>Cigar Lounge</b><small>4 hours</small></button>
       <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 24h)"><b>Ride the Whale</b><small>until exit</small></button>
     </div>
-    <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button></div>
+    <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
     <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale profile on Nansen ↗</a><a class="trade-nansen" href="https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(t.coin)}&chain=hyperliquid" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Nansen ↗</a></div>
@@ -527,7 +544,12 @@ function wireLive() {
       sfx.tick();
     });
     card.querySelectorAll('.hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
-    card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => { input.value = Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add)); sfx.chip(); });
+    card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
+      input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
+      sfx.chip(); if (c.dataset.add === 'all') { sparkleAt(c, 20); toast('All in. The house respects it.'); }
+    });
+    const more = card.querySelector('.lc-summary');
+    if (more) more.onclick = () => { card.classList.toggle('expanded'); more.setAttribute('aria-expanded', card.classList.contains('expanded')); sfx.tick(); };
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
       const minRaw = card.querySelector('.hz.on').dataset.min; const minutes = minRaw === 'ride' ? 'ride' : Number(minRaw);
       const stake = Math.floor(Number(input.value));
@@ -548,6 +570,7 @@ function wireLive() {
         lastBets = [b, ...lastBets]; renderLanes();
         sfx.chip();
         toast(`Chips down at the ${LANES[minutes]}: ${choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
+        nudgeBets();
         pollBets();
       } catch (e) {
         pending = pending.filter((x) => x !== tmp); renderLanes();
@@ -741,5 +764,16 @@ function renderReport(r) {
     <p class="disclaimer">Play money only. Past results in a game do not guarantee real trading results. Not financial advice.</p>`;
 }
 $('levelMini').onclick = () => document.querySelector('.tab[data-view="report"]').click();
+
+// ================================================= mobile: Your Table as a bottom sheet
+const sheetMode = () => window.matchMedia('(max-width: 1099px)').matches;
+function openSheet() { if (!sheetMode()) return; $('rail').classList.add('open'); $('railBackdrop').hidden = false; document.body.classList.add('sheet-open'); sfx.tick(); }
+function closeSheet() { $('rail').classList.remove('open'); $('railBackdrop').hidden = true; document.body.classList.remove('sheet-open'); }
+$('betsBtn').onclick = () => ($('rail').classList.contains('open') ? closeSheet() : openSheet());
+$('railClose').onclick = closeSheet;
+$('railBackdrop').onclick = closeSheet;
+$('levelMini').addEventListener('click', closeSheet);
+window.addEventListener('resize', () => { if (!sheetMode()) closeSheet(); });
+function nudgeBets() { const b = $('betsBtn'); b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); }
 
 boot();

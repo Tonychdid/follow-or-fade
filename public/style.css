@@ -252,11 +252,8 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 @keyframes toast{from{transform:translate(-50%,40px);opacity:0}}
 
 /* ---------- responsive: rail goes on top ---------- */
-@media (max-width:1100px){
+@media (max-width:1099px){
   .layout{grid-template-columns:1fr;padding:16px}
-  .rail{position:static;order:-1;max-height:none}
-  .lanes{grid-template-columns:repeat(3,minmax(220px,1fr));overflow-x:auto}
-  .top{flex-wrap:wrap;position:static}
 }
 @media (max-width:760px){
   .tab{white-space:nowrap;padding:8px 12px;font-size:12px}
@@ -541,3 +538,159 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 @keyframes chipHop{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-10px) rotate(180deg)}}
 .fi-status{font-family:var(--mono);font-size:15px;color:var(--gold-l);margin:0;min-height:22px}
 .fi-status.swap{animation:fadein .3s ease}
+
+/* ================= auto-fit: scale the layout to the screen (desktop) ================= */
+:root{--fit:1}
+.top,.layout,dialog,.alert-panel,.alert-pop,.toast,.banner-card,.fi-center{zoom:var(--fit)}
+/* toasts sit under the header so they never cover the FOLLOW / FADE buttons */
+.toast{bottom:auto;top:calc(92px * var(--fit))}
+@keyframes toast{from{transform:translate(-50%,-30px);opacity:0}}
+
+/* ================= mobile & tablet: app-style layout ================= */
+.bottom-nav,.rail-backdrop,.sheet-grab,.sheet-close,.lc-summary{display:none}
+@media (min-width:1100px){ .lc-more{display:block!important} }
+.minichip.k{--c:#111;color:var(--gold-l);background:radial-gradient(circle,#111 0 50%,transparent 51%),repeating-conic-gradient(var(--gold) 0 14deg,#111 14deg 45deg)}
+html,body{overflow-x:hidden}
+.board-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px}
+
+@media (max-width:1099px){
+  body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
+  /* header: one compact row, sections move to the bottom bar */
+  .top{position:sticky;top:0;flex-wrap:nowrap;gap:10px;padding:10px 14px}
+  .top .tabs{display:none}
+  .brand .est{display:none}
+  .logo{font-size:18px;gap:6px}
+  .me{gap:8px}
+  .icon-btn{width:34px;height:34px}
+  .bank{padding:4px 10px 4px 6px}.bank small{font-size:9px}.bank b{font-size:17px}
+  .chipstack{width:24px;height:24px}.chipstack i{width:24px;height:8px}.chipstack i:nth-child(2){bottom:5px}.chipstack i:nth-child(3){bottom:10px}
+  #demoBadge{display:none}
+
+  .bottom-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:45;
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(20,15,17,.97),rgba(8,6,7,.99));border-top:1px solid var(--hair);box-shadow:0 -10px 30px rgba(0,0,0,.5)}
+  .bn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;color:var(--read2);font-family:var(--display);font-size:10.5px;letter-spacing:.06em;position:relative;background:none;border:0}
+  .bn svg{width:22px;height:22px}
+  .bn.active{color:var(--gold-l);background:rgba(212,175,55,.12);box-shadow:none}
+  .bn .dot{position:absolute;top:6px;right:calc(50% - 16px);width:6px;height:6px}
+  .bn.bets{color:#1a1204;background:linear-gradient(180deg,#fff0b8,var(--gold) 60%,var(--gold-d));margin:-14px 4px 0;border-radius:18px;box-shadow:0 6px 20px rgba(212,175,55,.4);font-weight:700}
+  .bn.bets .chipicon{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,#111 0 48%,transparent 50%),repeating-conic-gradient(#fff 0 14deg,#111 14deg 45deg)}
+  .bn.bets em{position:absolute;top:2px;right:10px;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:var(--ruby);color:#fff;font:700 11px/18px Inter,sans-serif;font-style:normal}
+  .bn.bets.nudge{animation:nudge .7s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes nudge{30%{transform:translateY(-8px) scale(1.08)}}
+
+  /* Your Table becomes a bottom sheet */
+  .rail{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;max-height:82vh;border-radius:22px 22px 0 0;margin:0;
+    transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.8,.2,1);padding:10px 16px calc(90px + env(safe-area-inset-bottom));overflow:auto;zoom:1}
+  .rail.open{transform:none}
+  .rail-backdrop{display:block;position:fixed;inset:0;z-index:49;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+  .rail-backdrop[hidden]{display:none}
+  .sheet-grab{display:block;width:44px;height:5px;border-radius:99px;background:rgba(245,215,122,.4);margin:2px auto 10px}
+  .rail-head{position:relative}
+  .sheet-close{display:grid;position:absolute;top:8px;right:0}
+  .lanes{grid-template-columns:1fr}
+  .lane.empty{display:none}
+  body.sheet-open{overflow:hidden}
+
+  .alert-panel{top:0;right:0;left:0;bottom:0;width:100%;border-radius:0;zoom:1;padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+  .alert-pop{top:auto;bottom:calc(84px + env(safe-area-inset-bottom));zoom:1}
+  .toast{top:auto;bottom:calc(90px + env(safe-area-inset-bottom));zoom:1;max-width:calc(100vw - 32px);text-align:center;font-size:13px}
+  .livelist{grid-template-columns:1fr}
+}
+
+@media (max-width:760px){
+  .layout{padding:12px 10px}
+  h2{font-size:22px}
+  .floor-head{flex-direction:column;align-items:stretch;gap:10px;margin-bottom:12px}
+  .floor-head p{font-size:13.5px;margin:0}
+  #btnRefreshLive{padding:9px}
+
+  /* Training Table: horizontal card, tighter felt */
+  .felt{border-radius:22px;padding:6px}
+  .felt-inner{padding:14px 12px 16px;border-radius:18px}
+  .table-title{font-size:9.5px;letter-spacing:.14em;margin-bottom:10px}
+  .table-title .line{display:none}
+  .round{gap:12px}
+  .playcard{width:100%;height:auto;margin:0}
+  .playcard.dealt{animation:dealM .5s ease}
+  @keyframes dealM{from{transform:translateY(-30px) rotate(-3deg);opacity:0}}
+  .pc-body{flex-direction:row;justify-content:space-between;align-items:center;padding:16px 38px;gap:8px;flex-wrap:wrap}
+  .pc-corner{font-size:16px}.pc-corner.tl{top:8px;left:12px}.pc-corner.br{bottom:8px;right:12px}
+  .playcard .coin{font-size:32px}
+  .playcard .size{font-size:20px}
+  .playcard .entry{width:100%;text-align:center;margin-top:-2px}
+  .dossier .meta{font-size:12.5px;margin-bottom:8px}
+  .intel{gap:6px}
+  .stat{padding:8px 10px}.stat small{font-size:10.5px}.stat b{font-size:16px}.stat .sub{font-size:11px}
+  .tells-title{margin:10px 0 4px}
+  .reasons li{font-size:13px}
+  .wager{padding-top:12px}
+  .chips-row{gap:8px;margin-bottom:10px}
+  .chip{width:54px;height:54px}.chip span{width:38px;height:38px;font-size:11px}
+  .stake-box{flex:1 1 100%}.stake-box input{width:100%;font-size:18px;padding:8px 12px}
+  .bet{min-width:0;padding:12px 8px}.bet span{font-size:20px}.bet small{font-size:11px}
+  .actions{gap:8px}
+  .reveal .verdict{font-size:26px}.verdict small{font-size:13px}
+  .chartwrap{height:170px;margin:10px 0}
+  .reveal .intel{grid-template-columns:repeat(2,1fr)}
+  .lesson{padding:12px}.lesson-row p{font-size:14px}
+  .reveal .actions>*{flex:1 1 100%}
+  .house-strip{grid-template-columns:1fr 1fr;gap:8px}.hs{padding:10px}.hs b{font-size:20px}.hs span{font-size:12px}
+  .house-strip .hs:first-child{grid-column:1/-1}
+  .dealing,.suspense{min-height:300px}
+
+  /* Live Floor: compact cards, details on tap */
+  .lcard{padding:14px;border-radius:18px}
+  .lcard .coin{font-size:24px}
+  .lcard .size{font-size:18px}
+  .lcard .meta{font-size:12px;margin:2px 0 8px}
+  .lc-summary{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;padding:8px 10px;margin-bottom:10px;border-radius:12px;border:1px solid rgba(245,215,122,.3);background:rgba(0,0,0,.35);color:var(--ivory)}
+  .lc-summary .grade{width:40px;height:40px;font-size:17px;border-radius:10px}
+  .lcs-text b{display:block;font-size:13.5px;font-family:var(--display);color:var(--gold-l);letter-spacing:.03em}
+  .lcs-text small{font-size:12px;color:var(--read2)}
+  .lcs-more{font-size:11.5px;color:var(--gold-l);border:1px solid var(--hair);border-radius:8px;padding:4px 8px;white-space:nowrap}
+  .lcs-more::after{content:" ▾"}
+  .lcard.expanded .lcs-more::after{content:" ▴"}
+  .lc-more{display:none}
+  .lcard.expanded .lc-more{display:block;animation:fadein .25s ease}
+  .dossier-box{margin-top:0}
+  .rec-grid{grid-template-columns:repeat(2,1fr)}
+  .horizons{gap:5px;margin:10px 0 8px}
+  .hz{padding:6px 2px}.hz b{font-size:10px}.hz small{font-size:10px}
+  .lstake{gap:5px}
+  .lstake input{padding:8px;font-size:15px}
+  .minichip{width:36px;height:36px;font-size:9px;flex:none}
+  .lcard .bet span{font-size:16px}
+  .links{font-size:12px;flex-wrap:wrap}
+  .links a{flex:1 1 auto}
+  .links a.trade-nansen{text-align:center}
+  .ribbon{left:12px}
+
+  /* Skill report & Hall of Fame */
+  .report-card{padding:14px}
+  .level-row h3{font-size:20px}
+  .kpis b{font-size:18px}
+  .podium{grid-template-columns:1fr;gap:8px}
+  .pod{display:grid;grid-template-columns:48px 1fr auto;align-items:center;text-align:left;gap:12px;padding:12px 14px}
+  .pod .medal,.pod.p1 .medal{width:40px;height:40px;margin:0}
+  .pod.p1{order:-1;padding:12px 14px}
+  .pod em{font-size:16px}.pod .muted{display:none}
+  .board th,.board td{padding:10px 8px;font-size:13px}
+  .board th:nth-child(n+6),.board td:nth-child(n+6){display:none}
+  dialog{padding:22px}
+  .logo.big{font-size:30px}
+}
+
+@media (max-width:1099px){ .recent{display:block} .lanes:not(:has(.lane:not(.empty)))::before{content:none} }
+/* never let wide content push the page wider than the phone */
+.layout>main,.view,.lcard,.livelist,.felt,.felt-inner,.round,.dossier,.wager{min-width:0}
+.lstake input{width:0;min-width:0;flex:1 1 auto}
+@media (max-width:760px){ .lstake .minichip{width:34px;height:34px} .lcard .row{min-width:0} .lcard .size{white-space:nowrap} }
+/* narrow phones: keep bankroll fully visible */
+@media (max-width:400px){
+  .logo{font-size:15px;gap:4px;letter-spacing:.04em}
+  .top .icon-btn{width:36px;height:36px}
+  .bank{gap:6px;padding:3px 9px 3px 5px}
+  .bank .chipstack{transform:scale(.8)}
+  .bank small{display:none}
+  .bank b{font-size:15px}
+}
