@@ -644,6 +644,10 @@ function updateBadge() {
 }
 function exitLine(a) {
   const ret = a.whaleRet != null ? `<b class="${a.whaleRet >= 0 ? 'pos' : 'neg'}">${pct(a.whaleRet, 2)}</b>` : 'n/a';
+  const base = a.coin.split(':').pop(), sz = (n) => (+n).toLocaleString('en-US', { maximumFractionDigits: n >= 100 ? 1 : 4 });
+  if (a.kind === 'add') return {
+    title: `added <b>${sz(a.addedSz)} ${esc(base)}</b> to <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b>`,
+    stats: `Now ${sz(a.sizeNow)} ${esc(base)} (${compact(a.valueUsd || 0)}) · <b>${a.multiple.toFixed(1)}x</b> the alerted size · avg entry ${price(a.avgEntry)} → ${a.markPx != null ? price(a.markPx) : 'n/a'} · whale ${ret}` };
   const title = a.kind === 'exit' ? `closed <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b>` : `cut <b>${Math.round(a.trimPct * 100)}%</b> of <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b>`;
   return { title, stats: a.kind === 'exit'
     ? `Held ${hrs(a.heldMs)} · entry ${price(a.entryPrice)} → exit ${a.exitExact ? '' : '~'}${a.exitPx != null ? price(a.exitPx) : 'n/a'} · whale ${ret}`
@@ -653,10 +657,10 @@ function alertLine(a) {
   if (a.kind) {
     const x = exitLine(a);
     return `<div class="alert-item exit-item ${a.kind}${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
-      <div class="exit-ico">${a.kind === 'exit' ? 'EXIT' : 'TRIM'}</div>
+      <div class="exit-ico">${a.kind.toUpperCase()}</div>
       <div class="ai-body"><div class="ai-title">${esc(a.trader)} ${x.title} <span class="muted">· ${ago(new Date(a.t).toISOString())}</span></div>
       <div class="ai-stats">${x.stats}</div>
-      <div class="ai-actions"><button class="gold-btn sm" data-mybets>My bets</button><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div></div></div>`;
+      <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div></div></div>`;
   }
   const d30 = a.record?.d30 || {}, d7 = a.record?.d7, tr = a.record?.trust || { grade: '?' };
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
@@ -767,15 +771,15 @@ function announceExit(a, count) {
   const x = exitLine(a), pop = $('alertPop');
   sfx.alarm();
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">${a.kind === 'exit' ? 'Whale exit' : 'Whale trimming'}${count > 1 ? ` · +${count - 1} more` : ''}</div>
-    <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind === 'exit' ? 'EXIT' : 'TRIM'}</div>
-      <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">Following this whale? Check your position.</div></div></div>
-    <div class="ai-actions"><button class="gold-btn sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
+    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind.toUpperCase()}</div>
+      <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">${a.kind === 'add' ? 'The whale is doubling down.' : 'Following this whale? Check your position.'}</div></div></div>
+    <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
   pop.hidden = false;
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(a.kind === 'exit' ? `Whale exit · ${a.coin}` : `Whale trimming · ${a.coin}`, { body: `${a.trader} ${a.kind === 'exit' ? 'closed' : `cut ${Math.round(a.trimPct * 100)}% of`} ${a.side.toUpperCase()} ${a.coin}`, tag: a.id });
+    const n = new Notification(`${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding' }[a.kind]} · ${a.coin}`, { body: `${a.trader} ${a.kind === 'exit' ? 'closed' : a.kind === 'add' ? `grew to ${a.multiple.toFixed(1)}x on` : `cut ${Math.round(a.trimPct * 100)}% of`} ${a.side.toUpperCase()} ${a.coin}`, tag: a.id });
     n.onclick = () => { window.focus(); n.close(); };
   }
 }
