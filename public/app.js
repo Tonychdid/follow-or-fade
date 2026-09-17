@@ -63,7 +63,9 @@ async function boot() {
   pollLoop();
   // links like /?view=live (from Telegram alerts) open straight on that tab
   const startView = (() => { try { return new URL(location.href).searchParams.get('view'); } catch { return null; } })();
-  if (startView && document.querySelector(`.tab[data-view="${startView}"]`) && startView !== 'replay') {
+  const startTrade = (() => { try { return new URL(location.href).searchParams.get('trade'); } catch { return null; } })();
+  if (startTrade) { pickCollapsedByLink = true; setTimeout(() => goToTrade(startTrade), 60); }
+  if (!startTrade && startView && document.querySelector(`.tab[data-view="${startView}"]`) && startView !== 'replay') {
     history.replaceState(null, '', location.pathname);
     setTimeout(() => document.querySelector(`.tab[data-view="${startView}"]`).click(), 50);
   }
@@ -537,7 +539,7 @@ function liveCard(t) {
       <button class="hz" data-min="240"><b>Cigar Lounge</b><small>4 hours</small></button>
       <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 48h)"><b>Ride the Whale</b><small>until exit</small></button>
     </div>
-    <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
+    <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">100</button><button class="minichip g" data-add="500">500</button><button class="minichip r" data-add="1000">1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
     <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale profile on Nansen ↗</a><a class="trade-nansen" href="https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(t.coin)}&chain=hyperliquid" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Nansen ↗</a></div>
@@ -554,7 +556,7 @@ function wireLive() {
     });
     card.querySelectorAll('.hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
     card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
-      input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
+      input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(Math.floor(player.bankroll), Number(c.dataset.add));
       sfx.chip(); if (c.dataset.add === 'all') { sparkleAt(c, 20); toast('All in. The house respects it.'); }
     });
     const rq = card.querySelector('.rq-btn');
@@ -622,7 +624,22 @@ function updateBadge() {
   const el = $('alertCount'); el.hidden = !n; el.textContent = n > 9 ? '9+' : n;
   $('alertBtn').classList.toggle('ringing', n > 0);
 }
+function exitLine(a) {
+  const ret = a.whaleRet != null ? `<b class="${a.whaleRet >= 0 ? 'pos' : 'neg'}">${pct(a.whaleRet, 2)}</b>` : 'n/a';
+  const title = a.kind === 'exit' ? `closed <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b>` : `cut <b>${Math.round(a.trimPct * 100)}%</b> of <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b>`;
+  return { title, stats: a.kind === 'exit'
+    ? `Held ${hrs(a.heldMs)} · entry ${price(a.entryPrice)} → exit ${a.exitExact ? '' : '~'}${a.exitPx != null ? price(a.exitPx) : 'n/a'} · whale ${ret}`
+    : `${Math.round(a.remainingPct * 100)}% still open · entry ${price(a.entryPrice)} → now ${a.markPx != null ? price(a.markPx) : 'n/a'} · whale ${ret}` };
+}
 function alertLine(a) {
+  if (a.kind) {
+    const x = exitLine(a);
+    return `<div class="alert-item exit-item ${a.kind}${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
+      <div class="exit-ico">${a.kind === 'exit' ? 'EXIT' : 'TRIM'}</div>
+      <div class="ai-body"><div class="ai-title">${esc(a.trader)} ${x.title} <span class="muted">· ${ago(new Date(a.t).toISOString())}</span></div>
+      <div class="ai-stats">${x.stats}</div>
+      <div class="ai-actions"><button class="gold-btn sm" data-mybets>My bets</button><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div></div></div>`;
+  }
   const d30 = a.record?.d30 || {}, d7 = a.record?.d7, tr = a.record?.trust || { grade: '?' };
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
     <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
@@ -690,15 +707,26 @@ document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-betalert]');
   if (!b) return;
   $('alertPanel').hidden = true; $('alertPop').hidden = true;
-  const key = b.dataset.betalert;
-  document.querySelector('.tab[data-view="live"]').click();
-  for (let i = 0; i < 60; i++) { if (document.querySelector('.lcard')) break; await sleep(250); }
-  const card = [...document.querySelectorAll('.lcard')].find((c) => c.dataset.key === key);
-  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 3500); }
-  else toast('That trade is no longer on the floor');
+  goToTrade(b.dataset.betalert);
 });
+/** Open the Live Floor and bring one whale's card into view (alerts, Telegram "Bet on it" links). */
+async function goToTrade(key) {
+  if (history.replaceState) history.replaceState(null, '', location.pathname);
+  collapsePick();
+  document.querySelector('.tab[data-view="live"]').click();
+  let card = null;
+  for (let i = 0; i < 80 && !card; i++) {
+    card = [...document.querySelectorAll('.lcard')].find((c) => c.dataset.key === key);
+    if (!card) await sleep(250);
+  }
+  if (!card) return toast("That whale's trade is no longer on the floor. Here are the latest whales.");
+  await sleep(350);
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 4000);
+}
 
 function announceAlert(a, count) {
+  if (a.kind) return announceExit(a, count);
   const tr = a.record?.trust || { grade: '?' }, d30 = a.record?.d30 || {};
   sfx.alarm();
   const pop = $('alertPop');
@@ -716,6 +744,28 @@ function announceAlert(a, count) {
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
+
+function announceExit(a, count) {
+  const x = exitLine(a), pop = $('alertPop');
+  sfx.alarm();
+  pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
+    <div class="ap-kicker">${a.kind === 'exit' ? 'Whale exit' : 'Whale trimming'}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind === 'exit' ? 'EXIT' : 'TRIM'}</div>
+      <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">Following this whale? Check your position.</div></div></div>
+    <div class="ai-actions"><button class="gold-btn sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
+  pop.hidden = false;
+  $('popClose').onclick = () => (pop.hidden = true);
+  clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const n = new Notification(a.kind === 'exit' ? `Whale exit · ${a.coin}` : `Whale trimming · ${a.coin}`, { body: `${a.trader} ${a.kind === 'exit' ? 'closed' : `cut ${Math.round(a.trimPct * 100)}% of`} ${a.side.toUpperCase()} ${a.coin}`, tag: a.id });
+    n.onclick = () => { window.focus(); n.close(); };
+  }
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-mybets]')) return;
+  $('alertPanel').hidden = true; $('alertPop').hidden = true;
+  if (sheetMode()) openSheet(); else $('rail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 // ================================================= coach: lessons + skill report
 function renderLesson(l) {
@@ -881,7 +931,9 @@ function entryHtml(ins, mid) {
 }
 
 // ---- Insider Pick of the Day
-let pickData = null;
+let pickData = null, pickCollapsedByLink = false;
+const pickOpenPref = () => store.get('fof_pick_open') === '1';
+function collapsePick() { store.set('fof_pick_open', '0'); if (pickData) renderPick(); }
 async function loadPick() {
   const r = await api('/api/research/pick' + (player ? `?player=${player.id}` : '')).catch(() => null);
   if (!r) return;
@@ -897,9 +949,23 @@ function renderPick() {
   }
   const p = r.pick, live = r.status === 'ready';
   const ticker = p.coin.split(':').pop();
+  const inIt = r.myOpen > 0;
+  if (!pickOpenPref() || pickCollapsedByLink) {
+    const e = p.insider.entry, vs = e && r.mid ? (r.mid - e.price) / e.price : null;
+    box.innerHTML = `<button class="pick-bar${live ? '' : ' old'}" aria-expanded="false">
+      <span class="pb-label">${MAG}<b>${live ? 'Insider Pick' : "Yesterday's pick"}</b><small>Nansen Agent</small></span>
+      <span class="pb-id"><span class="side ${p.side}">${p.side.toUpperCase()}</span><b>${esc(ticker)}</b></span>
+      <span class="rq-sig ${p.insider.signal}">${SIG_TXT[p.insider.signal]}</span>
+      ${vs != null ? `<span class="pb-vs ${vs >= 0 ? 'pos' : 'neg'}">${pct(vs, 1)} vs insiders</span>` : ''}
+      ${inIt ? '<span class="pb-in">You\'re in · see My bets</span>' : ''}
+      <span class="pb-open">View</span></button>`;
+    box.querySelector('.pick-bar').onclick = () => { pickCollapsedByLink = false; store.set('fof_pick_open', '1'); sfx.tick(); renderPick(); };
+    return;
+  }
   const conv = Array.from({ length: 5 }, (_, i) => `<i class="${i < p.conviction ? 'on' : ''}"></i>`).join('');
   const facts = [['Earnings', p.earnings], ['Valuation', p.valuation], ['Risks', p.risks]].filter(([, v]) => usable(v));
   box.innerHTML = `<article class="pick${live ? '' : ' old'}">
+    <button class="pk-hide" aria-label="Hide the Insider Pick">Hide ▴</button>
     <div class="pk-ribbon">${live ? 'Insider Pick of the Day' : "Yesterday's Insider Pick · today's screen is coming"}</div>
     <div class="pk-top">
       <div class="pk-id"><span class="side ${p.side}">${p.side.toUpperCase()}</span><span class="coin">${coinHtml(p.coin)}</span><span class="pk-co">${esc(p.company || '')}</span></div>
@@ -917,16 +983,17 @@ function renderPick() {
     ${live ? `<div class="pk-bet">
       <div class="pk-hz-title">How long do you hold? <span>Insiders can't sell for a profit within 6 months (SEC short-swing rule), and most of the move after insider buying builds over months.</span></div>
       <div class="horizons pk-hz">${(r.horizons || [7, 30, 180]).map((d) => `<button class="hz${d === 30 ? ' on' : ''}" data-days="${d}"><b>${{ 7: '1 Week', 30: '1 Month', 180: '6 Months' }[d] || d + ' days'}</b><small>${{ 7: 'quick read', 30: 'the sweet spot', 180: 'insider clock' }[d] || ''}</small></button>`).join('')}</div>
-      <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
+      <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">100</button><button class="minichip g" data-add="500">500</button><button class="minichip r" data-add="1000">1K</button><button class="minichip k" data-add="all">ALL</button></div>
       <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${r.odds.follow.toFixed(2)}</small></button><button class="bet fade" data-choice="fade"><span>FADE</span><small>x${r.odds.fade.toFixed(2)}</small></button></div>
     </div>` : ''}
     <div class="links"><span class="pk-src">Nansen Agent Expert · ${p.screened ? `${p.screened} Hyperliquid stocks screened` : 'Hyperliquid stocks'}${p.tools?.length ? ` · ${p.tools.filter((x) => x.startsWith('stocks_')).length} stock data tools` : ''}. AI research, verify before trading.</span><a class="trade-nansen" href="${nansenTrade(p.coin)}" target="_blank" rel="noopener">Trade ${esc(ticker)} on Nansen ↗</a></div>
     ${refLink('ref-under')}
   </article>`;
   const card = box.querySelector('.pick'), input = card.querySelector('input');
+  card.querySelector('.pk-hide').onclick = () => { sfx.tick(); collapsePick(); };
   card.querySelectorAll('.pk-hz .hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.pk-hz .hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
   card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
-    input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
+    input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(Math.floor(player.bankroll), Number(c.dataset.add));
     sfx.chip(); if (c.dataset.add === 'all') sparkleAt(c, 20);
   });
   card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
@@ -939,6 +1006,7 @@ function renderPick() {
       const b = await api('/api/research/pick/bet', { player: player.id, choice, stake, days });
       prevStatus.set(b.id, 'open');
       pending = pending.filter((x) => x !== tmp); lastBets = [b, ...lastBets]; renderLanes(); sfx.chip();
+      pickData.myOpen = (pickData.myOpen || 0) + 1; collapsePick();
       toast(`Chips down on the Insider Pick: ${choice === 'follow' ? 'following' : 'fading'} ${ticker} for ${usd(stake)}, settles in ${days === 7 ? '1 week' : days === 30 ? '1 month' : '6 months'}`);
       nudgeBets(); pollBets();
     } catch (e) { pending = pending.filter((x) => x !== tmp); renderLanes(); player.bankroll += stake; renderPlayer(); toast(e.message); }

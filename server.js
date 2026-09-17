@@ -123,6 +123,7 @@ const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds 
 setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
+setInterval(() => alerts.checkExits().catch(() => {}), 2 * 60e3); // exit alerts: whales we alerted on trimming or closing
 setInterval(calibrate, 60 * 60e3);
 setInterval(() => game.settleLive().catch(() => {}), 5e3);
 // keep the Live Floor warm (whale data is cached per hour, the trade feed per 15 min)
