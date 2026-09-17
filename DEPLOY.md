@@ -22,6 +22,7 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `PUBLIC` | `1` | turns on public-site protections |
 | `ADMIN_TOKEN` | a long random password you invent (e.g. 30+ letters and numbers) | lets only you change alert rules and Telegram |
 | `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | optional: your Nansen referral link (already the default) |
+| `RIDE_MAX_HOURS` | `48` | optional: longest a Ride the Whale bet can stay open |
 | `AGENT_DAILY_CREDITS` | `1600` | optional: daily credits for Nansen Agent research (1 daily Insider Pick + ~4 company checks) |
 | `BETA_ENDS` | `2026-10-11` | optional: last day of the free beta shown in the countdown |
 | `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |

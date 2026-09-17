@@ -37,7 +37,7 @@ const coinHtml = (c) => c.includes(':') ? `<small class="dex">${esc(c.split(':')
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const LANES = { 15: 'Espresso Shot', 30: 'Espresso Shot', 60: 'Cigar Lounge', 240: 'Cigar Lounge', 1440: 'Insider Pick', ride: 'Ride the Whale' };
-const laneOf = (b) => (b.pick || Number(b.minutes) === 1440 ? '1440' : b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
+const laneOf = (b) => (b.pick ? 'pick' : b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
 const hrs = (ms) => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`; };
 
 let player = null, round = null, lastResult = null;
@@ -147,7 +147,7 @@ function renderLanes() {
   const now = Date.now();
   const open = [...pending, ...lastBets.filter((b) => b.status === 'open')];
   let total = 0;
-  for (const min of ['15', '240', '1440', 'ride']) {
+  for (const min of ['15', '240', 'pick', 'ride']) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
     const mine = open.filter((b) => laneOf(b) === min);
     total += mine.length;
@@ -205,7 +205,7 @@ function updateRow(row, b, now) {
   const arc = row.querySelector('.arc'); arc.setAttribute('stroke', col); arc.setAttribute('stroke-dashoffset', RING * (1 - frac));
   const mm = Math.floor(left / 60e3), ss = Math.floor((left % 60e3) / 1000);
   const hh = Math.floor(left / 3600e3), rm = Math.floor((left % 3600e3) / 60e3);
-  row.querySelector('.lbl').textContent = b.ride ? 'RIDE' : left >= 3600e3 ? `${hh}h${String(rm).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
+  row.querySelector('.lbl').textContent = b.ride ? 'RIDE' : left >= 48 * 3600e3 ? `${Math.round(left / 864e5)}d` : left >= 3600e3 ? `${hh}h${String(rm).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
   // intensity 0..3 from how confidently the bet is winning or losing right now
   const conf = b.pWin == null ? 0 : Math.abs(b.pWin - 0.5) * 2;
   const level = mood === 'meh' ? 0 : conf > 0.75 ? 3 : conf > 0.4 ? 2 : 1;
@@ -272,7 +272,7 @@ async function announceSettled(settledNow) {
     renderPlayer();
     for (const b of settledNow) {
       const net = (b.payout ?? 0) - b.stake;
-      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `24h cap on ${b.coin}`) : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
+      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap on ${b.coin}`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
       if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}`); }
       else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}`); }
       else { sfx.push(); toast(`Push on ${b.coin}: stake returned`); }
@@ -535,7 +535,7 @@ function liveCard(t) {
     <div class="horizons">
       <button class="hz" data-min="15" title="Quick and just for fun: doesn't count toward your Skill Report"><b>Espresso</b><small>15 min</small></button>
       <button class="hz" data-min="240"><b>Cigar Lounge</b><small>4 hours</small></button>
-      <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 24h)"><b>Ride the Whale</b><small>until exit</small></button>
+      <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 48h)"><b>Ride the Whale</b><small>until exit</small></button>
     </div>
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
@@ -569,7 +569,7 @@ function wireLive() {
       const choice = btn.dataset.choice;
       // 1) show it on Your Table instantly
       const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: t.coin, whaleSide: t.side, choice, stake,
-        price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + (minutes === 'ride' ? 24 * 3600e3 : minutes * 60e3), minutes, ride: minutes === 'ride', status: 'open' };
+        price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + (minutes === 'ride' ? 48 * 3600e3 : minutes * 60e3), minutes, ride: minutes === 'ride', status: 'open' };
       pending.push(tmp); renderLanes();
       player.bankroll -= stake; renderPlayer();
       sfx.bet(); sparkleAt(btn, 26);
@@ -819,7 +819,7 @@ $('waitForm').addEventListener('submit', async (e) => {
     sfx.win(false);
     try { coinRain(40); } catch {}
     $('wfDone').hidden = false;
-    $('wfDone').textContent = r.already ? "You're already on the list. We updated your plan." : `Seat saved. You're #${r.position} on the list. Enjoy the free beta meanwhile.`;
+    $('wfDone').textContent = r.already ? "You're already on the list. We updated your plan." : "Seat saved. You'll hear from us first when plans open. Enjoy the free beta meanwhile.";
   } catch (err) { toast(err.message); }
   btn.disabled = false;
 });
@@ -842,6 +842,7 @@ function intelHtml(i, side) {
   const rows = [['Ownership', i.ownership], ['Last earnings', i.earnings?.last], ['Next earnings', i.earnings?.next], ['Valuation', i.valuation]].filter(([, v]) => usable(v));
   return `<div class="rq-head"><b>${esc(i.company || i.ticker)}</b><span class="rq-sig ${i.insider.signal}">${SIG_TXT[i.insider.signal]}</span></div>
     ${i.insider.detail ? `<p class="rq-detail">${esc(i.insider.detail)}</p>` : ''}
+    ${entryHtml(i.insider, liveItems.get([...liveItems.keys()].find((k) => liveItems.get(k).coin.split(':').pop() === i.ticker))?.mid)}
     <p class="rq-vs ${al}">The whale is <b>${side.toUpperCase()}</b>: ${al === 'aligned' ? 'insiders point the same way' : al === 'against' ? 'insiders point the other way' : 'insiders give no clear direction'}.</p>
     <dl class="rq-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${i.verdict ? `<p class="rq-verdict">${esc(i.verdict)}</p>` : ''}
@@ -863,6 +864,20 @@ async function openResearch(card, t) {
     if (r.status !== 'loading') { panel.innerHTML = `<p class="rq-msg">${esc(r.message || 'The Research Desk has no brief for this stock right now.')}</p>`; return; }
   }
   panel.innerHTML = '<p class="rq-msg">Nansen Agent is still working on it. Open this again in a moment.</p>';
+}
+
+const fmtDay = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function entryHtml(ins, mid) {
+  const e = ins?.entry;
+  if (!e) return '';
+  const vs = mid ? (mid - e.price) / e.price : null;
+  const when = e.from ? (e.from === e.to ? fmtDay(e.from) : `${fmtDay(e.from)}–${fmtDay(e.to)}`) : '';
+  const age = e.to ? Math.max(0, Math.round((Date.now() - Date.parse(e.to + 'T00:00:00Z')) / 864e5)) : null;
+  return `<div class="pk-entry">
+    <div><small>Insiders bought at</small><b>~$${e.price.toLocaleString('en-US', { maximumFractionDigits: e.price < 10 ? 4 : 2 })}</b><em>${e.source === 'chart' ? 'estimate: average Hyperliquid price on the report dates' : 'average from the filings'}</em></div>
+    ${mid ? `<div><small>Price now</small><b>$${mid.toLocaleString('en-US', { maximumFractionDigits: mid < 10 ? 4 : 2 })}</b><em class="${vs >= 0 ? 'pos' : 'neg'}">${pct(vs, 1)} vs insiders</em></div>` : ''}
+    ${when ? `<div><small>Reported</small><b>${when}</b><em class="${age <= 5 ? 'pos' : age > 14 ? 'neg' : ''}">${age === 0 ? 'today' : age === 1 ? '1 day ago' : `${age} days ago`}${age > 14 ? ' · stale' : age <= 5 ? ' · fresh' : ''}</em></div>` : ''}
+  </div>`;
 }
 
 // ---- Insider Pick of the Day
@@ -892,6 +907,7 @@ function renderPick() {
     </div>
     <div class="pk-sig"><span class="rq-sig ${p.insider.signal}">${SIG_TXT[p.insider.signal]}</span><span class="pk-conv" title="Nansen Agent conviction ${p.conviction}/5">Conviction ${conv}</span></div>
     ${p.insider.detail ? `<p class="pk-detail">${esc(p.insider.detail)}</p>` : ''}
+    ${entryHtml(p.insider, r.mid)}
     ${p.thesis ? `<p class="pk-thesis">${esc(p.thesis)}</p>` : ''}
     <details class="pk-more"><summary>Full research</summary>
       ${p.thesis ? `<p class="pk-thesis m">${esc(p.thesis)}</p>` : ''}
@@ -899,27 +915,31 @@ function renderPick() {
       ${p.runnersUp?.length ? `<div class="pk-runners"><small>Runners-up</small>${p.runnersUp.map((x) => `<span><b>${esc(x.ticker)}</b> ${esc(x.why || '')}</span>`).join('')}</div>` : ''}
     </details>
     ${live ? `<div class="pk-bet">
+      <div class="pk-hz-title">How long do you hold? <span>Insiders can't sell for a profit within 6 months (SEC short-swing rule), and most of the move after insider buying builds over months.</span></div>
+      <div class="horizons pk-hz">${(r.horizons || [7, 30, 180]).map((d) => `<button class="hz${d === 30 ? ' on' : ''}" data-days="${d}"><b>${{ 7: '1 Week', 30: '1 Month', 180: '6 Months' }[d] || d + ' days'}</b><small>${{ 7: 'quick read', 30: 'the sweet spot', 180: 'insider clock' }[d] || ''}</small></button>`).join('')}</div>
       <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
-      <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${r.odds.follow.toFixed(2)} · 24h</small></button><button class="bet fade" data-choice="fade"><span>FADE</span><small>x${r.odds.fade.toFixed(2)} · 24h</small></button></div>
+      <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${r.odds.follow.toFixed(2)}</small></button><button class="bet fade" data-choice="fade"><span>FADE</span><small>x${r.odds.fade.toFixed(2)}</small></button></div>
     </div>` : ''}
     <div class="links"><span class="pk-src">Nansen Agent Expert · ${p.screened ? `${p.screened} Hyperliquid stocks screened` : 'Hyperliquid stocks'}${p.tools?.length ? ` · ${p.tools.filter((x) => x.startsWith('stocks_')).length} stock data tools` : ''}. AI research, verify before trading.</span><a class="trade-nansen" href="${nansenTrade(p.coin)}" target="_blank" rel="noopener">Trade ${esc(ticker)} on Nansen ↗</a></div>
     ${refLink('ref-under')}
   </article>`;
   const card = box.querySelector('.pick'), input = card.querySelector('input');
+  card.querySelectorAll('.pk-hz .hz').forEach((h) => h.onclick = () => { card.querySelectorAll('.pk-hz .hz').forEach((x) => x.classList.toggle('on', x === h)); sfx.tick(); });
   card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
     input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
     sfx.chip(); if (c.dataset.add === 'all') sparkleAt(c, 20);
   });
   card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
     const stake = Math.floor(Number(input.value)), choice = btn.dataset.choice;
+    const days = Number(card.querySelector('.pk-hz .hz.on')?.dataset.days || 30);
     if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
-    const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: p.coin, whaleSide: p.side, choice, stake, price: r.odds[choice], entry: r.mid, placedAt: Date.now(), settleAt: Date.now() + 864e5, minutes: 1440, pick: true, status: 'open' };
+    const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: p.coin, whaleSide: p.side, choice, stake, price: r.odds[choice], entry: r.mid, placedAt: Date.now(), settleAt: Date.now() + days * 864e5, minutes: days * 1440, pickDays: days, pick: true, status: 'open' };
     pending.push(tmp); renderLanes(); player.bankroll -= stake; renderPlayer(); sfx.bet(); sparkleAt(btn, 26);
     try {
-      const b = await api('/api/research/pick/bet', { player: player.id, choice, stake });
+      const b = await api('/api/research/pick/bet', { player: player.id, choice, stake, days });
       prevStatus.set(b.id, 'open');
       pending = pending.filter((x) => x !== tmp); lastBets = [b, ...lastBets]; renderLanes(); sfx.chip();
-      toast(`Chips down on the Insider Pick: ${choice === 'follow' ? 'following' : 'fading'} ${ticker} for ${usd(stake)}, settles in 24h`);
+      toast(`Chips down on the Insider Pick: ${choice === 'follow' ? 'following' : 'fading'} ${ticker} for ${usd(stake)}, settles in ${days === 7 ? '1 week' : days === 30 ? '1 month' : '6 months'}`);
       nudgeBets(); pollBets();
     } catch (e) { pending = pending.filter((x) => x !== tmp); renderLanes(); player.bankroll += stake; renderPlayer(); toast(e.message); }
   });

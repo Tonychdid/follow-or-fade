@@ -77,7 +77,7 @@ const routes = {
     return r.status === 'loading' && q.get('wait') ? agent.waitIntel(coin, 20e3) : r;
   },
   'GET /api/research/pick': async (_, q) => game.pickView(q.get('player')),
-  'POST /api/research/pick/bet': async (b) => game.placePickBet(b.player, b.choice, b.stake),
+  'POST /api/research/pick/bet': async (b) => game.placePickBet(b.player, b.choice, b.stake, b.days),
   'GET /api/live/bets': async (_, q) => game.liveBetsFor(q.get('player')),
 };
 
