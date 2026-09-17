@@ -1,9 +1,23 @@
-MIT License
+Follow or Fade
+Copyright (c) 2026 Avyrion Capital (avyrioncapital.com). All rights reserved.
 
-Copyright (c) 2026
+This source code is published for viewing and evaluation only.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+You MAY:
+  - read the code, and download and run it on your own computer to evaluate it,
+    including for judging the Nansen Meridian Buildathon.
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+You may NOT, without prior written permission from the copyright holder:
+  - copy, modify, merge, publish, distribute, sublicense or sell the code
+    or any substantial part of it;
+  - host it, or any work derived from it, as a public or commercial service;
+  - use the "Follow or Fade" name, design or branding.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+Forking this repository on GitHub creates a copy for viewing only and grants
+none of the rights above.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Permission requests: avyrioncapital.com

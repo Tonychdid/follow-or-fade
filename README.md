@@ -115,11 +115,28 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `MAX_HOLD_HOURS` | 24 | Training hands are judged on the whale's real exit, capped at this many hours |
 | `CALIBRATION_SAMPLE` | 60 | Trades resolved per hourly calibration run |
 | `DEMO` | 0 | `1` forces demo data |
+| `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | Nansen referral link used for every "New to Nansen? Sign up" link and in Telegram alerts |
+| `NANSEN_PROMO_CODE` | `AVYRION` | Code shown next to the referral link |
+| `BETA_ENDS` | `2026-10-11` | Last day of the free beta (UTC, YYYY-MM-DD). Drives the countdown on the site; nothing gets locked |
 | `DAILY_CREDIT_CAP` | none | Max Nansen credits per UTC day. Above it the app serves cached data and demo whales, and pauses odds training and alerts |
 | `PUBLIC` | 0 | `1` for a public deployment: per-IP rate limits, alert rules and Telegram become admin-only |
 | `ADMIN_TOKEN` | none | With `PUBLIC=1`, open `/?admin=TOKEN` once to manage alerts |
 | `DATA_DIR` | `data` | Where bankrolls, bets and the leaderboard are stored (mount a volume here when hosting) |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
+
+## Free beta and plans
+
+Everything is free during the beta. The **Plans** page shows where the Academy is heading, and players can join a waitlist (no payment is taken):
+
+| Plan | Price | What it unlocks |
+|---|---|---|
+| Guest | $0 | 5 training hands a day, watch the Live Floor, basic level |
+| Player | $9/month | Unlimited training, live bets on all three tables, cash out, full Skill Report, Trade on Nansen |
+| High Roller | $29/month | Everything in Player plus real-time Telegram whale alerts with graded-whale filters |
+
+The alert scanner runs once for everyone, so Premium alerts cost the same in Nansen credits whether 10 or 1,000 people receive them.
+
+Download the waitlist as a spreadsheet: open `/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in a browser.
 
 ## Project layout
 
@@ -146,3 +163,7 @@ Play money only. Results in a game do not guarantee real trading results. Nothin
 3. Open your new bot in Telegram, press **Start**, then click **I pressed Start** in the app. You'll get a test message.
 
 The token is stored only on your machine in `data/alertcfg.json`, which is ignored by git.
+
+## License
+
+Copyright (c) 2026 Avyrion Capital. All rights reserved. You can read, download and run this code to evaluate it (including for the Nansen Meridian Buildathon), but you may not copy, redistribute, host or sell it without written permission. See [LICENSE](LICENSE).

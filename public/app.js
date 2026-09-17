@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 
 // Auto-fit: scale the desktop layout so the whole Training Table (card, tells, chips, FOLLOW/FADE) and
 // Your Table fit on screen without scrolling. 100% on big monitors, ~80% on 1080p, never below 70%.
-const DESIGN_W = 1500, DESIGN_H = 850;
+const DESIGN_W = 1500, DESIGN_H = 886;
 function autoFit() {
   const w = window.innerWidth, h = window.innerHeight;
   const fit = w < 1100 ? 1 : Math.max(0.7, Math.min(1, (h - 8) / DESIGN_H, w / DESIGN_W));
@@ -41,6 +41,8 @@ const laneOf = (b) => (b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minute
 const hrs = (ms) => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`; };
 
 let player = null, round = null, lastResult = null;
+let REF = { url: 'https://nsn.ai/avyrion', code: 'AVYRION' };
+const refLink = (cls = '') => `<a class="ref-link ${cls}" href="${esc(REF.url)}" target="_blank" rel="noopener sponsored">New to Nansen? Sign up with code <b class="ref-code">${esc(REF.code)}</b> ↗</a>`;
 let shownBank = 10000;
 
 // ================================================= boot
@@ -103,6 +105,8 @@ function renderPlayer() {
 async function refreshStatus() {
   const s = await api('/api/status').catch(() => null);
   if (!s) return;
+  renderBeta(s.beta);
+  if (s.ref?.url) { REF = s.ref; document.querySelectorAll('a.ref-link').forEach((a) => (a.href = REF.url)); document.querySelectorAll('.ref-code').forEach((b) => (b.textContent = REF.code)); }
   $('demoBadge').hidden = !(s.usage.demo || s.usage.capped);
   $('demoBadge').textContent = s.usage.capped ? 'DEMO DATA · daily cap reached' : 'DEMO DATA';
   $('demoBadge').title = s.usage.capped ? "Today's Nansen credit budget for the public site is used up. Cached whale data and demo whales until midnight UTC." : 'No Nansen API key: sample whales on real Hyperliquid prices';
@@ -370,6 +374,7 @@ function showReveal(res, choice) {
   rt.href = `https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(r.coin)}&chain=hyperliquid`;
   rt.textContent = res.result === 'win' ? `You read it right. Trade ${r.coin} for real on Nansen ↗` : `Study ${r.coin} on Nansen ↗`;
   rt.hidden = false;
+  $('refTable').hidden = false;
   refreshReport();
   const felt = document.querySelector('.felt');
   if (res.result === 'win') {
@@ -435,7 +440,8 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   sfx.tick();
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.dataset.view === t.dataset.view));
   closeSheet();
-  if (t.classList.contains('bn')) window.scrollTo({ top: 0 });
+  if (t.classList.contains('bn') || t.dataset.view === 'plans') window.scrollTo({ top: 0 });
+  $('betaStrip').classList.toggle('on-plans', t.dataset.view === 'plans');
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + t.dataset.view));
   if (t.dataset.view === 'board') loadBoard();
   if (t.dataset.view === 'live') loadLive();
@@ -533,6 +539,7 @@ function liveCard(t) {
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${t.odds.follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${t.odds.fade.toFixed(2)}</small></button></div>
     <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale profile on Nansen ↗</a><a class="trade-nansen" href="https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(t.coin)}&chain=hyperliquid" target="_blank" rel="noopener">Trade ${esc(t.coin)} on Nansen ↗</a></div>
+    ${refLink('ref-under')}
   </div>`;
 }
 function wireLive() {
@@ -760,7 +767,7 @@ function renderReport(r) {
     </div>
     <div class="report-card"><h4>Every pattern we track</h4><div class="pat-grid">${r.patterns.map(pat).join('')}</div></div>
     <div class="report-card cta"><div><h4>Ready to use what you learned?</h4><p>Nansen has the same Smart Money data and a built-in trading app for Hyperliquid perps. Practice here, then trade the patterns you are best at for real.</p></div>
-      <a class="nansen-btn big" href="https://app.nansen.ai/token-god-mode?tokenAddress=BTC&chain=hyperliquid" target="_blank" rel="noopener">Open Nansen trading ↗</a></div>
+      <div class="ref-actions"><a class="nansen-btn big" href="https://app.nansen.ai/token-god-mode?tokenAddress=BTC&chain=hyperliquid" target="_blank" rel="noopener">Open Nansen trading ↗</a><span class="ref-codeline">New to Nansen? <a class="ref-link" href="${esc(REF.url)}" target="_blank" rel="noopener sponsored">Sign up with code <b class="ref-code">${esc(REF.code)}</b> ↗</a></span></div></div>
     <p class="disclaimer">Play money only. Past results in a game do not guarantee real trading results. Not financial advice.</p>`;
 }
 $('levelMini').onclick = () => document.querySelector('.tab[data-view="report"]').click();
@@ -777,3 +784,38 @@ window.addEventListener('resize', () => { if (!sheetMode()) closeSheet(); });
 function nudgeBets() { const b = $('betsBtn'); b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); }
 
 boot();
+
+
+// ================================================= free beta + plans
+function renderBeta(b) {
+  if (!b) return;
+  const d = b.daysLeft;
+  $('betaDays').textContent = d == null || d <= 0 ? '' : ` · ${d} day${d === 1 ? '' : 's'} left`;
+  const ends = Date.parse(b.ends + 'T12:00:00Z');
+  if (d > 0 && Number.isFinite(ends)) $('betaEnds').textContent = new Date(ends).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+$('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
+let wantPlan = 'premium';
+document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', () => {
+  sfx.chip();
+  if (b.dataset.plan === 'free') return document.querySelector('.tab[data-view="replay"]').click();
+  wantPlan = b.dataset.plan;
+  document.querySelectorAll('.plan').forEach((p) => p.classList.toggle('picked', p.contains(b)));
+  $('wfTitle').textContent = wantPlan === 'premium' ? 'Save your High Roller seat' : 'Save your Player seat';
+  $('waitForm').hidden = false; $('wfDone').hidden = true;
+  $('waitForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => $('wfEmail').focus({ preventScroll: true }), 450);
+}));
+$('waitForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('waitForm').querySelector('button'); if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const r = await api('/api/waitlist', { email: $('wfEmail').value, plan: wantPlan, player: player?.name || '' });
+    sfx.win(false);
+    try { coinRain(40); } catch {}
+    $('wfDone').hidden = false;
+    $('wfDone').textContent = r.already ? "You're already on the list. We updated your plan." : `Seat saved. You're #${r.position} on the list. Enjoy the free beta meanwhile.`;
+  } catch (err) { toast(err.message); }
+  btn.disabled = false;
+});

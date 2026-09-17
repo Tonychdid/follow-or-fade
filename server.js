@@ -12,6 +12,7 @@ loadEnv(ROOT);
 const nansen = await import('./lib/nansen.js');
 const game = await import('./lib/game.js');
 const alerts = await import('./lib/alerts.js');
+const waitlist = await import('./lib/waitlist.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
@@ -43,11 +44,11 @@ function limited(req, cost = 1, perMin = 240) {
   if (buckets.size > 20000) buckets.clear();
   return b.tokens < 0;
 }
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30 };
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: waitlist.beta(), ref: { url: process.env.NANSEN_REF_URL || 'https://nsn.ai/avyrion', code: process.env.NANSEN_PROMO_CODE || 'AVYRION' } }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/round': async (_, q) => game.newRound(q.get('player')),
@@ -64,6 +65,7 @@ const routes = {
   'GET /api/live': async () => game.liveFeed(),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
   'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
+  'POST /api/waitlist': async (b) => waitlist.join(b),
   'GET /api/live/bets': async (_, q) => game.liveBetsFor(q.get('player')),
 };
 
@@ -80,6 +82,13 @@ http.createServer(async (req, res) => {
     try { json(res, 200, await route(req.method === 'POST' ? await readBody(req) : {}, url.searchParams, req)); }
     catch (e) { if (e.status !== 403) console.error('[api]', url.pathname, e.message); json(res, e.status || 500, { error: e.message, code: e.code }); }
     return;
+  }
+  // Admin download of the waitlist: open /admin/waitlist.csv?token=YOUR_ADMIN_TOKEN in a browser
+  if (url.pathname === '/admin/waitlist.csv') {
+    req.headers['x-admin-token'] = url.searchParams.get('token') || '';
+    if (!isAdmin(req)) { res.writeHead(403); return res.end('Admin only'); }
+    res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="waitlist.csv"', 'Cache-Control': 'no-store', ...SECURITY });
+    return res.end(waitlist.csv());
   }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY });

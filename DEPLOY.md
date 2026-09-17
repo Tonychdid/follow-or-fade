@@ -21,6 +21,8 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `NANSEN_API_KEY` | your Nansen key | live Nansen data |
 | `PUBLIC` | `1` | turns on public-site protections |
 | `ADMIN_TOKEN` | a long random password you invent (e.g. 30+ letters and numbers) | lets only you change alert rules and Telegram |
+| `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | optional: your Nansen referral link (already the default) |
+| `BETA_ENDS` | `2026-10-11` | optional: last day of the free beta shown in the countdown |
 | `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
 | `DATA_DIR` | `/data` | where bankrolls, bets and the leaderboard are saved |
 
@@ -35,6 +37,9 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 
 ## 6. Manage your alerts (only you)
 Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is saved in that browser and removed from the address bar. The bell now shows the full alert settings and Telegram setup. Visitors only see the alerts.
+
+## 7. Download your waitlist
+Open `YOUR_URL/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in your browser. It downloads a spreadsheet with every email, the plan they picked and the date. Open it with Excel.
 
 ## Good to know
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".

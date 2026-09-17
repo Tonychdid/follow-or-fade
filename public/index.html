@@ -35,6 +35,7 @@
     <button class="tab" data-view="live">Live Floor <i class="dot"></i></button>
     <button class="tab" data-view="report">Skill Report</button>
     <button class="tab" data-view="board">Hall of Fame</button>
+    <button class="tab tab-plans" data-view="plans">Plans</button>
   </nav>
   <div class="me">
     <span id="demoBadge" class="badge" hidden>DEMO DATA</span>
@@ -46,6 +47,12 @@
     </div>
   </div>
 </header>
+
+<div id="betaStrip" class="beta-strip">
+  <span class="bs-pill">FREE BETA</span>
+  <span class="bs-txt"><span class="bs-long">Everything unlocked, no card needed</span><span class="bs-short">All unlocked</span><b id="betaDays"></b></span>
+  <button class="bs-go" id="betaGo">See plans <span aria-hidden="true">&rarr;</span></button>
+</div>
 
 <div class="layout">
 <main>
@@ -118,6 +125,7 @@
             <button id="btnNext" class="gold-btn">Deal the next hand</button>
             <button id="btnShare" class="ghost-btn">Share my card</button>
             <a id="btnRealTrade" class="nansen-btn" target="_blank" rel="noopener" hidden>Trade it for real on Nansen ↗</a>
+            <a id="refTable" hidden class="ref-link ref-under" href="https://nsn.ai/avyrion" target="_blank" rel="noopener sponsored">New to Nansen? Sign up with code <b class="ref-code">AVYRION</b> ↗</a>
           </div>
         </div>
         <p id="err" class="err" hidden></p>
@@ -154,6 +162,62 @@
     <div class="floor-head"><div><h2>Hall of Fame</h2><p class="muted">The biggest bankrolls in the house.</p></div></div>
     <div id="podium" class="podium"></div>
     <div class="board-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th>Bankroll</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ PLANS ============ -->
+  <section id="view-plans" class="view">
+    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">Follow or Fade is <b class="gold">free during the beta</b>. Every feature is unlocked for everyone until <b id="betaEnds" class="gold">launch</b>. After that, the Academy stays free to try, and members get the full floor.</p></div></div>
+
+    <div class="plans">
+      <article class="plan">
+        <div class="pl-head"><h3>Guest</h3><div class="price"><b>$0</b></div><p class="pl-sub">Try the Academy</p></div>
+        <ul>
+          <li>5 training hands a day on real Smart Money trades</li>
+          <li>Watch the Live Floor</li>
+          <li>Basic skill level</li>
+          <li>Hall of Fame</li>
+        </ul>
+        <button class="ghost-btn pl-cta" data-plan="free">Keep playing free</button>
+      </article>
+
+      <article class="plan">
+        <div class="pl-head"><h3>Player</h3><div class="price"><b>$9</b><span>/month</span></div><p class="pl-sub">Train, practice live, trade on Nansen</p></div>
+        <ul>
+          <li>Unlimited hands on the Training Table</li>
+          <li>Bet on live whale trades: Espresso, Cigar Lounge, Ride the Whale</li>
+          <li>Cash out anytime, full whale track records and trust grades</li>
+          <li>Full Skill Report: your strengths, leaks and level</li>
+          <li>One-tap Trade on Nansen when you're ready</li>
+        </ul>
+        <button class="ghost-btn pl-cta" data-plan="basic">Join the waitlist</button>
+      </article>
+
+      <article class="plan vip">
+        <div class="pl-ribbon">Never miss a whale</div>
+        <div class="pl-head"><h3>High Roller</h3><div class="price"><b>$29</b><span>/month</span></div><p class="pl-sub">Everything in Player, plus the signals</p></div>
+        <ul>
+          <li>Everything in Player</li>
+          <li><b>Real-time Telegram whale alerts</b> the moment a top trader opens</li>
+          <li>Only graded whales: win rate, coins traded, specialist filter</li>
+          <li>Your own filters: grade, size, coins</li>
+          <li>"Bet on it" and "Trade on Nansen" links right in the alert</li>
+        </ul>
+        <button class="gold-btn pl-cta" data-plan="premium">Join the waitlist</button>
+      </article>
+    </div>
+
+    <form id="waitForm" class="waitform" hidden>
+      <h3 id="wfTitle">Save your seat</h3>
+      <p class="muted" id="wfSub">Leave your email and you'll hear first when plans open, with a founding-player discount.</p>
+      <div class="wf-row"><input id="wfEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required maxlength="120"><button class="gold-btn" type="submit">Save my seat</button></div>
+      <p class="wf-done" id="wfDone" hidden></p>
+    </form>
+
+    <div class="ref-card">
+      <div><h3>Ready to trade for real?</h3><p class="muted">Follow or Fade is where you practice. Nansen is where you trade Hyperliquid perps with the same Smart Money data you trained on.</p></div>
+      <div class="ref-actions"><a class="nansen-btn big ref-link" href="https://nsn.ai/avyrion" target="_blank" rel="noopener sponsored">Open your Nansen account ↗</a><span class="ref-codeline">Use code <b class="ref-code">AVYRION</b></span></div>
+    </div>
+    <p class="plans-foot muted">Play money only. Follow or Fade is an educational game on real Nansen Smart Money data. It is not financial advice and does not promise profits. Practice here before you risk real money. Nansen sign-up links on this site are referral links.</p>
   </section>
 </main>
 
@@ -197,6 +261,7 @@
     <div class="logo big"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
     <div class="est">Welcome to the Smart Money Academy, disguised as a casino</div>
     <p>Learn to read Smart Money before you risk real money. Every hand is a <b>real whale trade</b> from Nansen on Hyperliquid, and the house gives you <b>$10,000</b> in play chips. Follow the whale or fade it, learn the tell after every hand, and trade for real on Nansen when your Skill Report says you're ready.</p>
+    <p class="wl-free"><span class="bs-pill">FREE BETA</span> Every feature is unlocked during the beta. No card needed.</p>
     <input id="nameInput" maxlength="18" placeholder="Your nickname" required autocomplete="off">
     <button class="gold-btn" type="submit">Take a seat</button>
   </form>
