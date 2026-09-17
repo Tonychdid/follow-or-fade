@@ -48,6 +48,12 @@ async function boot() {
   renderPlayer();
   refreshStatus(); setInterval(refreshStatus, 15000);
   pollLoop();
+  // links like /?view=live (from Telegram alerts) open straight on that tab
+  const startView = (() => { try { return new URL(location.href).searchParams.get('view'); } catch { return null; } })();
+  if (startView && document.querySelector(`.tab[data-view="${startView}"]`) && startView !== 'replay') {
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => document.querySelector(`.tab[data-view="${startView}"]`).click(), 50);
+  }
   deal(); // training starts at the table
   setTimeout(() => fetchLive().catch(() => {}), 1500); // warm the Live Floor in the background
   initAlerts();
