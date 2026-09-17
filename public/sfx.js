@@ -2,7 +2,10 @@
 let ctx = null, master = null;
 let muted = (() => { try { return localStorage.getItem('fof_muted') === '1'; } catch { return false; } })();
 
+let gestured = false;
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, () => { gestured = true; }, { once: true, capture: true }));
 function ac() {
+  if (!ctx && !gestured) return null;
   if (!ctx) {
     const C = window.AudioContext || window.webkitAudioContext;
     if (!C) return null;
@@ -14,8 +17,11 @@ function ac() {
 export const isMuted = () => muted;
 export function setMuted(m) { muted = m; try { localStorage.setItem('fof_muted', m ? '1' : '0'); } catch {} }
 
+// Browsers keep audio locked until the visitor clicks or presses a key. Sounds requested before that are
+// dropped instead of queued, otherwise they all play late, at the first click.
+const ready = () => { const c = ac(); return c && c.state === 'running' && !muted ? c : null; };
 function tone(freq, t0, dur, { type = 'sine', gain = 0.3, attack = 0.005, slide = 0 } = {}) {
-  const c = ac(); if (!c || muted) return;
+  const c = ready(); if (!c) return;
   const o = c.createOscillator(), g = c.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + t0);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), c.currentTime + t0 + dur);
@@ -25,7 +31,7 @@ function tone(freq, t0, dur, { type = 'sine', gain = 0.3, attack = 0.005, slide 
   o.connect(g).connect(master); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + dur + 0.05);
 }
 function noise(t0, dur, { gain = 0.25, freq = 3000, q = 1, type = 'bandpass' } = {}) {
-  const c = ac(); if (!c || muted) return;
+  const c = ready(); if (!c) return;
   const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
   const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
@@ -68,4 +74,5 @@ export const sfx = {
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)
-['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, () => ac(), { once: true }));
+const unlock = () => { const c = ac(); if (c && c.state === 'running') ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.removeEventListener(ev, unlock)); };
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, unlock));
