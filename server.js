@@ -24,11 +24,15 @@ const SECURITY = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'stri
 
 const json = (res, code, body) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY }); res.end(JSON.stringify(body)); };
 const readBody = (req) => new Promise((resolve) => {
-  let d = '';
-  req.on('data', (c) => { d += c; if (d.length > 20_000) { req.destroy(); resolve({}); } });
-  req.on('end', () => { try { resolve(JSON.parse(d || '{}')); } catch { resolve({}); } });
+  let d = '', done = false;
+  const finish = (v) => { if (!done) { done = true; resolve(v); } };
+  req.on('data', (c) => { d += c; if (d.length > 20_000) { req.destroy(); finish({}); } });
+  req.on('end', () => { try { const v = JSON.parse(d || '{}'); finish(v && typeof v === 'object' && !Array.isArray(v) ? v : {}); } catch { finish({}); } });
+  req.on('aborted', () => finish({})); req.on('error', () => finish({}));
 });
-const isAdmin = (req) => !PUBLIC || (ADMIN_TOKEN && crypto.timingSafeEqual(Buffer.from(String(req.headers['x-admin-token'] || '').padEnd(64).slice(0, 64)), Buffer.from(ADMIN_TOKEN.padEnd(64).slice(0, 64))));
+// constant-time compare of fixed-length digests (never throws on odd input)
+const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
+const isAdmin = (req) => !PUBLIC || (!!ADMIN_TOKEN && crypto.timingSafeEqual(sha(req.headers['x-admin-token'] || ''), sha(ADMIN_TOKEN)));
 const forbid = () => Promise.reject(Object.assign(new Error('Admin only'), { status: 403 }));
 const admin = (fn) => (b, q, req) => (isAdmin(req) ? fn(b, q, req) : forbid());
 
@@ -36,13 +40,15 @@ const admin = (fn) => (b, q, req) => (isAdmin(req) ? fn(b, q, req) : forbid());
 const buckets = new Map();
 function limited(req, cost = 1, perMin = 240) {
   if (!PUBLIC) return false;
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  // the proxy (Railway) appends the real client address last; anything earlier in X-Forwarded-For can be forged
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const ip = String(req.headers['x-real-ip'] || xff[xff.length - 1] || req.socket.remoteAddress || '');
   const now = Date.now();
   const b = buckets.get(ip) || { tokens: perMin, t: now };
   b.tokens = Math.min(perMin, b.tokens + ((now - b.t) / 60e3) * perMin); b.t = now;
   b.tokens -= cost;
   buckets.set(ip, b);
-  if (buckets.size > 20000) buckets.clear();
+  if (buckets.size > 50000) { for (const [k, v] of buckets) if (now - v.t > 120e3) buckets.delete(k); } // drop idle clients only
   return b.tokens < 0;
 }
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'GET /api/research/intel': 3 };
@@ -86,13 +92,32 @@ let indexHtml = null;
 const renderIndex = () => (indexHtml ??= fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replaceAll('{{PUBLIC_URL}}', PUBLIC_URL));
 
 http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://x');
+  try { await handle(req, res); }
+  catch (e) { console.error('[http]', e.message); try { if (!res.headersSent) { res.writeHead(400); } res.end(); } catch {} }
+}).listen(PORT, () => {
+  console.log(`\n  FOLLOW or FADE  ->  http://localhost:${PORT}`);
+  console.log(nansen.isDemo() ? '  Mode: DEMO DATA (add NANSEN_API_KEY to .env for live Nansen data)' : '  Mode: LIVE Nansen API');
+  if (PUBLIC) console.log(`  Public mode: rate limited, alert settings are admin-only${ADMIN_TOKEN ? '' : ' (set ADMIN_TOKEN to manage them)'}`);
+  if (process.env.DAILY_CREDIT_CAP) console.log(`  Daily Nansen credit cap: ${process.env.DAILY_CREDIT_CAP}`);
+  console.log('');
+});
+// never let one bad request or background hiccup take the whole site down
+process.on('unhandledRejection', (e) => console.error('[unhandled]', e?.message || e));
+process.on('uncaughtException', (e) => console.error('[uncaught]', e?.message || e));
+
+async function handle(req, res) {
+  let url;
+  try { url = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end('Bad request'); }
   const key = `${req.method} ${url.pathname}`;
   const route = routes[key];
   if (route) {
     if (limited(req, COST[key] || 1)) return json(res, 429, { error: 'Easy, high roller. Too many requests, try again in a moment.' });
     try { json(res, 200, await route(req.method === 'POST' ? await readBody(req) : {}, url.searchParams, req)); }
-    catch (e) { if (e.status !== 403) console.error('[api]', url.pathname, e.message); json(res, e.status || 500, { error: e.message, code: e.code }); }
+    catch (e) {
+      if (e.status !== 403) console.error('[api]', url.pathname, e.message);
+      // expected errors carry a status and a player-friendly message; anything else stays in the logs
+      json(res, e.status || 500, e.status ? { error: e.message, code: e.code } : { error: 'Something went wrong on the table. Try again in a moment.' });
+    }
     return;
   }
   // Admin download of the waitlist: open /admin/waitlist.csv?token=YOUR_ADMIN_TOKEN in a browser
@@ -109,14 +134,8 @@ http.createServer(async (req, res) => {
   const file = path.join(ROOT, 'public', path.normalize(url.pathname));
   if (!file.startsWith(path.join(ROOT, 'public')) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=300', ...SECURITY });
-  fs.createReadStream(file).pipe(res);
-}).listen(PORT, () => {
-  console.log(`\n  FOLLOW or FADE  ->  http://localhost:${PORT}`);
-  console.log(nansen.isDemo() ? '  Mode: DEMO DATA (add NANSEN_API_KEY to .env for live Nansen data)' : '  Mode: LIVE Nansen API');
-  if (PUBLIC) console.log(`  Public mode: rate limited, alert settings are admin-only${ADMIN_TOKEN ? '' : ' (set ADMIN_TOKEN to manage them)'}`);
-  if (process.env.DAILY_CREDIT_CAP) console.log(`  Daily Nansen credit cap: ${process.env.DAILY_CREDIT_CAP}`);
-  console.log('');
-});
+  fs.createReadStream(file).on('error', () => { try { res.end(); } catch {} }).pipe(res);
+}
 
 // Background jobs: calibrate odds on this week's Smart Money outcomes, settle live bets, scan for whale alerts.
 const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds calibrated on ${m.n} resolved Smart Money trades`)).catch((e) => console.error('[calibrate]', e.message));

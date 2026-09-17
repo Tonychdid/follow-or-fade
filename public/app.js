@@ -22,9 +22,13 @@ const adminToken = () => { try { return localStorage.getItem('fof_admin') || '';
 const api = async (path, body) => {
   const headers = { 'x-admin-token': adminToken() };
   if (body) headers['Content-Type'] = 'application/json';
-  const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
-  const data = await res.json();
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status });
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 30e3);
+  let res;
+  try { res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body), signal: ctl.signal } : { headers, signal: ctl.signal }); }
+  catch (e) { throw Object.assign(new Error(e.name === 'AbortError' ? 'The table is slow right now. Try again.' : 'Connection problem. Check your internet and try again.'), { status: 0 }); }
+  finally { clearTimeout(timer); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || (res.status === 429 ? 'Easy, high roller. Too many requests, try again in a moment.' : 'The table is busy. Try again in a moment.')), { status: res.status });
   return data;
 };
 const usd = (n, d = 0) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -49,7 +53,16 @@ let shownBank = 10000;
 async function boot() {
   syncMute();
   const id = store.get('fof_player');
-  if (id) player = await api('/api/player?id=' + id).catch(() => null);
+  // Esc must not leave the app without a player (browsers may close the dialog anyway, so reopen it)
+  $('welcome').addEventListener('cancel', (e) => e.preventDefault());
+  $('welcome').addEventListener('close', () => { if (!player && !$('welcome').dataset.submitted) setTimeout(() => { try { $('welcome').showModal(); } catch {} }, 0); });
+  $('welcomeForm').addEventListener('submit', () => { $('welcome').dataset.submitted = '1'; }, { once: true });
+  let lastStatus = null;
+  for (let tries = 0; id && !player && tries < 4; tries++) {
+    try { player = await api('/api/player?id=' + id); }
+    catch (e) { lastStatus = e.status; if (e.status === 404) break; await sleep(1500 * (tries + 1)); } // network blip or 429: keep the saved player, retry
+  }
+  if (!player && id && lastStatus !== 404) { toast('Could not reach the table. Refresh the page in a moment.'); return; }
   if (!player) {
     $('welcome').showModal();
     await new Promise((r) => $('welcomeForm').addEventListener('submit', r, { once: true }));
@@ -65,7 +78,7 @@ async function boot() {
   const startView = (() => { try { return new URL(location.href).searchParams.get('view'); } catch { return null; } })();
   const startTrade = (() => { try { return new URL(location.href).searchParams.get('trade'); } catch { return null; } })();
   if (startTrade) { pickCollapsedByLink = true; setTimeout(() => goToTrade(startTrade), 60); }
-  if (!startTrade && startView && document.querySelector(`.tab[data-view="${startView}"]`) && startView !== 'replay') {
+  if (!startTrade && ['live', 'report', 'board', 'plans'].includes(startView)) {
     history.replaceState(null, '', location.pathname);
     setTimeout(() => document.querySelector(`.tab[data-view="${startView}"]`).click(), 50);
   }
@@ -123,15 +136,20 @@ async function refreshStatus() {
 
 // ---- live bets rail (polled every 5s, visible on every tab)
 const prevStatus = new Map();
+const cashingOut = new Set(); // bet ids with a cash-out request in flight (survives lane re-renders)
+let pollSeq = 0, pollApplied = 0;
 async function pollBets() {
   if (!player) return;
+  const seq = ++pollSeq;
   const bets = await api('/api/live/bets?player=' + player.id).catch(() => null);
-  if (!bets) return;
+  if (!bets || seq < pollApplied) return; // an older response arriving late must not undo a newer one
+  pollApplied = seq;
+  for (const b of bets) if (b.status === 'cashing') b.status = 'open';
   let settledNow = [];
   for (const b of bets) {
     const before = prevStatus.get(b.id);
-    if (before === 'open' && b.status !== 'open') settledNow.push(b);
-    prevStatus.set(b.id, b.status);
+    if (before === 'open' && b.status !== 'open' && b.status !== 'cashed') settledNow.push(b);
+    if (before !== 'cashed') prevStatus.set(b.id, b.status);
   }
   const fresh = lastBets.filter((x) => x.status === 'open' && Date.now() - x.placedAt < 10e3 && !bets.some((y) => y.id === x.id));
   lastBets = [...fresh, ...bets];
@@ -169,7 +187,6 @@ setInterval(renderLanes, 1000);
 const RING = 2 * Math.PI * 18;
 const FACE = `
 <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
-  <defs><radialGradient id="fg" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#fff1a8"/><stop offset=".6" stop-color="#ffc94a"/><stop offset="1" stop-color="#d98e0b"/></radialGradient></defs>
   <circle cx="32" cy="32" r="27" fill="url(#fg)" stroke="#7a4f06" stroke-width="2"/>
   <g class="st rich">
     <text x="21" y="31" text-anchor="middle" font-size="15" font-weight="900" fill="#0f7a3d" font-family="Inter,Arial">$</text>
@@ -228,7 +245,7 @@ function updateRow(row, b, now) {
     : mood === 'rich' ? `<span class="pos">+${usd(potential)}</span> <small>if it ends now</small>` : `<span class="neg">-${usd(b.stake)}</span> <small>if it ends now</small>`;
   const btn = row.querySelector('.cashout');
   const ok = !b.pending && b.cashOut != null && left > 6000;
-  btn.disabled = !ok || btn.dataset.busy === '1';
+  btn.disabled = !ok || btn.dataset.busy === '1' || cashingOut.has(b.id);
   btn.querySelector('b').textContent = ok ? usd(b.cashOut) : '—';
   btn.classList.toggle('up', ok && b.cashOut >= b.stake);
 }
@@ -236,15 +253,16 @@ function updateRow(row, b, now) {
 // Cash out (event delegation so the 1s refresh never swallows the click)
 $('lanes').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-cashout]');
-  if (!btn || btn.disabled) return;
-  btn.dataset.busy = '1'; btn.disabled = true;
+  if (!btn || btn.disabled || cashingOut.has(btn.dataset.cashout)) return;
+  const betId = btn.dataset.cashout;
+  cashingOut.add(betId); btn.dataset.busy = '1'; btn.disabled = true;
+  const rect = btn.getBoundingClientRect();
   try {
     const r = await api('/api/live/cashout', { player: player.id, betId: btn.dataset.cashout });
     prevStatus.set(r.bet.id, 'cashed');
     const row = btn.closest('.lbet'); row?.classList.add('leaving');
     setTimeout(() => { const idx = lastBets.findIndex((x) => x.id === r.bet.id); if (idx >= 0) lastBets[idx] = r.bet; renderLanes(); }, 550);
     player = r.player; renderPlayer(); refreshReport();
-    const rect = btn.getBoundingClientRect();
     if (r.net >= 0) {
       sfx.cashout(); setTimeout(() => sfx.win(r.net > 1000), 250); coinRain(r.net > 1000 ? 100 : 60);
       burst(rect.left + rect.width / 2, rect.top, 70);
@@ -255,6 +273,7 @@ $('lanes').addEventListener('click', async (e) => {
       banner('Cashing out before the whale gets rekt', `Saved ${usd(r.bet.payout)} of your ${usd(r.bet.stake)} on ${r.bet.coin}`, 'save');
     }
   } catch (err) { toast(err.message); btn.dataset.busy = ''; }
+  finally { cashingOut.delete(betId); }
 });
 
 function banner(title, sub, kind) {
@@ -302,7 +321,7 @@ async function deal() {
   $('cSideShort').textContent = $('cSideShort2').textContent = r.side === 'Long' ? 'L' : 'S';
   $('rSide').textContent = r.side.toUpperCase(); $('rSide').className = 'side ' + r.side;
   $('rCoin').innerHTML = coinHtml(r.coin); $('rValue').textContent = compact(r.valueUsd); $('rEntry').textContent = price(r.entryPrice);
-  $('rWhen').textContent = new Date(r.openedAt).toUTCString().slice(5, 22) + ' UTC (' + ago(r.openedAt) + ')';
+  $('rWhen').textContent = r.openedDay ? new Date(r.openedDay + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' · this week' : '';
   $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`; $('rHorizon').title = r.minHoldMinutes ? `Only real positions: whales who closed in under ${r.minHoldMinutes >= 60 ? r.minHoldMinutes / 60 + 'h' : r.minHoldMinutes + ' min'} (scalps) are left out` : '';
   const gr = r.grade || { grade: '?' };
   $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}`;
@@ -344,7 +363,7 @@ document.querySelectorAll('.chips-row .chip').forEach((b) => b.addEventListener(
 
 async function bet(choice, btn) {
   const stake = Math.floor(Number($('stakeInput').value));
-  if (!(stake >= 1) || stake > player.bankroll) return showErr('Stake must be between $1 and your bankroll. ');
+  if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
   $('btnFollow').disabled = $('btnFade').disabled = true;
   sfx.bet(); sparkleAt(btn, 18);
   let res;
@@ -567,11 +586,14 @@ function wireLive() {
     const more = card.querySelector('.lc-summary');
     if (more) more.onclick = () => { card.classList.toggle('expanded'); more.setAttribute('aria-expanded', card.classList.contains('expanded')); sfx.tick(); };
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
+      if (card.dataset.busy) return;
       const minRaw = card.querySelector('.hz.on').dataset.min; const minutes = minRaw === 'ride' ? 'ride' : Number(minRaw);
       const stake = Math.floor(Number(input.value));
       const t = liveItems.get(card.dataset.key);
       if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
       const choice = btn.dataset.choice;
+      card.dataset.busy = '1'; card.querySelectorAll('.bet').forEach((x) => (x.disabled = true));
+      const unlock = () => { delete card.dataset.busy; card.querySelectorAll('.bet').forEach((x) => (x.disabled = false)); };
       // 1) show it on Your Table instantly
       const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: t.coin, whaleSide: t.side, choice, stake,
         price: choice === 'follow' ? t.odds.follow : t.odds.fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + (minutes === 'ride' ? 48 * 3600e3 : minutes * 60e3), minutes, ride: minutes === 'ride', status: 'open' };
@@ -587,8 +609,9 @@ function wireLive() {
         sfx.chip();
         toast(`Chips down at the ${LANES[minutes]}: ${choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
         nudgeBets();
-        pollBets();
+        pollBets(); unlock();
       } catch (e) {
+        unlock();
         pending = pending.filter((x) => x !== tmp); renderLanes();
         player.bankroll += stake; renderPlayer();
         toast(e.message);
@@ -950,7 +973,7 @@ function entryHtml(ins, mid) {
 }
 
 // ---- Insider Pick of the Day
-let pickData = null, pickCollapsedByLink = false;
+let pickData = null, pickCollapsedByLink = false, pickTimer = null;
 const pickOpenPref = () => store.get('fof_pick_open') === '1';
 function collapsePick() { store.set('fof_pick_open', '0'); if (pickData) renderPick(); }
 async function loadPick() {
@@ -964,7 +987,7 @@ function renderPick() {
   if (!r || r.status === 'none' || !r.desk?.enabled) { box.innerHTML = ''; return; }
   if (r.status === 'loading') {
     box.innerHTML = `<div class="pick loading"><div class="pk-ribbon">Insider Pick of the Day</div><div class="rq-loading"><span class="spin"></span><div><b>Nansen Agent is screening every stock on Hyperliquid for insider buying…</b><small>Expert mode. Today's pick lands here in about a minute.</small></div></div></div>`;
-    setTimeout(loadPick, 20e3); return;
+    clearTimeout(pickTimer); pickTimer = setTimeout(loadPick, 20e3); return;
   }
   const p = r.pick, live = r.status === 'ready';
   const ticker = p.coin.split(':').pop();
@@ -1016,10 +1039,12 @@ function renderPick() {
     sfx.chip(); if (c.dataset.add === 'all') sparkleAt(c, 20);
   });
   card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
+    if (card.dataset.busy) return;
     const stake = Math.floor(Number(input.value)), choice = btn.dataset.choice;
     const days = Number(card.querySelector('.pk-hz .hz.on')?.dataset.days || 30);
     if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
     const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: p.coin, whaleSide: p.side, choice, stake, price: r.odds[choice], entry: r.mid, placedAt: Date.now(), settleAt: Date.now() + days * 864e5, minutes: days * 1440, pickDays: days, pick: true, status: 'open' };
+    card.dataset.busy = '1'; card.querySelectorAll('.bet').forEach((x) => (x.disabled = true));
     pending.push(tmp); renderLanes(); player.bankroll -= stake; renderPlayer(); sfx.bet(); sparkleAt(btn, 26);
     try {
       const b = await api('/api/research/pick/bet', { player: player.id, choice, stake, days });
@@ -1029,6 +1054,7 @@ function renderPick() {
       toast(`Chips down on the Insider Pick: ${choice === 'follow' ? 'following' : 'fading'} ${ticker} for ${usd(stake)}, settles in ${days === 7 ? '1 week' : days === 30 ? '1 month' : '6 months'}`);
       nudgeBets(); pollBets();
     } catch (e) { pending = pending.filter((x) => x !== tmp); renderLanes(); player.bankroll += stake; renderPlayer(); toast(e.message); }
+    delete card.dataset.busy; card.querySelectorAll('.bet').forEach((x) => (x.disabled = false));
   });
 }
 
