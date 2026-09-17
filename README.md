@@ -101,6 +101,8 @@ Hyperliquid public fills + candles ──► follow each whale's position to its
 | `POST /api/v1/profiler/perp-pnl-summary` | 1 | Wallet track record before the trade (odds), plus 7D and 30D whale track record and trust grade (live) |
 | `POST /api/v1/smart-money/perp-trades` (1h lookback) | 5 | Whale Alerts scanner (every 2–30 min, configurable) |
 | `POST /api/v1/perp-screener` (`trader_type: sm` and `all`) | 1 | Smart Money vs crowd net flow, funding, and current Smart Money long/short positioning (live) |
+| `POST /api/v1/agent/expert` (Nansen Agent) | 750 | **Insider Pick of the Day:** once per UTC day, screens every stock listed on Hyperliquid for insider buying and picks the best setup |
+| `POST /api/v1/agent/fast` (Nansen Agent) | 200 | **Insider check** on stock whale cards and in Telegram alerts: insider trades, ownership, earnings, valuation |
 
 Credit use is kept low with caching: whale and market data are cached per hour, and the Live Floor feed for 15 minutes. The sidebar shows real API calls and credits used.
 
@@ -117,12 +119,23 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `DEMO` | 0 | `1` forces demo data |
 | `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | Nansen referral link used for every "New to Nansen? Sign up" link and in Telegram alerts |
 | `NANSEN_PROMO_CODE` | `AVYRION` | Code shown next to the referral link |
+| `AGENT_DAILY_CREDITS` | `1600` | Daily Nansen credits for the Research Desk (Nansen Agent). `0` turns it off |
 | `BETA_ENDS` | `2026-10-11` | Last day of the free beta (UTC, YYYY-MM-DD). Drives the countdown on the site; nothing gets locked |
 | `DAILY_CREDIT_CAP` | none | Max Nansen credits per UTC day. Above it the app serves cached data and demo whales, and pauses odds training and alerts |
 | `PUBLIC` | 0 | `1` for a public deployment: per-IP rate limits, alert rules and Telegram become admin-only |
 | `ADMIN_TOKEN` | none | With `PUBLIC=1`, open `/?admin=TOKEN` once to manage alerts |
 | `DATA_DIR` | `data` | Where bankrolls, bets and the leaderboard are stored (mount a volume here when hosting) |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
+
+## Research Desk (Nansen Agent)
+
+Hyperliquid lists stock perps (NVDA, INTC, SNDK…), and Smart Money whales trade them. The Research Desk adds Nansen Agent on top of the whale data:
+
+- **Insider Pick of the Day** (top of the Live Floor): once a day, Nansen Agent in Expert mode screens every company ticker listed on Hyperliquid's builder markets for open-market insider buying, cross-checked with earnings and valuation. Players Follow or Fade the pick over 24 hours.
+- **Insider check** on every stock whale card: one tap shows what the company's insiders are doing and whether they point the same way as the whale.
+- **Telegram alerts**: when a whale opens a stock perp, the alert includes the insider summary.
+
+Answers are cached and shared by every player (12h per company, one screen per day), so the cost does not grow with traffic. `AGENT_DAILY_CREDITS` (default 1600) caps Agent spend separately from the game's `DAILY_CREDIT_CAP`, and always keeps room for the daily screen. All Agent output is labelled as AI research. Without an API key the desk shows sample research so the layout is still visible.
 
 ## Free beta and plans
 

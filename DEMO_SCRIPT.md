@@ -18,13 +18,14 @@ The story is **Train → Practice live → Trade for real on Nansen**. Move the 
 | Time | What to do on screen | Caption to add |
 |---|---|---|
 | 0–4s | Training Table with a hand dealt: hover the grade chip, the whale stats and the dealer's tells | Learn to read Smart Money, with real Nansen whale trades |
-| 4–12s | Click **25%** → **FADE** or **FOLLOW** → roulette → reveal, pause on "the whale closed after …h" | Judged on the whale's real exit, not a random timer |
-| 12–19s | Scroll to **What the data said**: point at the tell and the trap | After every hand: which Nansen signal called it |
-| 19–26s | Click **Skill Report**: level, edge over the odds, strengths and leaks, coach advice | Your Skill Report shows what you read well and where you leak |
-| 26–34s | **Live Floor**: hover a whale track record and grade, pick **Ride the Whale**, click **FOLLOW** | Ride the Whale: your bet ends when the whale exits |
-| 34–40s | Your Table: point at the faces, click **CASH OUT** on a winning bet | Cash out anytime. The whale is my exit liquidity |
-| 40–47s | Bell → **Send a test alert** → click **Bet on it** | Alerts when a top whale opens a trade, even on Telegram |
-| 47–55s | Click **Trade … on Nansen ↗** and show the Nansen trading page for 3 seconds | Ready? Trade for real on Nansen |
+| 4–11s | Click **25%** → **FADE** or **FOLLOW** → roulette → reveal, pause on "the whale closed after …h" | Judged on the whale's real exit, not a random timer |
+| 11–17s | Scroll to **What the data said**: point at the tell and the trap | After every hand: which Nansen signal called it |
+| 17–23s | Click **Skill Report**: level, edge over the odds, strengths and leaks | Your Skill Report shows what you read well and where you leak |
+| 23–31s | **Live Floor**: pause on the **Insider Pick of the Day**, open **Full research**, click **FOLLOW** | Nansen Agent screens every stock on Hyperliquid for insider buying |
+| 31–38s | On a stock whale (xyz: …) tap **Insider check**; on any whale pick **Ride the Whale** → **FOLLOW** | Whale vs insiders: same side or not? |
+| 38–44s | Your Table: point at the faces, click **CASH OUT** on a winning bet | Cash out anytime. The whale is my exit liquidity |
+| 44–50s | Bell → **Send a test alert** → click **Bet on it** | Alerts when a top whale opens a trade, even on Telegram |
+| 50–55s | Click **Trade … on Nansen ↗** and show the Nansen trading page for 3 seconds | Ready? Trade for real on Nansen |
 | 55–60s | End card (Clipchamp title) | Follow or Fade · Built on Nansen API · github.com/tonychdid/follow-or-fade |
 
 If no live bet is winning at 34–40s, cash out a losing one: the "Cashing out before the whale gets rekt" banner works just as well.
@@ -83,13 +84,14 @@ How it works 👇
 🐳 Live Floor: bet on whales opening right now, graded A+ to F by their Nansen track record
 🐋 Ride the Whale: your bet ends when the whale closes
 💸 Cash out anytime: "the whale is my exit liquidity"
+🔎 Insider Pick of the Day: Nansen Agent screens every stock on Hyperliquid for insider buying
 🔔 Alerts when a top whale opens a trade
 ```
 
 **Reply 3:**
 
 ```
-Built on 4 Nansen API endpoints + Hyperliquid data. Zero dependencies: clone, add your Nansen key, npm start.
+Built on 5 Nansen API endpoints, including Nansen Agent, + Hyperliquid data. Zero dependencies: clone, add your Nansen key, npm start.
 
 Play money only. Not financial advice.
 ```

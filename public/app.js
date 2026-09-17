@@ -36,8 +36,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const coinHtml = (c) => c.includes(':') ? `<small class="dex">${esc(c.split(':')[0])}</small>${esc(c.split(':')[1])}` : esc(c);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const LANES = { 15: 'Espresso Shot', 30: 'Espresso Shot', 60: 'Cigar Lounge', 240: 'Cigar Lounge', ride: 'Ride the Whale' };
-const laneOf = (b) => (b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
+const LANES = { 15: 'Espresso Shot', 30: 'Espresso Shot', 60: 'Cigar Lounge', 240: 'Cigar Lounge', 1440: 'Insider Pick', ride: 'Ride the Whale' };
+const laneOf = (b) => (b.pick || Number(b.minutes) === 1440 ? '1440' : b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
 const hrs = (ms) => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`; };
 
 let player = null, round = null, lastResult = null;
@@ -147,7 +147,7 @@ function renderLanes() {
   const now = Date.now();
   const open = [...pending, ...lastBets.filter((b) => b.status === 'open')];
   let total = 0;
-  for (const min of ['15', '240', 'ride']) {
+  for (const min of ['15', '240', '1440', 'ride']) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
     const mine = open.filter((b) => laneOf(b) === min);
     total += mine.length;
@@ -470,6 +470,7 @@ function renderLive(items) {
   wireLive();
 }
 async function loadLive({ refresh = false } = {}) {
+  loadPick();
   const fresh = liveCache && Date.now() - liveCache.t < 60e3;
   if (liveCache && !refresh) renderLive(liveCache.items);                    // show what we have instantly
   if (!liveShownOnce) { liveShownOnce = true; return enterFloor(fresh); }
@@ -515,6 +516,7 @@ function liveCard(t) {
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
 
     <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
+    ${t.research ? researchBlock(t) : ''}
     <div class="lc-more">
     <div class="dossier-box">
       <div class="dossier-top">
@@ -555,6 +557,8 @@ function wireLive() {
       input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
       sfx.chip(); if (c.dataset.add === 'all') { sparkleAt(c, 20); toast('All in. The house respects it.'); }
     });
+    const rq = card.querySelector('.rq-btn');
+    if (rq) rq.onclick = () => openResearch(card, liveItems.get(card.dataset.key));
     const more = card.querySelector('.lc-summary');
     if (more) more.onclick = () => { card.classList.toggle('expanded'); more.setAttribute('aria-expanded', card.classList.contains('expanded')); sfx.tick(); };
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
@@ -819,3 +823,104 @@ $('waitForm').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message); }
   btn.disabled = false;
 });
+
+
+// ================================================= Research Desk (Nansen Agent)
+const SIG_TXT = { buying: 'Insiders BUYING', selling: 'Insiders SELLING', mixed: 'Insiders MIXED', none: 'No insider trades' };
+const ALIGN_TXT = { aligned: 'same side as the whale', against: 'against the whale', neutral: 'no clear signal' };
+const MAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const usable = (s) => s && !/not available|unknown|n\/a/i.test(s);
+function researchBlock(t) {
+  const r = t.research;
+  const pill = r.status === 'ready'
+    ? `<span class="rq-sig ${r.signal}">${SIG_TXT[r.signal]}</span><span class="rq-al ${r.alignment}">${ALIGN_TXT[r.alignment]}</span>`
+    : '<span class="rq-hint">Check what the company\'s insiders are doing</span>';
+  return `<div class="rq"><button class="rq-btn" aria-expanded="false">${MAG}<span class="rq-title">Insider check <small>Nansen Agent</small></span><span class="rq-pills">${pill}</span></button><div class="rq-panel" hidden></div></div>`;
+}
+function intelHtml(i, side) {
+  const al = i.insider.signal === 'buying' ? (side === 'Long' ? 'aligned' : 'against') : i.insider.signal === 'selling' ? (side === 'Short' ? 'aligned' : 'against') : 'neutral';
+  const rows = [['Ownership', i.ownership], ['Last earnings', i.earnings?.last], ['Next earnings', i.earnings?.next], ['Valuation', i.valuation]].filter(([, v]) => usable(v));
+  return `<div class="rq-head"><b>${esc(i.company || i.ticker)}</b><span class="rq-sig ${i.insider.signal}">${SIG_TXT[i.insider.signal]}</span></div>
+    ${i.insider.detail ? `<p class="rq-detail">${esc(i.insider.detail)}</p>` : ''}
+    <p class="rq-vs ${al}">The whale is <b>${side.toUpperCase()}</b>: ${al === 'aligned' ? 'insiders point the same way' : al === 'against' ? 'insiders point the other way' : 'insiders give no clear direction'}.</p>
+    <dl class="rq-facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    ${i.verdict ? `<p class="rq-verdict">${esc(i.verdict)}</p>` : ''}
+    <p class="rq-foot">AI research by Nansen Agent${i.tools?.length ? ` · ${i.tools.length} Nansen stock data tools` : ''}${i.asOf ? ` · as of ${esc(i.asOf)}` : ''}${i.demo ? ' · sample data' : ''}. Verify before trading.</p>`;
+}
+async function openResearch(card, t) {
+  const box = card.querySelector('.rq'), panel = box.querySelector('.rq-panel'), btn = box.querySelector('.rq-btn');
+  const open = panel.hidden;
+  panel.hidden = !open; btn.setAttribute('aria-expanded', open); box.classList.toggle('open', open); sfx.tick();
+  if (!open || panel.dataset.done) return;
+  panel.innerHTML = `<div class="rq-loading"><span class="spin"></span><div><b>Nansen Agent is reading ${esc(t.coin.split(':').pop())} insider filings…</b><small>Insider trades, ownership, earnings and valuation. Takes about 15 seconds.</small></div></div>`;
+  for (let tries = 0; tries < 6; tries++) {
+    const r = await api(`/api/research/intel?coin=${encodeURIComponent(t.coin)}&wait=1`).catch((e) => ({ status: 'error', message: e.message }));
+    if (r.status === 'ready') {
+      panel.dataset.done = '1'; panel.innerHTML = intelHtml(r.intel, t.side); sfx.ding();
+      box.querySelector('.rq-pills').innerHTML = `<span class="rq-sig ${r.intel.insider.signal}">${SIG_TXT[r.intel.insider.signal]}</span>`;
+      return;
+    }
+    if (r.status !== 'loading') { panel.innerHTML = `<p class="rq-msg">${esc(r.message || 'The Research Desk has no brief for this stock right now.')}</p>`; return; }
+  }
+  panel.innerHTML = '<p class="rq-msg">Nansen Agent is still working on it. Open this again in a moment.</p>';
+}
+
+// ---- Insider Pick of the Day
+let pickData = null;
+async function loadPick() {
+  const r = await api('/api/research/pick' + (player ? `?player=${player.id}` : '')).catch(() => null);
+  if (!r) return;
+  pickData = r;
+  renderPick();
+}
+function renderPick() {
+  const box = $('pickBox'), r = pickData;
+  if (!r || r.status === 'none' || !r.desk?.enabled) { box.innerHTML = ''; return; }
+  if (r.status === 'loading') {
+    box.innerHTML = `<div class="pick loading"><div class="pk-ribbon">Insider Pick of the Day</div><div class="rq-loading"><span class="spin"></span><div><b>Nansen Agent is screening every stock on Hyperliquid for insider buying…</b><small>Expert mode. Today's pick lands here in about a minute.</small></div></div></div>`;
+    setTimeout(loadPick, 20e3); return;
+  }
+  const p = r.pick, live = r.status === 'ready';
+  const ticker = p.coin.split(':').pop();
+  const conv = Array.from({ length: 5 }, (_, i) => `<i class="${i < p.conviction ? 'on' : ''}"></i>`).join('');
+  const facts = [['Earnings', p.earnings], ['Valuation', p.valuation], ['Risks', p.risks]].filter(([, v]) => usable(v));
+  box.innerHTML = `<article class="pick${live ? '' : ' old'}">
+    <div class="pk-ribbon">${live ? 'Insider Pick of the Day' : "Yesterday's Insider Pick · today's screen is coming"}</div>
+    <div class="pk-top">
+      <div class="pk-id"><span class="side ${p.side}">${p.side.toUpperCase()}</span><span class="coin">${coinHtml(p.coin)}</span><span class="pk-co">${esc(p.company || '')}</span></div>
+      <div class="pk-px"><small>since the pick</small><b class="${(r.move ?? 0) >= 0 ? 'pos' : 'neg'}">${r.move == null ? '–' : pct(r.move, 2)}</b></div>
+    </div>
+    <div class="pk-sig"><span class="rq-sig ${p.insider.signal}">${SIG_TXT[p.insider.signal]}</span><span class="pk-conv" title="Nansen Agent conviction ${p.conviction}/5">Conviction ${conv}</span></div>
+    ${p.insider.detail ? `<p class="pk-detail">${esc(p.insider.detail)}</p>` : ''}
+    ${p.thesis ? `<p class="pk-thesis">${esc(p.thesis)}</p>` : ''}
+    <details class="pk-more"><summary>Full research</summary>
+      ${p.thesis ? `<p class="pk-thesis m">${esc(p.thesis)}</p>` : ''}
+      <dl class="rq-facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+      ${p.runnersUp?.length ? `<div class="pk-runners"><small>Runners-up</small>${p.runnersUp.map((x) => `<span><b>${esc(x.ticker)}</b> ${esc(x.why || '')}</span>`).join('')}</div>` : ''}
+    </details>
+    ${live ? `<div class="pk-bet">
+      <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">+100</button><button class="minichip g" data-add="500">+500</button><button class="minichip r" data-add="1000">+1K</button><button class="minichip k" data-add="all">ALL</button></div>
+      <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${r.odds.follow.toFixed(2)} · 24h</small></button><button class="bet fade" data-choice="fade"><span>FADE</span><small>x${r.odds.fade.toFixed(2)} · 24h</small></button></div>
+    </div>` : ''}
+    <div class="links"><span class="pk-src">Nansen Agent Expert · ${p.screened ? `${p.screened} Hyperliquid stocks screened` : 'Hyperliquid stocks'}${p.tools?.length ? ` · ${p.tools.filter((x) => x.startsWith('stocks_')).length} stock data tools` : ''}. AI research, verify before trading.</span><a class="trade-nansen" href="${nansenTrade(p.coin)}" target="_blank" rel="noopener">Trade ${esc(ticker)} on Nansen ↗</a></div>
+    ${refLink('ref-under')}
+  </article>`;
+  const card = box.querySelector('.pick'), input = card.querySelector('input');
+  card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
+    input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(player.bankroll, (Number(input.value) || 0) + Number(c.dataset.add));
+    sfx.chip(); if (c.dataset.add === 'all') sparkleAt(c, 20);
+  });
+  card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
+    const stake = Math.floor(Number(input.value)), choice = btn.dataset.choice;
+    if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
+    const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: p.coin, whaleSide: p.side, choice, stake, price: r.odds[choice], entry: r.mid, placedAt: Date.now(), settleAt: Date.now() + 864e5, minutes: 1440, pick: true, status: 'open' };
+    pending.push(tmp); renderLanes(); player.bankroll -= stake; renderPlayer(); sfx.bet(); sparkleAt(btn, 26);
+    try {
+      const b = await api('/api/research/pick/bet', { player: player.id, choice, stake });
+      prevStatus.set(b.id, 'open');
+      pending = pending.filter((x) => x !== tmp); lastBets = [b, ...lastBets]; renderLanes(); sfx.chip();
+      toast(`Chips down on the Insider Pick: ${choice === 'follow' ? 'following' : 'fading'} ${ticker} for ${usd(stake)}, settles in 24h`);
+      nudgeBets(); pollBets();
+    } catch (e) { pending = pending.filter((x) => x !== tmp); renderLanes(); player.bankroll += stake; renderPlayer(); toast(e.message); }
+  });
+}

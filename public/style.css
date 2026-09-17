@@ -770,3 +770,86 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
   .ref-actions .nansen-btn{display:block;white-space:normal}
 }
 .nansen-btn.ref-link{color:#04140d;font-size:16px}.nansen-btn.ref-link:hover{text-decoration:none}
+
+/* ---------- Research Desk (Nansen Agent) ---------- */
+.rq{margin:10px 0 4px;border-radius:14px;border:1px solid rgba(147,197,253,.28);background:linear-gradient(180deg,rgba(15,23,42,.55),rgba(2,6,23,.45))}
+.rq.open{border-color:rgba(147,197,253,.55)}
+.rq-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;text-align:left;min-width:0}
+.rq-btn svg{width:18px;height:18px;flex:0 0 auto;color:#93c5fd}
+.rq-title{font-weight:700;font-size:13.5px;color:#dbeafe;white-space:nowrap}
+.rq-title small{display:block;font-weight:500;font-size:11px;color:#93c5fd;letter-spacing:.02em}
+.rq-pills{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;min-width:0}
+.rq-hint{font-size:12px;color:#93c5fd;text-align:right}
+.rq-sig{font-size:11px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:999px;white-space:nowrap;border:1px solid}
+.rq-sig.buying{color:#6ee7b7;border-color:rgba(110,231,183,.5);background:rgba(16,185,129,.14)}
+.rq-sig.selling{color:#fda4af;border-color:rgba(253,164,175,.5);background:rgba(224,68,90,.14)}
+.rq-sig.mixed{color:#fde68a;border-color:rgba(253,230,138,.45);background:rgba(212,175,55,.12)}
+.rq-sig.none{color:#cbd5e1;border-color:rgba(203,213,225,.3);background:rgba(148,163,184,.1)}
+.rq-al{font-size:11px;padding:3px 8px;border-radius:999px;white-space:nowrap;color:#e2e8f0;background:rgba(148,163,184,.14)}
+.rq-al.aligned{color:#a7f3d0}.rq-al.against{color:#fecdd3}
+.rq-panel{padding:2px 14px 12px;border-top:1px solid rgba(147,197,253,.18)}
+.rq-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.rq-head b{font-size:15px;color:#f1f5f9}
+.rq-detail{margin:8px 0 6px;font-size:13.5px;color:#e2e8f0;line-height:1.45}
+.rq-vs{margin:0 0 8px;font-size:13px;padding:7px 10px;border-radius:10px;background:rgba(148,163,184,.1);color:#e2e8f0}
+.rq-vs.aligned{background:rgba(16,185,129,.13)}.rq-vs.against{background:rgba(224,68,90,.13)}
+.rq-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:8px 0}
+.rq-facts div{min-width:0}
+.rq-facts dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd}
+.rq-facts dd{margin:2px 0 0;font-size:12.5px;color:#e2e8f0;line-height:1.4}
+.rq-verdict{margin:6px 0;font-size:13px;font-style:italic;color:#cbd5e1}
+.rq-foot{margin:6px 0 0;font-size:11px;color:#94a3b8}
+.rq-msg{margin:10px 0 0;font-size:13px;color:#cbd5e1}
+.rq-loading{display:flex;gap:12px;align-items:center;padding:12px 0}
+.rq-loading b{display:block;font-size:13.5px;color:#dbeafe}
+.rq-loading small{color:#94a3b8;font-size:12px}
+.spin{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:3px solid rgba(147,197,253,.2);border-top-color:#93c5fd;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.pick{position:relative;margin:6px 0 22px;padding:26px 22px 18px;border-radius:22px;border:2px solid #93c5fd;
+  background:radial-gradient(700px 260px at 15% 0,rgba(59,130,246,.22),transparent 70%),radial-gradient(500px 240px at 100% 100%,rgba(212,175,55,.14),transparent 70%),linear-gradient(180deg,#0b1224,#070b16);
+  box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(212,175,55,.25) inset}
+.pick.old{opacity:.85;border-color:rgba(147,197,253,.5)}
+.pick.loading{padding-top:30px}
+.pk-ribbon{position:absolute;top:-13px;left:22px;font-family:var(--display);font-weight:900;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;padding:5px 14px;border-radius:999px;color:#0b1224;background:linear-gradient(180deg,#dbeafe,#93c5fd);white-space:nowrap;max-width:calc(100% - 44px);overflow:hidden;text-overflow:ellipsis}
+.pk-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pk-id{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0}
+.pick .side{font-family:var(--display);font-weight:900;letter-spacing:.14em;font-size:11px;padding:3px 9px;border-radius:999px;color:#fff}
+.pick .coin{font-family:var(--display);font-weight:900;font-size:32px}
+.pick .coin .dex{font-size:11px;color:#93c5fd;margin-right:4px}
+.pk-co{color:#cbd5e1;font-size:14px}
+.pk-px{text-align:right}.pk-px small{display:block;font-size:11px;color:#94a3b8}.pk-px b{font-family:var(--mono);font-size:20px}
+.pk-sig{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 6px}
+.pk-conv{display:flex;align-items:center;gap:4px;font-size:12px;color:#cbd5e1}
+.pk-conv i{width:9px;height:9px;border-radius:50%;background:rgba(148,163,184,.25)}
+.pk-conv i.on{background:linear-gradient(180deg,var(--gold-l),var(--gold))}
+.pk-detail{margin:6px 0;font-size:15px;color:#f1f5f9;line-height:1.45}
+.pk-thesis{margin:6px 0 8px;font-size:14px;color:#cbd5e1;line-height:1.5}
+.pk-more{margin:4px 0 10px}
+.pk-more summary{cursor:pointer;color:#93c5fd;font-size:13px;font-weight:600;list-style:none}
+.pk-more summary::-webkit-details-marker{display:none}
+.pk-more summary::after{content:' ▾'}.pk-more[open] summary::after{content:' ▴'}
+.pk-more .rq-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pk-runners{display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:12.5px;color:#cbd5e1}
+.pk-runners small{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd}
+.pk-runners b{color:#f1f5f9;font-family:var(--mono)}
+.pk-bet{margin-top:6px}
+.pick .bet{padding:10px;min-width:0}.pick .bet span{font-size:17px}
+.pk-src{color:#94a3b8;font-size:11.5px;align-self:center}
+.lane[data-min="1440"] .lane-head svg{color:#93c5fd}
+@media (max-width:760px){
+  .pick{padding:24px 14px 14px;border-radius:18px}
+  .pick .coin{font-size:26px}
+  .pk-detail{font-size:14px}
+  .pk-more .rq-facts,.rq-facts{grid-template-columns:1fr}
+  .pick .links{flex-direction:column;align-items:stretch}
+  .rq-hint{display:none}
+  .rq-btn{flex-wrap:wrap}
+}
+.pk-thesis.m{display:none}
+@media (max-width:760px){
+  .pk-thesis{display:none}.pk-thesis.m{display:block}
+  .pk-px small{font-size:10px;white-space:nowrap}.pk-px b{font-size:17px}
+  .pk-co{flex-basis:100%;font-size:13px}
+}
+.rq.open .rq-pills{display:none}

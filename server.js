@@ -13,6 +13,7 @@ const nansen = await import('./lib/nansen.js');
 const game = await import('./lib/game.js');
 const alerts = await import('./lib/alerts.js');
 const waitlist = await import('./lib/waitlist.js');
+const agent = await import('./lib/agent.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
@@ -44,7 +45,7 @@ function limited(req, cost = 1, perMin = 240) {
   if (buckets.size > 20000) buckets.clear();
   return b.tokens < 0;
 }
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20 };
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'GET /api/research/intel': 3 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -66,6 +67,17 @@ const routes = {
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
   'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
   'POST /api/waitlist': async (b) => waitlist.join(b),
+  // Research Desk (Nansen Agent)
+  'GET /api/research/intel': async (_, q) => {
+    const coin = q.get('coin') || '';
+    const pickCoin = agent.insiderPick().pick?.coin;
+    if (!agent.isStock(coin)) return { status: 'unsupported' };
+    if (!game.liveCoins().has(coin) && coin !== pickCoin) return agent.companyIntel(coin, { start: false });
+    const r = agent.companyIntel(coin);
+    return r.status === 'loading' && q.get('wait') ? agent.waitIntel(coin, 20e3) : r;
+  },
+  'GET /api/research/pick': async (_, q) => game.pickView(q.get('player')),
+  'POST /api/research/pick/bet': async (b) => game.placePickBet(b.player, b.choice, b.stake),
   'GET /api/live/bets': async (_, q) => game.liveBetsFor(q.get('player')),
 };
 
@@ -116,3 +128,10 @@ setInterval(() => game.settleLive().catch(() => {}), 5e3);
 // keep the Live Floor warm (whale data is cached per hour, the trade feed per 15 min)
 setTimeout(() => game.liveFeed().catch(() => {}), 5000);
 setInterval(() => game.liveFeed().catch(() => {}), 5 * 60e3);
+// Research Desk: one Nansen Agent Expert screen per UTC day for the Insider Pick, then Fast briefs for stock whales on the floor
+setTimeout(() => agent.ensurePick().catch(() => {}), 20e3);
+setInterval(() => agent.ensurePick().catch(() => {}), 30 * 60e3);
+setInterval(async () => {
+  const coins = [...game.liveCoins()].filter(agent.isStock).slice(0, 3);
+  for (const c of coins) agent.companyIntel(c);
+}, 10 * 60e3);
