@@ -890,3 +890,9 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 /* exit / trim alerts */
 .exit-ico{flex:0 0 auto;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.08em;color:#fff;background:linear-gradient(180deg,var(--ruby),var(--ruby-d));box-shadow:0 4px 14px rgba(224,68,90,.35)}
 .exit-item.trim .exit-ico,.ap-inner .exit-ico.trim{background:linear-gradient(180deg,#f59e0b,#b45309);box-shadow:0 4px 14px rgba(245,158,11,.3)}
+/* live floor freshness */
+.lcard .hold{color:#6ee7b7;font-weight:600}
+.lcard .hold.trim{color:#fbbf24}
+.livelist.refreshing{opacity:.55;transition:opacity .2s}
+.lcard.gone{opacity:0;transform:scale(.96);transition:opacity .4s,transform .4s}
+#btnRefreshLive:disabled{opacity:.6;cursor:wait}

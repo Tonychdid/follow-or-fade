@@ -23,7 +23,7 @@ exit /b
 (
   echo NANSEN_API_KEY=%KEY%
   echo PORT=3000
-  echo MAX_HOLD_HOURS=24
+  echo MAX_HOLD_HOURS=48
   echo CALIBRATION_SAMPLE=60
   echo DEMO=0
 ) > .env

@@ -128,6 +128,9 @@ setInterval(calibrate, 60 * 60e3);
 setInterval(() => game.settleLive().catch(() => {}), 5e3);
 // keep the Live Floor warm (whale data is cached per hour, the trade feed per 15 min)
 setTimeout(() => game.liveFeed().catch(() => {}), 5000);
+// keep a deck of ready training hands so the Training Table deals instantly
+setTimeout(() => game.refillDeck().catch(() => {}), 3000);
+setInterval(() => game.refillDeck().catch(() => {}), 5 * 60e3);
 setInterval(() => game.liveFeed().catch(() => {}), 5 * 60e3);
 // Research Desk: one Nansen Agent Expert screen per UTC day for the Insider Pick, then Fast briefs for stock whales on the floor
 setTimeout(() => agent.ensurePick().catch(() => {}), 20e3);

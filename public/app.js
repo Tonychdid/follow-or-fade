@@ -277,7 +277,7 @@ async function announceSettled(settledNow) {
       const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap on ${b.coin}`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
       if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}`); }
       else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}`); }
-      else { sfx.push(); toast(`Push on ${b.coin}: stake returned`); }
+      else { sfx.push(); toast(b.band >= 0.001 || b.ride || b.pick ? `Too close to call on ${b.coin} (under ±${((b.band || 0.002) * 100).toFixed(1)}%): stake returned` : `Push on ${b.coin}: stake returned`); }
     }
     if (prev === player.bankroll) renderPlayer();
   }
@@ -300,7 +300,7 @@ async function deal() {
   $('rSide').textContent = r.side.toUpperCase(); $('rSide').className = 'side ' + r.side;
   $('rCoin').innerHTML = coinHtml(r.coin); $('rValue').textContent = compact(r.valueUsd); $('rEntry').textContent = price(r.entryPrice);
   $('rWhen').textContent = new Date(r.openedAt).toUTCString().slice(5, 22) + ' UTC (' + ago(r.openedAt) + ')';
-  $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`;
+  $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`; $('rHorizon').title = r.minHoldMinutes ? `Only real positions: whales who closed in under ${r.minHoldMinutes >= 60 ? r.minHoldMinutes / 60 + 'h' : r.minHoldMinutes + ' min'} (scalps) are left out` : '';
   const gr = r.grade || { grade: '?' };
   $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}`;
   $('rGrade').className = 'grade-chip ' + ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[gr.grade] || 'gc');
@@ -361,8 +361,8 @@ function showReveal(res, choice) {
   const v = res.reveal, r = round;
   $('suspense').hidden = true; $('reveal').hidden = false;
   const big = res.result === 'win' && (res.whaleSlain || res.price >= 2.2 || res.delta >= 5000);
-  const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Push. Your chips are back.';
-  const sub = `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)} · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}`;
+  const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Too close to call. Your chips are back.';
+  const sub = res.result === 'push' ? `The whale moved only ${pct(v.ret, 2)}, inside the ±${((res.pushBand || 0.002) * 100).toFixed(1)}% no-call band · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}` : `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)} · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}`;
   const vd = $('verdict'); vd.className = 'verdict ' + res.result; vd.innerHTML = `${esc(title)}<small>${esc(sub)}</small>`;
   void vd.offsetWidth; vd.classList.add('pop');
   $('vTrader').textContent = v.trader; $('vLink').href = v.nansenUrl; $('vH').textContent = v.closed ? `· closed after ${hrs(v.heldMs)}` : `· still holding at ${v.maxHoldHours}h`;
@@ -515,7 +515,7 @@ function liveCard(t) {
   const gradeCls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[tr.grade] || 'gc';
   return `<div class="lcard${t.alert ? ' alerted' : ''}" data-key="${k}">${t.alert ? '<div class="ribbon">WHALE ALERT</div>' : ''}
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
-    <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span></div>
+    <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
     <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
@@ -589,11 +589,29 @@ function wireLive() {
         pending = pending.filter((x) => x !== tmp); renderLanes();
         player.bankroll += stake; renderPlayer();
         toast(e.message);
+        if (e.status === 409 || e.status === 410) {
+          card.classList.add('gone'); setTimeout(() => card.remove(), 450);
+          if (liveCache) liveCache.items = liveCache.items.filter((x) => x.key !== card.dataset.key);
+        }
       }
     });
   });
 }
-$('btnRefreshLive').onclick = () => { sfx.deal(); loadLive({ refresh: true }); };
+$('btnRefreshLive').onclick = async () => {
+  const btn = $('btnRefreshLive');
+  if (btn.disabled) return;
+  btn.disabled = true; const label = btn.textContent; btn.textContent = 'Refreshing…'; sfx.deal();
+  $('liveList').classList.add('refreshing');
+  const before = new Set((liveCache?.items || []).map((x) => x.key));
+  try {
+    const items = await fetchLive();
+    renderLive(items); loadPick();
+    const fresh = items.filter((x) => !before.has(x.key)).length, gone = [...before].filter((k) => !items.some((x) => x.key === k)).length;
+    toast(`Floor refreshed · prices updated${fresh ? ` · ${fresh} new whale${fresh > 1 ? 's' : ''}` : ''}${gone ? ` · ${gone} whale${gone > 1 ? 's' : ''} exited` : ''}`);
+  } catch (e) { toast(e.message); }
+  $('liveList').classList.remove('refreshing');
+  btn.disabled = false; btn.textContent = label;
+};
 
 // ================================================= whale alerts
 let alertCfg = null, alertSince = 0, alertsCache = [];
