@@ -7,19 +7,17 @@
 <meta name="theme-color" content="#0e0a0c">
 <title>Follow or Fade — The Smart Money Academy</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23d4af37'/><circle cx='16' cy='16' r='10' fill='%23120d06'/><path d='M16 9l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6z' fill='%23f5d77a'/></svg>">
-<meta name="description" content="The Smart Money Academy, disguised as a casino. Follow or fade real Nansen Smart Money whale trades on Hyperliquid with play money, learn which signal called it, then trade for real on Nansen.">
+<meta name="description" content="Build measurable trading skill without risking capital. Follow or fade real Nansen Smart Money whale trades on Hyperliquid with play money, learn which signal called it, and watch your Trader Profile score each read.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Follow or Fade · The Smart Money Academy">
-<meta property="og:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Trade for real on Nansen.">
+<meta property="og:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Get scored on how well you read them.">
 <meta property="og:image" content="{{PUBLIC_URL}}/og.jpg">
 <meta property="og:url" content="{{PUBLIC_URL}}/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Follow or Fade · The Smart Money Academy">
-<meta name="twitter:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Trade for real on Nansen.">
+<meta name="twitter:description" content="Follow or fade real Nansen Smart Money whale trades with play money. Learn the tells. Get scored on how well you read them.">
 <meta name="twitter:image" content="{{PUBLIC_URL}}/og.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -35,7 +33,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-view="replay">Training Table</button>
     <button class="tab" data-view="live">Live Floor <i class="dot"></i></button>
-    <button class="tab" data-view="report">Skill Report</button>
+    <button class="tab" data-view="report">Trader Profile</button>
     <button class="tab" data-view="board">Hall of Fame</button>
     <button class="tab tab-plans" data-view="plans">Plans</button>
   </nav>
@@ -122,12 +120,13 @@
             <div class="stat"><small>Whale's paper PnL</small><b id="vWhale">–</b></div>
             <div class="stat"><small>Your result</small><b id="vYou">–</b></div>
           </div>
+          <div id="vsLine" class="vs-line" hidden></div>
           <div id="lesson" class="lesson"></div>
           <div class="actions">
             <button id="btnNext" class="gold-btn">Deal the next hand</button>
+            <button id="btnChallenge" class="ghost-btn">Challenge a friend</button>
             <button id="btnShare" class="ghost-btn">Share my card</button>
-            <a id="btnRealTrade" class="nansen-btn" target="_blank" rel="noopener" hidden>Trade it for real on Nansen ↗</a>
-            <a id="refTable" hidden class="ref-link ref-under" href="https://nsn.ai/avyrion" target="_blank" rel="noopener sponsored">New to Nansen? Sign up with code <b class="ref-code">AVYRION</b> ↗</a>
+            <a id="btnRealTrade" class="nansen-btn" target="_blank" rel="noopener" hidden>Look this market up on Nansen ↗</a>
           </div>
         </div>
         <p id="err" class="err" hidden></p>
@@ -157,7 +156,7 @@
 
   <!-- ============ SKILL REPORT ============ -->
   <section id="view-report" class="view">
-    <div class="floor-head"><div><h2>Your Whale Reading Report <button class="intro-help" data-intro="report" aria-label="What is this section?" title="What is this section?">?</button></h2><div class="sec-q-pill">Are you ready to trade for real?</div><p class="muted">Practice on real Smart Money trades with play money. This report shows which signals you read well and where you leak, so you know when you're ready to trade for real.</p></div></div>
+    <div class="floor-head"><div><h2>Your Trader Profile <button class="intro-help" data-intro="report" aria-label="What is this section?" title="What is this section?">?</button></h2><div class="sec-q-pill">How well do you actually read Smart Money?</div><p class="muted">Every call you make is scored against what the odds expected of you, and rolled into named skills. This is the measurable part: real reading ability, none of your capital.</p></div></div>
     <div id="reportBody"></div>
   </section>
 
@@ -170,7 +169,7 @@
 
   <!-- ============ PLANS ============ -->
   <section id="view-plans" class="view">
-    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">The <b class="gold">whole game is free during the beta</b>: training, live bets, whale track records and your Skill Report, with no card needed. <b>Premium is the signals side</b> — Telegram alerts with your own rules — and it is in private testing right now. Join the waitlist to get in first. Pricing is announced at launch.</p></div></div>
+    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">The <b class="gold">whole game is free during the beta</b>: training, live bets, whale track records and your Trader Profile, with no card needed. <b>Premium is the signals side</b> — Telegram alerts with your own rules — and it is in private testing right now. Join the waitlist to get in first. Pricing is announced at launch.</p></div></div>
 
     <div class="plans two">
       <article class="plan">
@@ -181,7 +180,7 @@
           <li>Live Floor: bet on whales who are still in the trade</li>
           <li>Espresso, Cigar Lounge and Ride the Whale tables · cash out anytime</li>
           <li>Whale track records and trust grades from Nansen (7D and 30D)</li>
-          <li>Your Skill Report, level and Hall of Fame</li>
+          <li>Your Trader Profile, level and Hall of Fame</li>
           <li>Whale alerts in the app (the bell) with the house rules, plus desktop notifications</li>
           <li>One-tap Trade on Nansen when you're ready</li>
         </ul>
@@ -208,14 +207,24 @@
       <h3 id="wfTitle">Save your seat</h3>
       <p class="muted" id="wfSub">Leave your email and you'll hear first when Premium opens, with a founding-player offer.</p>
       <div class="wf-row"><input id="wfEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required maxlength="120"><button class="gold-btn" type="submit">Save my seat</button></div>
+      <label class="wf-consent"><input type="checkbox" id="wfConsent"><span id="wfConsentText">I agree to Follow or Fade storing my email address so it can tell me when paid plans open.</span></label>
+      <p class="wf-fine">One email when plans open, nothing else. No newsletter, no partners, never sold or shared.
+        You can delete it yourself at any time with one click — you'll get the link straight away.
+        <a href="/legal.html#privacy" target="_blank" rel="noopener">How your data is handled</a>.</p>
       <p class="wf-done" id="wfDone" hidden></p>
+      <div class="wf-out" id="wfOut" hidden>
+        <b>You're on the list.</b>
+        <p>Keep this link if you ever want your email removed — it works instantly, with no reply needed:</p>
+        <div class="wf-row"><input id="wfToken" readonly><button type="button" class="ghost-btn sm" id="wfCopy">Copy</button></div>
+        <button type="button" class="link" id="wfLeave">Actually, remove my email now</button>
+      </div>
     </form>
 
     <div class="ref-card">
-      <div><h3>Ready to trade for real?</h3><p class="muted">Follow or Fade is where you practice. Nansen is where you trade Hyperliquid perps with the same Smart Money data you trained on.</p></div>
-      <div class="ref-actions"><a class="nansen-btn big ref-link" href="https://nsn.ai/avyrion" target="_blank" rel="noopener sponsored">Open your Nansen account ↗</a><span class="ref-codeline">Use code <b class="ref-code">AVYRION</b></span></div>
+      <div><h3>Where this data comes from</h3><p class="muted">Every hand in this game is built from Nansen's Smart Money data on Hyperliquid. If you want to look at that data yourself, it's theirs — we have no relationship with them and earn nothing if you go.</p></div>
+      <div class="ref-actions"><a class="nansen-btn big" href="https://app.nansen.ai/" target="_blank" rel="noopener">Open Nansen ↗</a></div>
     </div>
-    <p class="plans-foot muted">Play money only. Follow or Fade is an educational game on real Nansen Smart Money data. It is not financial advice and does not promise profits. Practice here before you risk real money. Nansen sign-up links on this site are referral links.</p>
+    <p class="plans-foot muted">Play money only. Follow or Fade is an educational game on real Nansen Smart Money data. It is not financial advice and does not promise profits. Practice here before you risk real money. This site earns no commission from any link on it.</p>
   </section>
 </main>
 
@@ -227,7 +236,7 @@
     <button class="sheet-close icon-btn" id="railClose" aria-label="Close">✕</button>
     <h3>Your Table</h3>
     <div class="record"><span>Record <b id="sRecord">0–0</b></span><span>Streak <b id="sStreak">0</b></span><span>Whales slain <b id="sSlain">0</b></span></div>
-    <button class="level-mini" id="levelMini" title="Open your Skill Report"><span class="lm-top"><b id="lvlName">Rookie</b><em id="lvlHands">0 hands</em></span><span class="lm-bar"><i id="lvlBar"></i></span></button>
+    <button class="level-mini" id="levelMini" title="Open your Trader Profile"><span class="lm-top"><b id="lvlName">Rookie</b><em id="lvlHands">0 hands</em></span><span class="lm-bar"><i id="lvlBar"></i></span></button>
   </div>
   <div class="lanes" id="lanes">
     <div class="lane" data-min="15">
@@ -262,11 +271,15 @@
   <form method="dialog" id="welcomeForm">
     <div class="rope" aria-hidden="true"></div>
     <div class="logo big"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
-    <div class="est">Welcome to the Smart Money Academy, disguised as a casino</div>
-    <p>Learn to read Smart Money before you risk real money. Every hand is a <b>real whale trade</b> from Nansen on Hyperliquid, and the house gives you <b>$10,000</b> in play chips. Follow the whale or fade it, learn the tell after every hand, and trade for real on Nansen when your Skill Report says you're ready.</p>
+    <div class="wl-hand" id="wlHand">
+      <div class="wl-live"><i></i>A REAL SMART MONEY TRADE FROM THIS WEEK</div>
+      <p class="wl-headline" id="wlHeadline">A Smart Money whale just opened a position on Hyperliquid.</p>
+      <p class="wl-ask">Do you <b class="wl-f">FOLLOW</b> or <b class="wl-d">FADE</b>?</p>
+    </div>
+    <p class="wl-sub">Your call is judged against <b>the whale's real exit</b>. You get <b>$10,000</b> in play chips and a <b>Trader Profile</b> that scores how well you read the tells — real trading skill, none of your capital.</p>
     <p class="wl-free"><span class="bs-pill">FREE BETA</span> The whole game is free. No card needed.</p>
     <input id="nameInput" maxlength="18" placeholder="Your nickname" required autocomplete="off">
-    <button class="gold-btn" type="submit">Take a seat</button>
+    <button class="gold-btn" type="submit">Make my call</button>
   </form>
 </dialog>
 
@@ -279,7 +292,7 @@
     <div class="intro-compare">
       <div data-sec="replay"><small>Training Table</small><b>Was the whale right?</b><span>Entry: the whale's price</span></div>
       <div data-sec="live"><small>Live Floor</small><b>Still worth following now?</b><span>Entry: today's price</span></div>
-      <div data-sec="report"><small>Skill Report</small><b>Ready to trade for real?</b><span>Your strengths and leaks</span></div>
+      <div data-sec="report"><small>Trader Profile</small><b>How well do you read them?</b><span>Seven skills, scored</span></div>
     </div>
     <button class="gold-btn" id="introGo"></button>
   </div>
@@ -294,11 +307,48 @@
   </div>
 </dialog>
 
+<dialog id="fgDlg">
+  <div class="lv-head"><span class="lv-warn" aria-hidden="true">✉</span><h3 id="fgTitle">Waitlist</h3></div>
+  <p class="lv-lead" id="fgBody"></p>
+  <div class="actions"><button class="gold-btn" data-close-dialog>Close</button></div>
+</dialog>
+
+<dialog id="lvDlg">
+  <div class="lv-head"><span class="lv-warn" aria-hidden="true">⚠</span><h3>Before you open a real position</h3></div>
+  <p class="lv-lead">You're leaving the game. Everything past this point uses <b>your own money</b>, and Hyperliquid perps are leveraged instruments.</p>
+  <ul class="lv-list">
+    <li><b>Set leverage to 1&times;.</b> Every bet you have placed here is unleveraged. At 10&times;, a 10% move against you wipes out the position.</li>
+    <li><b>Use isolated margin.</b> It caps what one trade can lose to the margin you put behind it. Cross margin puts your whole perps balance behind every position.</li>
+    <li><b>Size it so you can be wrong.</b> A whale with a strong record is still wrong often — the odds on every card say how often.</li>
+  </ul>
+  <p class="lv-foot">Follow or Fade doesn't teach futures mechanics and can't set these for you: leverage and margin mode live in your own Hyperliquid account, and only you can change them. Nothing here is financial advice.</p>
+  <div class="actions">
+    <button class="ghost-btn" data-close-dialog>Stay in the game</button>
+    <a id="lvGo" class="nansen-btn" target="_blank" rel="noopener">I've set 1&times; and isolated — open Nansen ↗</a>
+  </div>
+</dialog>
+
+<dialog id="chDlg">
+  <canvas id="chCanvas" width="1200" height="675"></canvas>
+  <p class="ch-note">They get <b>this exact whale</b> — same size, same tells, same odds. The result stays hidden until they make the call.</p>
+  <label class="ch-link"><span>Challenge link</span><input id="chLink" readonly><button class="ghost-btn sm" id="chCopy">Copy</button></label>
+  <div class="actions">
+    <a id="chDownload" class="gold-btn" download="follow-or-fade-challenge.png">Download image</a>
+    <a id="chX" class="ghost-btn" target="_blank" rel="noopener">Post on X</a>
+    <button class="ghost-btn" data-close-dialog>Close</button>
+  </div>
+</dialog>
+
+<footer class="site-foot">
+  <b>Play money only.</b> Follow or Fade is an educational game on real Nansen Smart Money data. It is not financial advice, it does not promise profits, and no real order is ever placed from this site.<br>
+  <a href="/legal.html#risk">Risk</a><span class="sf-sep">·</span><a href="/legal.html#privacy">Privacy</a><span class="sf-sep">·</span><a href="/legal.html#terms">Terms</a><span class="sf-sep">·</span>No paid promotion: this site earns no commission from any link
+</footer>
+
 <nav class="bottom-nav" id="bottomNav" aria-label="Sections">
   <button class="tab bn active" data-view="replay"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="11" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 21h9a2 2 0 0 0 2-2V7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Training</span></button>
   <button class="tab bn" data-view="live"><svg viewBox="0 0 24 24"><path d="M2.5 13.5c2.5-4.5 8-6 12.5-4.2 1.9.8 3.3 2.2 4 3.7.4-1 1.2-2.4 2.5-3-.2 1.6-.6 3-1.5 4 .6 1.8.2 3.3-1.3 4-3.8 1.9-12.7 1.4-16.2-4.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Live</span><i class="dot"></i></button>
   <button class="bn bets" id="betsBtn"><span class="chipicon"></span><span>My bets</span><em id="betsCount" hidden>0</em></button>
-  <button class="tab bn" data-view="report"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Report</span></button>
+  <button class="tab bn" data-view="report"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Profile</span></button>
   <button class="tab bn" data-view="board"><svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Fame</span></button>
 </nav>
 <div id="floorIntro" class="floor-intro" hidden>

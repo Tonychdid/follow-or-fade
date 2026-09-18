@@ -13,14 +13,16 @@ const nansen = await import('./lib/nansen.js');
 const game = await import('./lib/game.js');
 const alerts = await import('./lib/alerts.js');
 const waitlist = await import('./lib/waitlist.js');
+const excluded = await import('./lib/excluded.js');
 const agent = await import('./lib/agent.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon' };
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
+// Everything is same-origin: fonts are self-hosted, so no visitor request reaches a third party.
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
 const SECURITY = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'SAMEORIGIN',
   'Content-Security-Policy': CSP, ...(process.env.PUBLIC === '1' ? { 'Strict-Transport-Security': 'max-age=31536000' } : {}) };
 
@@ -39,7 +41,12 @@ const readBody = (req) => new Promise((resolve) => {
 });
 // constant-time compare of fixed-length digests (never throws on odd input)
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
-const isAdmin = (req) => !PUBLIC || (!!ADMIN_TOKEN && crypto.timingSafeEqual(sha(req.headers['x-admin-token'] || ''), sha(ADMIN_TOKEN)));
+// Fail CLOSED whenever an admin token exists: a missing PUBLIC=1 on a redeploy must never turn the
+// waitlist export and the Telegram routes into open endpoints. Only a deployment with no token at all
+// (a local dev run) is trusted by default.
+const isAdmin = (req) => (ADMIN_TOKEN
+  ? crypto.timingSafeEqual(sha(req.headers['x-admin-token'] || ''), sha(ADMIN_TOKEN))
+  : !PUBLIC);
 const forbid = () => Promise.reject(Object.assign(new Error('Admin only'), { status: 403 }));
 const admin = (fn) => (b, q, req) => (isAdmin(req) ? fn(b, q, req) : forbid());
 
@@ -51,27 +58,36 @@ function limited(req, cost = 1, perMin = 240) {
   const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   // Only the LAST hop is written by the proxy; x-real-ip is not used at all because a client can send
   // its own copy and Node merges duplicate headers, which would hand every request a fresh bucket.
-  const ip = String(xff[xff.length - 1] || req.socket.remoteAddress || '');
+  let ip = String(xff[xff.length - 1] || req.socket.remoteAddress || '');
+  if (ip.includes(':')) ip = ip.split(':').slice(0, 4).join(':'); // one IPv6 /64 is one client, not 2^64
   const now = Date.now();
   const b = buckets.get(ip) || { tokens: perMin, t: now };
   b.tokens = Math.min(perMin, b.tokens + ((now - b.t) / 60e3) * perMin); b.t = now;
-  b.tokens -= cost;
+  // Floor the debt at one minute's worth: without this, a burst buys hours of lockout for everyone
+  // sharing that address (mobile CGNAT, an office proxy, a school).
+  b.tokens = Math.max(-perMin, b.tokens - cost);
   buckets.set(ip, b);
-  if (buckets.size > 20000) buckets.clear(); // last-resort cap: a full sweep per request is itself the attack
+  if (buckets.size > 20000) { // evict the oldest rather than clearing, which would wipe every debt
+    const old = [...buckets].sort((a, b2) => a[1].t - b2[1].t).slice(0, 5000);
+    for (const [k] of old) buckets.delete(k);
+  }
   return b.tokens < 0;
 }
 // Sweep idle clients on a timer, never inside a request.
 setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (now - v.t > 120e3) buckets.delete(k); }, 60e3).unref();
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'GET /api/research/intel': 3, 'GET /api/live/one': 6,
-  'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2 };
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'POST /api/waitlist/leave': 10, 'GET /api/waitlist/me': 10, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/preview': 2,
+  'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/alerts': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: waitlist.beta(), ref: { url: process.env.NANSEN_REF_URL || 'https://nsn.ai/avyrion', code: process.env.NANSEN_PROMO_CODE || 'AVYRION' } }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: waitlist.beta() }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
-  'GET /api/round': async (_, q) => game.newRound(q.get('player')),
+  'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play
+  'GET /api/round': async (_, q) => game.newRound(q.get('player'), q.get('challenge')),
+  'GET /api/challenge': async (_, q) => ({ challenge: game.challengeView(q.get('id')) }),
   'POST /api/bet': async (b) => game.placeBet(b.player, b.roundId, b.choice, b.stake),
   'GET /api/alerts': async (_, q, req) => ({ alerts: alerts.listAlerts(Number(q.get('since') || 0)), config: alerts.publicConfig(isAdmin(req)) }),
   'POST /api/alerts/config': admin(async (b, _, req) => ({ ...alerts.updateConfig(b), canAdmin: isAdmin(req) })),
@@ -87,6 +103,17 @@ const routes = {
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
   'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
   'POST /api/waitlist': async (b) => waitlist.join(b),
+  // Withdrawing consent must be as easy as giving it: one call, no account, no waiting on a human.
+  'POST /api/waitlist/leave': async (b) => waitlist.leave(b),
+  'GET /api/waitlist/me': async (_, q, req) => ({ record: waitlist.lookup(req.headers['x-wl-token'] || q.get('token')) }),
+  'GET /api/waitlist/consent': async () => waitlist.consentNotice(),
+  // Art. 21 objections come in by email and are actioned by the operator, who first checks that the
+  // person controls the wallet (a signed message). There is deliberately NO public route: an
+  // unverified one would let any visitor blank the game's content by excluding the whales it shows,
+  // and a public "is this address excluded?" check would publish who had asked to be hidden.
+  'POST /api/optout': admin(async (b) => { const r = excluded.exclude(b.address, b.note); game.forgetTrader(b.address); return r; }),
+  'POST /api/optout/undo': admin(async (b) => excluded.unexclude(b.address)),
+  'GET /api/optout': admin(async (_, q) => ({ excluded: excluded.isExcluded(q.get('address')), count: excluded.count() })),
   // Research Desk (Nansen Agent)
   'GET /api/research/intel': async (_, q) => {
     const coin = q.get('coin') || '';
@@ -127,6 +154,15 @@ process.on('uncaughtException', (e) => console.error('[uncaught]', e?.message ||
 async function handle(req, res) {
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end('Bad request'); }
+  // Every POST must be a same-origin JSON request. Without this, a cross-site form with
+  // enctype="text/plain" is a CORS "simple request" that reaches these routes using the victim's IP.
+  if (req.method === 'POST') {
+    if (!/^application\/json/i.test(req.headers['content-type'] || '')) return json(res, 415, { error: 'Send JSON' });
+    const o = req.headers.origin;
+    if (o && o !== (PUBLIC_URL || `http://${req.headers.host}`) && o !== `https://${req.headers.host}`) {
+      return json(res, 403, { error: 'Bad origin' });
+    }
+  }
   const key = `${req.method} ${url.pathname}`;
   const route = routes[key];
   if (route) {
@@ -156,7 +192,10 @@ async function handle(req, res) {
     if (limited(req, 5)) return json(res, 429, { error: 'Too many requests' }); // a flood of unknown paths is still a flood
     res.writeHead(404); return res.end('Not found');
   }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=300', ...SECURITY });
+  const ext = path.extname(file);
+  if (limited(req, ext === '.woff2' ? 1 : 2)) return json(res, 429, { error: 'Too many requests' });
+  res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream',
+    'Cache-Control': ext === '.woff2' ? 'public, max-age=31536000, immutable' : 'public, max-age=300', ...SECURITY });
   fs.createReadStream(file).on('error', () => { try { res.end(); } catch {} }).pipe(res);
 }
 

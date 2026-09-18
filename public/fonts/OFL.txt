@@ -1,0 +1,17 @@
+Fonts in this folder are used under the SIL Open Font License, Version 1.1.
+
+  Cinzel              — Copyright (c) Natanael Gama
+  Cormorant Garamond  — Copyright (c) Christian Thalmann / Catharsis Fonts
+  Inter               — Copyright (c) The Inter Project Authors
+  JetBrains Mono      — Copyright (c) JetBrains s.r.o.
+
+Each family is licensed under the SIL Open Font License, Version 1.1, which
+permits use, study, modification and redistribution, including bundling with
+and serving from a website, provided the fonts are not sold on their own and
+this notice is retained.
+
+Full licence text: https://openfontlicense.org/open-font-license-official-text/
+Font sources: https://fonts.google.com/
+
+These copies were taken from the Google Fonts CDN and are served from this
+site so that no visitor request is ever made to a third-party server.

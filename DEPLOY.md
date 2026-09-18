@@ -21,7 +21,6 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `NANSEN_API_KEY` | your Nansen key | live Nansen data |
 | `PUBLIC` | `1` | turns on public-site protections |
 | `ADMIN_TOKEN` | a long random password you invent (e.g. 30+ letters and numbers) | lets only you change alert rules and Telegram |
-| `NANSEN_REF_URL` | `https://nsn.ai/avyrion` | optional: your Nansen referral link (already the default) |
 | `RIDE_MAX_HOURS` | `48` | optional: longest a Ride the Whale bet can stay open |
 | `AGENT_DAILY_CREDITS` | `1600` | optional: daily credits for Nansen Agent research (1 daily Insider Pick + ~4 company checks) |
 | `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
@@ -37,6 +36,8 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 3. Railway redeploys automatically. Open `YOUR_URL/health`: it should say `{"ok":true}`.
 
 ## 6. Manage your alerts (only you)
+Set `ADMIN_TOKEN` to a long random string. With it set, the admin routes are closed to everyone else **even if `PUBLIC` is ever missing** — a redeploy that drops an environment variable can't expose your waitlist.
+
 Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is saved in that browser and removed from the address bar. The bell now shows the full alert settings and Telegram setup. Visitors only see the alerts.
 
 ## 6b. Connect Telegram (optional)
@@ -49,5 +50,7 @@ Open `YOUR_URL/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in your browser. It do
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".
 - **Credits:** with the site open 24/7, background odds training and the whale scanner use roughly 2,000–3,000 credits a day, plus a few credits per training hand played. To leave more of a 5,000 cap for players, set the alert scan to every 10 minutes (bell → Alert rules), which saves about 700 credits a day. Check usage at https://app.nansen.ai/api.
 - **Updating:** upload new files to GitHub → Railway redeploys in about a minute.
+- **Privacy:** the site sets no cookies, runs no analytics, and loads no third-party resource — typefaces are served from `public/fonts/`, so a visitor's browser never contacts Google or anyone else. Waitlist emails are collected under an explicit unticked consent box, stored with the exact wording agreed and a one-click removal link, and deletable by the person without contacting you.
+- **Before you promote the site:** fill in every `[BRACKETED]` placeholder in `public/legal.html` — the data controller's name and the contact address are required before you collect a single email.
 - **Security:** in public mode the app rate limits per client IP (using the address your proxy appends, which a visitor can't forge), sends a Content-Security-Policy and HSTS, caps stored players, and keeps alert rules, Telegram and the waitlist behind `ADMIN_TOKEN`.
 - **Custom domain (optional):** buy one (e.g. on Namecheap), then Settings → Networking → Custom Domain and follow Railway's DNS instructions. Update `PUBLIC_URL` to match.
