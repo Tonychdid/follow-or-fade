@@ -66,6 +66,49 @@ let challengeId = (() => { const v = qp('challenge'); return v && /^[0-9a-f-]{4,
 
 // Set when the page was opened with ?view=plans, honoured only once the server confirms Plans is on.
 let wantPlansOnLoad = false;
+let replyId = null;
+const resultToken = (() => { const v = qp('result'); return v && /^[0-9a-f-]{4,36}$/i.test(v) ? v : null; })();
+
+/** Send the finished hand back to whoever set the challenge. */
+async function shareResult(byName) {
+  if (!replyId) return;
+  const link = `${siteUrl()}/?result=${encodeURIComponent(replyId)}`;
+  const text = `I took your Follow or Fade challenge, ${byName}. Here's how it went:\n${link}`;
+  if (navigator.share) {
+    try { await navigator.share({ text, url: link }); return; }
+    catch (e) { if (e?.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(link); toast('Result link copied — paste it to them'); }
+  catch { prompt('Copy this and send it back:', link); }
+}
+
+/** The challenger opens the reply link and finds out how their friend called it. */
+async function handleResultLink() {
+  if (!resultToken) return;
+  const r = (await api('/api/result?id=' + encodeURIComponent(resultToken)).catch(() => null))?.result;
+  history.replaceState(null, '', location.pathname);
+  const d = $('rsDlg');
+  if (!r) {
+    $('rsTitle').textContent = 'That link has expired';
+    $('rsBody').textContent = 'Challenge results are kept for about a week. Deal yourself a fresh hand instead.';
+    $('rsSub').textContent = '';
+  } else {
+    const coin = String(r.coin).split(':').pop();
+    const mine = r.byChoice === 'fade' ? 'faded' : 'followed';
+    const theirs = r.responderChoice === 'fade' ? 'faded' : 'followed';
+    $('rsTitle').textContent = `${r.responder} took your challenge`;
+    $('rsBody').innerHTML = r.same
+      ? `You both <b>${esc(mine)}</b> the ${esc(r.side.toLowerCase())} on <b>${esc(coin)}</b>.`
+      : `You <b>${esc(mine)}</b>, ${esc(r.responder)} <b>${esc(theirs)}</b> the ${esc(r.side.toLowerCase())} on <b>${esc(coin)}</b>.`;
+    const verdict = r.senderWon === null ? 'Too close to call — the whale went nowhere.'
+      : r.same ? (r.senderWon ? 'You were both right.' : 'You were both wrong.')
+      : (r.senderWon ? `You read it better.` : `${r.responder} read it better.`);
+    $('rsSub').textContent = `${verdict}${r.whaleRet != null ? ` The whale's real exit came out ${(r.whaleRet * 100).toFixed(2)}%.` : ''}`;
+  }
+  try { d.showModal(); } catch {}
+  $('rsPlay').onclick = () => { d.close(); document.querySelector('.tab[data-view="replay"]').click(); };
+  if (d.open) await new Promise((res) => d.addEventListener('close', res, { once: true }));
+}
 
 const whaleLine = (h) => {
   const size = h.valueUsd ? `<b>${compact(h.valueUsd)}</b> ` : '';
@@ -96,6 +139,7 @@ async function showPreviewHand() {
 
 async function boot() {
   syncMute();
+  if (resultToken) await handleResultLink(); // settle this before the welcome dialog covers it
   const id = store.get('fof_player');
   // Esc must not leave the app without a player (browsers may close the dialog anyway, so reopen it)
   $('welcome').addEventListener('cancel', (e) => e.preventDefault());
@@ -390,8 +434,10 @@ async function deal() {
   setStat('iWin', i.walletWinRate != null ? Math.round(i.walletWinRate * 100) + '%' : 'n/a', i.walletWinRate != null ? i.walletWinRate >= 0.5 : null);
   $('iClosed').textContent = i.walletClosedTrades ? `${i.walletClosedTrades} closed trades` : 'no history';
   setStat('iPnl', i.walletPnl30d != null ? compact(i.walletPnl30d) : 'n/a', i.walletPnl30d != null ? i.walletPnl30d >= 0 : null);
-  setStat('iSm', i.smFlow24h != null ? compact(i.smFlow24h) : 'n/a', i.smFlow24h != null ? i.smFlow24h >= 0 : null);
-  setStat('iCrowd', i.crowdFlow24h != null ? compact(i.crowdFlow24h) : 'n/a', i.crowdFlow24h != null ? i.crowdFlow24h >= 0 : null);
+  paintFlow('iSm', i.smFlow24h, r.side);
+  paintFlow('iCrowd', i.crowdFlow24h, r.side);
+  $('flowRead').innerHTML = flowRead(i.smFlow24h, i.crowdFlow24h, r.side);
+  $('flowRead').hidden = !$('flowRead').innerHTML;
   $('reasons').innerHTML = r.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('');
   $('pFollowBar').style.width = '50%'; $('needle').style.left = '50%';
   $('pFollow').textContent = Math.round(r.pFollow * 100) + '%'; $('pFade').textContent = Math.round((1 - r.pFollow) * 100) + '%';
@@ -402,8 +448,58 @@ async function deal() {
   $('dealing').hidden = true; $('round').hidden = false;
   card.classList.remove('dealt'); void card.offsetWidth; card.classList.add('dealt');
   sfx.deal();
+  // On a phone the page keeps the scroll position of the hand you just finished, which lands you on the
+  // FOLLOW/FADE buttons with the whale card off-screen above — you are asked to call a trade you cannot
+  // see. Bring the card itself into view. 'start' rather than 'center': the card is tall on a narrow
+  // screen and centring it pushes its top out of the viewport.
+  scrollCardIntoView();
   setTimeout(() => { $('pFollowBar').style.width = (r.pFollow * 100).toFixed(1) + '%'; $('needle').style.left = `calc(${(r.pFollow * 100).toFixed(1)}% - 1px)`; }, 350);
 }
+/** Put the dealt whale card at the top of the viewport, under the sticky header. */
+function scrollCardIntoView() {
+  if (!sheetMode()) return;                       // desktop shows the whole hand at once
+  const card = $('playcard');
+  if (!card) return;
+  requestAnimationFrame(() => {
+    const head = document.querySelector('header.top');
+    const pad = (head?.getBoundingClientRect().height || 0) + 12;
+    const y = card.getBoundingClientRect().top + window.scrollY - pad;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+  });
+}
+
+/**
+ * Net dollars bought minus sold over 24h. The colour is the SIGN — green is net buying, red is net
+ * selling — and never a verdict on the trade, because the same flow is bullish for a long and bearish
+ * for a short. Whether it helps this particular whale is spelled out underneath instead of encoded in
+ * a colour nobody can decode.
+ */
+function paintFlow(id, v, side) {
+  const sub = $(id + 'Sub');
+  if (v == null) { setStat(id, 'n/a', null); if (sub) sub.textContent = ''; return; }
+  const buying = v >= 0;
+  setStat(id, (buying ? '+' : '\u2212') + compact(Math.abs(v)), buying);
+  if (!sub) return;
+  const withWhale = buying === (side === 'Long');
+  sub.textContent = `${buying ? 'net buying' : 'net selling'} \u00b7 ${withWhale ? 'with' : 'against'} this ${side.toLowerCase()}`;
+  sub.className = 'sub ' + (withWhale ? 'pos' : 'neg');
+}
+
+/** The part people actually want: what the two numbers mean together. */
+function flowRead(sm, crowd, side) {
+  if (sm == null || crowd == null) return '';
+  const smBuy = sm >= 0, cBuy = crowd >= 0;
+  const smSide = smBuy ? 'buying' : 'selling';
+  const cSide = cBuy ? 'buying' : 'selling';
+  const whaleWith = smBuy === (side === 'Long');
+  if (smBuy !== cBuy) {
+    return `<b>They disagree.</b> Smart Money is ${smSide} while everyone else is ${cSide}. `
+      + `That split is the setup this game is built on \u2014 and here Smart Money is ${whaleWith ? 'on the same side as' : 'on the opposite side to'} this ${side.toLowerCase()}.`;
+  }
+  return `<b>They agree.</b> Smart Money and everyone else are both ${smSide}. `
+    + `Crowded trades leave less room: the move may already be priced in. Both are ${whaleWith ? 'with' : 'against'} this ${side.toLowerCase()}.`;
+}
+
 function setStat(id, text, good) { const el = $(id); el.textContent = text; el.classList.remove('pos', 'neg'); if (good != null) el.classList.add(good ? 'pos' : 'neg'); }
 function showErr(msg) { const e = $('err'); e.hidden = false; e.innerHTML = `${esc(msg)}<a href="#" id="retry">Try again</a>`; $('retry').onclick = (ev) => { ev.preventDefault(); deal(); }; }
 
@@ -440,6 +536,36 @@ $('btnFollow').onclick = (e) => bet('follow', e.currentTarget);
 $('btnFade').onclick = (e) => bet('fade', e.currentTarget);
 $('btnNext').onclick = () => { sfx.chip(); deal(); };
 
+// Plain-English explanations for the four numbers above the tells. A tester asked what "Smart Money
+// flow" meant, which means everyone was wondering and only one person said so.
+const HELP = {
+  win: ['Whale win rate', 'Of everything this whale closed in the 30 days <b>before</b> this trade, the share that made money. It stops at this trade, so it can never include the hand you are being asked to judge.'],
+  pnl: ['Whale realized PnL', 'Actual dollars this whale locked in over those same 30 days \u2014 profit they took, not paper gains on open positions. A high win rate with a negative PnL means lots of small wins and a few big losses.'],
+  sm: ['Smart Money \u00b7 net 24h', 'Every wallet Nansen labels Smart Money, not just this whale: dollars they <b>bought minus</b> dollars they <b>sold</b> on this coin in the last 24 hours. <b>Green means net buying, red means net selling.</b> It is background on the coin, not a read on this whale.'],
+  crowd: ['Everyone else \u00b7 net 24h', 'The same sum for every other trader on this coin. <b>Green means the crowd was net buying, red net selling.</b> The interesting case is when this points the opposite way to Smart Money \u2014 that is the disagreement the line underneath describes.'],
+};
+let helpPop = null;
+const closeHelp = () => { helpPop?.remove(); helpPop = null; document.querySelectorAll('.qmark[aria-expanded=true]').forEach((b) => b.setAttribute('aria-expanded', 'false')); };
+document.addEventListener('click', (e) => {
+  const q = e.target.closest('.qmark');
+  if (!q) { if (!e.target.closest('.help-pop')) closeHelp(); return; }
+  e.preventDefault();
+  const wasOpen = q.getAttribute('aria-expanded') === 'true';
+  closeHelp();
+  if (wasOpen) return;
+  const [title, body] = HELP[q.dataset.help] || [];
+  if (!title) return;
+  q.setAttribute('aria-expanded', 'true');
+  helpPop = document.createElement('div');
+  helpPop.className = 'help-pop';
+  helpPop.innerHTML = `<b>${esc(title)}</b><br>${body}`;
+  document.body.append(helpPop);
+  const r = q.getBoundingClientRect(), pw = helpPop.offsetWidth;
+  helpPop.style.left = Math.max(12, Math.min(window.innerWidth - pw - 12, r.left + window.scrollX - pw / 2 + 7)) + 'px';
+  helpPop.style.top = (r.bottom + window.scrollY + 8) + 'px';
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(); });
+
 /** After a bet on a phone, bring the result into view (the felt is taller than the screen). */
 function scrollToResult(id) {
   if (!sheetMode()) return;
@@ -466,6 +592,7 @@ function showReveal(res, choice) {
   drawChart(v.path, r.entryPrice, res.result !== 'loss', v.closed ? `whale exit · ${hrs(v.heldMs)}` : `still holding · ${v.maxHoldHours}h mark`);
   renderLesson(res.lesson);
   // If a friend sent this hand, say how the two of you called it.
+  replyId = res.resultId || null;
   const cb = res.challengedBy;
   const vs = $('vsLine');
   if (vs) {
@@ -476,6 +603,14 @@ function showReveal(res, choice) {
       vs.innerHTML = same
         ? `You and <b>${esc(cb.by)}</b> both ${choice === 'fade' ? 'faded' : 'followed'} this whale${theyWon === null ? '.' : theyWon ? ' — and you were both right.' : ' — and you were both wrong.'}`
         : `<b>${esc(cb.by)}</b> ${cb.choice === 'fade' ? 'faded' : 'followed'}, you ${choice === 'fade' ? 'faded' : 'followed'}${theyWon === null ? '.' : theyWon ? ` — ${esc(cb.by)} read it better.` : ' — you read it better.'}`;
+      // Send it straight back instead of making them screenshot the screen.
+      if (replyId) {
+        const b = document.createElement('button');
+        b.className = 'ghost-btn sm vs-reply';
+        b.textContent = `Send the result to ${cb.by}`;
+        b.onclick = () => shareResult(cb.by);
+        vs.append(document.createElement('br'), b);
+      }
       vs.hidden = false;
     } else vs.hidden = true;
   }
@@ -616,11 +751,31 @@ $('btnChallenge').onclick = async () => {
     const a = $('chDownload');
     if (a.dataset.blob) URL.revokeObjectURL(a.dataset.blob);
     a.href = a.dataset.blob = URL.createObjectURL(b);
+    shareBlob = b; // kept so the native share sheet can carry the card image, not just the link
   });
   $('chLink').value = link;
   const text = `I just ${mine.toLowerCase()} a ${compact(r.valueUsd)} @nansen_ai Smart Money whale on ${String(r.coin).split(':').pop()}.\n\nSame whale, same tells, result hidden. Would you follow or fade?\n${link}`;
   $('chX').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text);
+  // Send the link straight to a chat app instead of making them copy and paste it.
+  // wa.me and t.me/share both work in the mobile apps and on the web.
+  $('chWa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  $('chTg').href = 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text.replace(link, '').trim());
+  // Where the OS offers a share sheet (every phone), one button beats a row of them: it lists every
+  // app they actually have, including ones we would never think to add.
+  shareText = text; shareLink = link;
+  $('chNative').hidden = !navigator.share;
   $('chDlg').showModal();
+};
+let shareBlob = null, shareText = '', shareLink = '';
+$('chNative').onclick = async () => {
+  const withFile = shareBlob && navigator.canShare?.({ files: [new File([shareBlob], 'challenge.png', { type: 'image/png' })] });
+  try {
+    await navigator.share(withFile
+      ? { text: shareText, files: [new File([shareBlob], 'challenge.png', { type: 'image/png' })] }
+      : { text: shareText, url: shareLink });
+  } catch (e) {
+    if (e?.name !== 'AbortError') toast('Sharing was blocked — use the buttons or copy the link.');
+  }
 };
 $('chCopy').onclick = async () => {
   const i = $('chLink');

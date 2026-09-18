@@ -93,7 +93,7 @@ function limited(req, cost = 1, perMin = 240) {
 // Sweep idle clients on a timer, never inside a request.
 setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (now - v.t > 120e3) buckets.delete(k); }, 60e3).unref();
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/preview': 2,
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
   'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/alerts': 2 };
 
@@ -104,6 +104,7 @@ const routes = {
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play
   'GET /api/round': async (_, q) => game.newRound(q.get('player'), q.get('challenge')),
+  'GET /api/result': async (_, q) => ({ result: game.resultView(q.get('id')) }),
   'GET /api/challenge': async (_, q) => ({ challenge: game.challengeView(q.get('id')) }),
   'POST /api/bet': async (b) => game.placeBet(b.player, b.roundId, b.choice, b.stake),
   'GET /api/alerts': async (_, q, req) => ({ alerts: alerts.listAlerts(Number(q.get('since') || 0)), config: alerts.publicConfig(isAdmin(req)) }),
@@ -214,7 +215,7 @@ const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds 
 setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
-setInterval(() => alerts.checkExits().catch(() => {}), 2 * 60e3);
+setInterval(() => alerts.checkExits().catch(() => {}), 60e3); // exits are real-money signals: check every minute
 setTimeout(() => alerts.backfillWatches().catch(() => {}), 15e3);
 setTimeout(() => alerts.startTelegramPoll(), 10e3); // listen for the 🔄 Re-check button on Telegram alerts // exit alerts: whales we alerted on trimming or closing
 setInterval(calibrate, 60 * 60e3);
