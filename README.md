@@ -151,7 +151,7 @@ Answers are cached and shared by every player (12h per company, one screen per d
 
 ## Free beta and plans
 
-The whole game is free during the beta (training, live bets, Trader Profile, in-app whale alerts). Telegram delivery and custom alert rules are the Premium side and stay admin-only on the public site while they are in private testing. The **Plans** page shows where the Academy is heading, and players can join a waitlist (no payment is taken):
+The whole game is free during the beta (training, live bets, Trader Profile, in-app whale alerts). Telegram delivery and custom alert rules are the Premium side and stay admin-only on the public site while they are in private testing. The **Plans** page shows where the Academy is heading and links to a Telegram announcement channel (no email is collected and no payment is taken):
 
 | Plan | What it unlocks |
 |---|---|
@@ -160,7 +160,7 @@ The whole game is free during the beta (training, live bets, Trader Profile, in-
 
 The alert scanner runs once for everyone, so Premium alerts cost the same in Nansen credits whether 10 or 1,000 people receive them.
 
-Download the waitlist as a spreadsheet: open `/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in a browser.
+Set `TELEGRAM_CHANNEL=https://t.me/yourchannel` to point the Plans button at your channel. Unset, the button reads "Premium is in private testing" and links nowhere.
 
 ## Project layout
 

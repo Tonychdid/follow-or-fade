@@ -36,21 +36,21 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 3. Railway redeploys automatically. Open `YOUR_URL/health`: it should say `{"ok":true}`.
 
 ## 6. Manage your alerts (only you)
-Set `ADMIN_TOKEN` to a long random string. With it set, the admin routes are closed to everyone else **even if `PUBLIC` is ever missing** — a redeploy that drops an environment variable can't expose your waitlist.
+Set `ADMIN_TOKEN` to a long random string. With it set, the admin routes are closed to everyone else **even if `PUBLIC` is ever missing** — a redeploy that drops an environment variable can't open your alert settings or your Telegram token to the public.
 
 Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is saved in that browser and removed from the address bar. The bell now shows the full alert settings and Telegram setup. Visitors only see the alerts.
 
 ## 6b. Connect Telegram (optional)
 Bell → **Telegram** → paste the bot token from **@BotFather** → **Connect**. The app shows a short **pairing code**. Open your bot in Telegram, press **Start**, send it that code, then press **I sent the code**. The code is what ties the alert stream to *your* chat: without it, anyone who guessed your bot's username and messaged it first could have captured your alerts.
 
-## 7. Download your waitlist
-Open `YOUR_URL/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in your browser. It downloads a spreadsheet with every email, the plan they picked and the date. Open it with Excel.
+## 7. Point the Plans page at your Telegram channel
+Create a public Telegram channel, then set `TELEGRAM_CHANNEL` to its link — `https://t.me/yourchannel`. The Plans page turns that into the "Join the Telegram channel" button. Leave it unset and the button says Premium is in private testing instead, with no dead link. Only `https://t.me/...` links are accepted; anything else is ignored.
 
 ## Good to know
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".
 - **Credits:** with the site open 24/7, background odds training and the whale scanner use roughly 2,000–3,000 credits a day, plus a few credits per training hand played. To leave more of a 5,000 cap for players, set the alert scan to every 10 minutes (bell → Alert rules), which saves about 700 credits a day. Check usage at https://app.nansen.ai/api.
 - **Updating:** upload new files to GitHub → Railway redeploys in about a minute.
-- **Privacy:** the site sets no cookies, runs no analytics, and loads no third-party resource — typefaces are served from `public/fonts/`, so a visitor's browser never contacts Google or anyone else. Waitlist emails are collected under an explicit unticked consent box, stored with the exact wording agreed and a one-click removal link, and deletable by the person without contacting you.
+- **Privacy:** the site sets no cookies, runs no analytics, and loads no third-party resource — typefaces are served from `public/fonts/`, so a visitor's browser never contacts Google or anyone else. No email address is ever asked for or stored: Premium is announced on a public Telegram channel, and who joins that channel is between them and Telegram.
 - **Before you promote the site:** fill in every `[BRACKETED]` placeholder in `public/legal.html` — the data controller's name and the contact address are required before you collect a single email.
-- **Security:** in public mode the app rate limits per client IP (using the address your proxy appends, which a visitor can't forge), sends a Content-Security-Policy and HSTS, caps stored players, and keeps alert rules, Telegram and the waitlist behind `ADMIN_TOKEN`.
+- **Security:** in public mode the app rate limits per client IP (using the address your proxy appends, which a visitor can't forge), sends a Content-Security-Policy and HSTS, caps stored players, and keeps alert rules and Telegram behind `ADMIN_TOKEN`.
 - **Custom domain (optional):** buy one (e.g. on Namecheap), then Settings → Networking → Custom Domain and follow Railway's DNS instructions. Update `PUBLIC_URL` to match.

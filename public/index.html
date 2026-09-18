@@ -169,7 +169,7 @@
 
   <!-- ============ PLANS ============ -->
   <section id="view-plans" class="view">
-    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">The <b class="gold">whole game is free during the beta</b>: training, live bets, whale track records and your Trader Profile, with no card needed. <b>Premium is the signals side</b> — Telegram alerts with your own rules — and it is in private testing right now. Join the waitlist to get in first. Pricing is announced at launch.</p></div></div>
+    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">The <b class="gold">whole game is free during the beta</b>: training, live bets, whale track records and your Trader Profile, with no card needed. <b>Premium is the signals side</b> — Telegram alerts with your own rules — and it is in private testing right now. Announcements go out on the Telegram channel — join it to hear first. Pricing is announced at launch.</p></div></div>
 
     <div class="plans two">
       <article class="plan">
@@ -199,26 +199,17 @@
           <li><b>Insider Pick of the Day</b> and Nansen Agent insider research on stock whales</li>
           <li><b>🔄 Re-check</b> straight from Telegram: the alert updates itself with the current price, odds and tells, plus links to the full whale card and to Trade on Nansen</li>
         </ul>
-        <button class="gold-btn pl-cta" data-plan="premium">Join the waitlist</button>
+        <a class="gold-btn pl-cta" id="tgChanCta" href="#" target="_blank" rel="noopener">Join the Telegram channel</a>
       </article>
     </div>
 
-    <form id="waitForm" class="waitform" hidden>
-      <h3 id="wfTitle">Save your seat</h3>
-      <p class="muted" id="wfSub">Leave your email and you'll hear first when Premium opens, with a founding-player offer.</p>
-      <div class="wf-row"><input id="wfEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required maxlength="120"><button class="gold-btn" type="submit">Save my seat</button></div>
-      <label class="wf-consent"><input type="checkbox" id="wfConsent"><span id="wfConsentText">I agree to Follow or Fade storing my email address so it can tell me when paid plans open.</span></label>
-      <p class="wf-fine">One email when plans open, nothing else. No newsletter, no partners, never sold or shared.
-        You can delete it yourself at any time with one click — you'll get the link straight away.
-        <a href="/legal.html#privacy" target="_blank" rel="noopener">How your data is handled</a>.</p>
-      <p class="wf-done" id="wfDone" hidden></p>
-      <div class="wf-out" id="wfOut" hidden>
-        <b>You're on the list.</b>
-        <p>Keep this link if you ever want your email removed — it works instantly, with no reply needed:</p>
-        <div class="wf-row"><input id="wfToken" readonly><button type="button" class="ghost-btn sm" id="wfCopy">Copy</button></div>
-        <button type="button" class="link" id="wfLeave">Actually, remove my email now</button>
+    <div class="tg-card" id="tgChanCard">
+      <div>
+        <h3>Hear it first on Telegram</h3>
+        <p class="muted" id="tgChanSub">Premium opens on the channel: one post when it goes live, and nothing else. No email, no signup, no account here — join or leave whenever you like, and we never learn who you are.</p>
       </div>
-    </form>
+      <div class="ref-actions"><a class="gold-btn big" id="tgChanLink" href="#" target="_blank" rel="noopener">Open the channel ↗</a></div>
+    </div>
 
     <div class="ref-card">
       <div><h3>Where this data comes from</h3><p class="muted">Every hand in this game is built from Nansen's Smart Money data on Hyperliquid. If you want to look at that data yourself, it's theirs — we have no relationship with them and earn nothing if you go.</p></div>
@@ -307,11 +298,6 @@
   </div>
 </dialog>
 
-<dialog id="fgDlg">
-  <div class="lv-head"><span class="lv-warn" aria-hidden="true">✉</span><h3 id="fgTitle">Waitlist</h3></div>
-  <p class="lv-lead" id="fgBody"></p>
-  <div class="actions"><button class="gold-btn" data-close-dialog>Close</button></div>
-</dialog>
 
 <dialog id="lvDlg">
   <div class="lv-head"><span class="lv-warn" aria-hidden="true">⚠</span><h3>Before you open a real position</h3></div>
@@ -366,7 +352,7 @@
 
 <aside id="alertPanel" class="alert-panel" hidden>
   <div class="ap-head">
-    <div><h3>Whale Alerts</h3><p>Get pinged the moment a top-graded Smart Money whale opens a position.</p></div>
+    <div><h3>Whale Alerts</h3><p>Get pinged the moment a top-graded Smart Money whale opens a position. <span class="ap-retention">The list keeps the last 24 hours — <b>Clear</b> empties it now.</span></p></div>
     <div class="ap-head-btns"><button class="ghost-btn sm" id="alertClear" title="Clear the list (new alerts still arrive)">Clear</button><button class="icon-btn" id="alertClose" aria-label="Close">✕</button></div>
   </div>
   <div class="ap-status" id="apStatus"></div>
@@ -394,8 +380,9 @@
           <div class="row"><input id="tgToken" placeholder="123456789:AA..." autocomplete="off"><button class="ghost-btn sm" id="tgSave">Connect</button></div>
         </div>
         <div id="tgVerify" class="tg-steps" hidden>
-          <p>Now open <b id="tgBotName">your bot</b> in Telegram, press <b>Start</b>, and send it this code so the alerts go to your chat and nobody else's: <code id="tgPair">—</code></p>
-          <button class="gold-btn sm" id="tgCheck">I sent the code</button>
+          <p><b>One click:</b> open <a id="tgPairLink" href="#" target="_blank" rel="noopener">this pairing link</a> and press <b>Start</b> in Telegram. It sends the code for you.</p>
+          <p class="tg-alt">Or search <b id="tgBotName">your bot</b> in Telegram, press Start, and send this code as a message: <code id="tgPair">—</code></p>
+          <div class="row"><button class="gold-btn sm" id="tgCheck">I've done that</button><button class="ghost-btn sm" id="tgRepair">New code</button></div>
         </div>
         <button class="ghost-btn sm" id="tgOff" hidden>Disconnect</button>
       </div>

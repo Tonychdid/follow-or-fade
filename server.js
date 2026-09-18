@@ -12,7 +12,6 @@ loadEnv(ROOT);
 const nansen = await import('./lib/nansen.js');
 const game = await import('./lib/game.js');
 const alerts = await import('./lib/alerts.js');
-const waitlist = await import('./lib/waitlist.js');
 const excluded = await import('./lib/excluded.js');
 const agent = await import('./lib/agent.js');
 const PORT = Number(process.env.PORT || 3000);
@@ -20,6 +19,14 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC = process.env.PUBLIC === '1';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+// Premium is announced on a public Telegram channel instead of by email, so the site collects no
+// address, stores nothing about a visitor who wants to be told, and has nothing to delete later.
+// Set TELEGRAM_CHANNEL to the channel's public link (https://t.me/yourchannel). Anything that is not
+// a t.me link is ignored rather than rendered, so a typo can't turn the Plans page into an open redirect.
+const TG_CHANNEL = (() => {
+  const v = (process.env.TELEGRAM_CHANNEL || '').trim();
+  return /^https:\/\/t\.me\/[A-Za-z0-9_+\-\/]{1,64}$/.test(v) ? v : '';
+})();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
 // Everything is same-origin: fonts are self-hosted, so no visitor request reaches a third party.
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
@@ -42,7 +49,7 @@ const readBody = (req) => new Promise((resolve) => {
 // constant-time compare of fixed-length digests (never throws on odd input)
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
 // Fail CLOSED whenever an admin token exists: a missing PUBLIC=1 on a redeploy must never turn the
-// waitlist export and the Telegram routes into open endpoints. Only a deployment with no token at all
+// Telegram routes and the trader opt-out into open endpoints. Only a deployment with no token at all
 // (a local dev run) is trusted by default.
 const isAdmin = (req) => (ADMIN_TOKEN
   ? crypto.timingSafeEqual(sha(req.headers['x-admin-token'] || ''), sha(ADMIN_TOKEN))
@@ -76,13 +83,13 @@ function limited(req, cost = 1, perMin = 240) {
 // Sweep idle clients on a timer, never inside a request.
 setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (now - v.t > 120e3) buckets.delete(k); }, 60e3).unref();
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'POST /api/waitlist/leave': 10, 'GET /api/waitlist/me': 10, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/preview': 2,
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
   'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/alerts': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: waitlist.beta() }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, channel: TG_CHANNEL }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play
@@ -96,17 +103,13 @@ const routes = {
   'POST /api/alerts/telegram': admin(async (b) => alerts.connectTelegram(b.token)),
   'POST /api/alerts/telegram/verify': admin(async () => alerts.verifyTelegram()),
   'POST /api/alerts/telegram/disconnect': admin(async () => alerts.disconnectTelegram()),
+  'POST /api/alerts/telegram/repair': admin(async () => alerts.repairTelegram()),
   'GET /api/report': async (_, q) => game.skillReport(q.get('player')),
   'GET /api/leaderboard': async () => game.leaderboard(),
   'GET /api/live': async () => game.liveFeed(),
   'GET /api/live/one': async (_, q) => game.refreshLiveItem(q.get('key')),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
   'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
-  'POST /api/waitlist': async (b) => waitlist.join(b),
-  // Withdrawing consent must be as easy as giving it: one call, no account, no waiting on a human.
-  'POST /api/waitlist/leave': async (b) => waitlist.leave(b),
-  'GET /api/waitlist/me': async (_, q, req) => ({ record: waitlist.lookup(req.headers['x-wl-token'] || q.get('token')) }),
-  'GET /api/waitlist/consent': async () => waitlist.consentNotice(),
   // Art. 21 objections come in by email and are actioned by the operator, who first checks that the
   // person controls the wallet (a signed message). There is deliberately NO public route: an
   // unverified one would let any visitor blank the game's content by excluding the whales it shows,
@@ -174,14 +177,6 @@ async function handle(req, res) {
       json(res, e.status || 500, e.status ? { error: e.message, code: e.code } : { error: 'Something went wrong on the table. Try again in a moment.' });
     }
     return;
-  }
-  // Admin download of the waitlist: open /admin/waitlist.csv?token=YOUR_ADMIN_TOKEN in a browser
-  if (url.pathname === '/admin/waitlist.csv') {
-    if (limited(req, 30)) return json(res, 429, { error: 'Too many requests' }); // no unthrottled guessing at the token
-    req.headers['x-admin-token'] = req.headers['x-admin-token'] || url.searchParams.get('token') || '';
-    if (!isAdmin(req)) { res.writeHead(403); return res.end('Admin only'); }
-    res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="waitlist.csv"', 'Cache-Control': 'no-store', ...SECURITY });
-    return res.end(waitlist.csv());
   }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY });

@@ -64,37 +64,6 @@ function deadEnd(msg) {
 const qp = (k) => { try { return new URL(location.href).searchParams.get(k); } catch { return null; } };
 let challengeId = (() => { const v = qp('challenge'); return v && /^[0-9a-f-]{4,36}$/i.test(v) ? v : null; })();
 
-// Withdrawing consent must work for anyone holding the link, including someone who has never played
-// and would otherwise be stopped by the welcome dialog. So this runs before boot, not inside it.
-const forgetToken = (() => { const t = qp('forget'); return t && /^[0-9a-f]{8,64}$/i.test(t) ? t : null; })();
-/**
- * Withdrawing consent has to work for anyone holding the link, including someone who has never played.
- * It gets its own dialog rather than the banner: the welcome modal sits in the browser's top layer and
- * would hide a banner completely — and a person deleting their email usually has no player, so that
- * modal is exactly what is on screen.
- */
-async function handleForgetLink() {
-  if (!forgetToken) return;
-  const d = $('fgDlg');
-  $('fgTitle').textContent = 'Waitlist';
-  $('fgBody').textContent = 'Removing your email…';
-  try { d.showModal(); } catch {}
-  try {
-    const r = await api('/api/waitlist/leave', { token: forgetToken }); // api() carries the 30s timeout
-    history.replaceState(null, '', location.pathname); // only once we know the outcome, so a retry is possible
-    $('fgTitle').textContent = r.removed ? 'Email deleted' : 'Nothing to delete';
-    $('fgBody').textContent = r.removed
-      ? 'Your address has been removed from the waitlist. Nothing about you is left there.'
-      : 'That link has already been used, or the address was removed earlier. Either way, you are not on the list.';
-  } catch {
-    $('fgTitle').textContent = "Couldn't reach the waitlist";
-    $('fgBody').textContent = 'Nothing was changed. Open this link again in a moment — it still works — or write to the address in our privacy notice and we will remove you by hand.';
-  }
-  // Hold here until they close it, or the welcome modal opens on top and hides the confirmation —
-  // the exact failure this dialog exists to avoid.
-  if (d.open) await new Promise((r) => d.addEventListener('close', r, { once: true }));
-}
-
 const whaleLine = (h) => {
   const size = h.valueUsd ? `<b>${compact(h.valueUsd)}</b> ` : '';
   return `${size}<b>${h.side === 'Short' ? 'SHORT' : 'LONG'}</b> on <b>${esc(String(h.coin).split(':').pop())}</b>`;
@@ -124,7 +93,6 @@ async function showPreviewHand() {
 
 async function boot() {
   syncMute();
-  if (forgetToken) await handleForgetLink(); // settle this before the welcome dialog can cover it
   const id = store.get('fof_player');
   // Esc must not leave the app without a player (browsers may close the dialog anyway, so reopen it)
   $('welcome').addEventListener('cancel', (e) => e.preventDefault());
@@ -206,6 +174,7 @@ async function refreshStatus() {
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
   $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
+  if (!refreshStatus.channelPainted) { refreshStatus.channelPainted = true; paintChannel(s.channel || ''); }
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
     $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were in profit when the whale exited${s.medianHoldHours ? ` · median hold ${hrs(s.medianHoldHours * 3600e3)}` : ''}`;
@@ -966,6 +935,10 @@ function renderAlertCfg() {
   $('tgConnect').hidden = tgc.hasToken; $('tgVerify').hidden = !(tgc.hasToken && !tgc.connected); $('tgOff').hidden = !tgc.hasToken;
   $('tgBotName').textContent = tgc.botName ? '@' + tgc.botName : 'your bot';
   $('tgPair').textContent = tgc.pairCode || '—';
+  // One-click pairing: Telegram sends "/start <code>" for them, so there is nothing to type or mistype.
+  const link = $('tgPairLink');
+  link.href = tgc.pairLink || '#';
+  link.textContent = tgc.pairLink ? `t.me/${tgc.botName}` : 'this pairing link';
   renderAlertStatus();
 }
 async function saveCfg() {
@@ -989,6 +962,10 @@ $('testAlert').onclick = async (e) => { e.target.disabled = true; await api('/ap
 $('tgSave').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram', { token: $('tgToken').value }); $('tgToken').value = ''; renderAlertCfg(); } catch (e) { toast(e.message); } };
 $('tgCheck').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram/verify', {}); renderAlertCfg(); toast('Telegram connected. Check your Telegram for a test message.'); sfx.ding(); } catch (e) { toast(e.message); } };
 $('tgOff').onclick = async () => { alertCfg = await api('/api/alerts/telegram/disconnect', {}); renderAlertCfg(); };
+$('tgRepair').onclick = async () => {
+  try { alertCfg = await api('/api/alerts/telegram/repair', {}); renderAlertCfg(); toast('New pairing code. Open the link again.'); }
+  catch (e) { toast(e.message); }
+};
 
 // "Bet on it": jump to the Live Floor card for that trade
 document.addEventListener('click', async (e) => {
@@ -1003,12 +980,27 @@ async function goToTrade(key) {
   if (history.replaceState) history.replaceState(null, '', location.pathname);
   collapsePick();
   document.querySelector('.tab[data-view="live"]').click();
+  const find = () => [...document.querySelectorAll('.lcard')].find((c) => c.dataset.key === key) || null;
   let card = null;
-  for (let i = 0; i < 80 && !card; i++) {
-    card = [...document.querySelectorAll('.lcard')].find((c) => c.dataset.key === key);
-    if (!card) await sleep(250);
+  for (let i = 0; i < 6 && !card; i++) { card = find(); if (!card) await sleep(200); } // already rendered? found instantly
+  // The floor is served from a cache that can be older than the alert, so a brand new whale simply
+  // is not on it yet. Rebuild once before giving up.
+  if (!card) {
+    try { renderLive(await fetchLive()); } catch {}
+    for (let i = 0; i < 6 && !card; i++) { card = find(); if (!card) await sleep(200); }
   }
-  if (!card) return toast("That whale's trade is no longer on the floor. Here are the latest whales.");
+  // Still missing: the floor only shows the largest few whales, so fetch this one on its own and pin
+  // it at the top. Clicking an alert should always land on THAT trade, never just near it.
+  if (!card) {
+    const t = await api('/api/live/one?key=' + encodeURIComponent(key)).catch(() => null);
+    if (t) {
+      t.alert = true;
+      if (liveCache && !liveCache.items.some((x) => x.key === t.key)) liveCache.items = [t, ...liveCache.items];
+      renderLive(liveCache ? liveCache.items : [t]);
+      card = find();
+    }
+  }
+  if (!card) return toast("That whale has closed the position, so the card is gone. Here are the latest whales.");
   await sleep(350);
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 4000);
@@ -1159,72 +1151,31 @@ boot();
 
 // ================================================= free beta + plans
 $('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
-let wantPlan = 'premium';
-document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', () => {
-  sfx.chip();
-  if (b.dataset.plan === 'free') return document.querySelector('.tab[data-view="replay"]').click();
-  wantPlan = b.dataset.plan;
-  document.querySelectorAll('.plan').forEach((p) => p.classList.toggle('picked', p.contains(b)));
-  $('wfTitle').textContent = wantPlan === 'premium' ? 'Save your Premium seat' : 'Save your seat';
-  $('waitForm').hidden = false; $('wfDone').hidden = true; $('wfOut').hidden = true;
-  $('waitForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => $('wfEmail').focus({ preventScroll: true }), 450);
-}));
 
-// The consent wording shown on screen is fetched from the server, so what a visitor agrees to and
-// what gets stored as proof of that agreement can never drift apart.
-let consentNotice = null;
-const loadConsent = () => api('/api/waitlist/consent')
-  .then((c) => { consentNotice = c; $('wfConsentText').textContent = c.text; return c; })
-  .catch(() => null);
-loadConsent();
-
-$('waitForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = $('waitForm').querySelector('button'); if (btn.disabled) return;
-  if (!$('wfConsent').checked) { $('wfConsent').focus(); return toast('Please tick the consent box first.'); }
-  btn.disabled = true;
-  if (!consentNotice) await loadConsent(); // the first fetch may have failed; don't make the visitor reload
-  if (!consentNotice) { btn.disabled = false; return toast('Could not reach the server. Try again in a moment.'); }
-  try {
-    const r = await api('/api/waitlist', { email: $('wfEmail').value, plan: wantPlan,
-      consent: true, consentVersion: consentNotice?.version });
-    sfx.win(false);
-    try { coinRain(40); } catch {}
-    $('wfDone').hidden = false;
-    $('wfDone').textContent = r.already ? "You're already on the list. We updated your plan." : "Seat saved. You'll hear from us first when plans open. Enjoy the free beta meanwhile.";
-    // Hand back the removal link immediately: withdrawing has to be as easy as agreeing was.
-    if (r.token) {
-      $('wfToken').value = `${siteUrl()}/?forget=${encodeURIComponent(r.token)}`;
-      $('wfOut').hidden = false;
-      store.set('fof_wl_token', r.token);
-    }
-  } catch (err) { toast(err.message); }
-  btn.disabled = false;
-});
-$('wfCopy').onclick = async () => {
-  const i = $('wfToken');
-  try { await navigator.clipboard.writeText(i.value); toast('Removal link copied'); }
-  catch { i.select(); toast('Press Ctrl+C to copy the link'); }
-};
-$('wfLeave').onclick = () => forgetEmail(store.get('fof_wl_token') || ($('wfToken').value.split('forget=')[1] || ''));
-
-/** Withdraw consent and delete the waitlist record. One click, no account, no waiting on a reply. */
-async function forgetEmail(token) {
-  if (!token) return toast('No waitlist record found in this browser.');
-  try {
-    const r = await api('/api/waitlist/leave', { token });
-    store.set('fof_wl_token', '');
-    $('wfOut').hidden = true;
-    $('wfDone').hidden = false;
-    $('wfDone').textContent = r.removed
-      ? 'Your email has been deleted. Nothing about you is left on the waitlist.'
-      : 'That link had already been used — you are not on the list.';
-    $('wfDone').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    toast('Email deleted');
-  } catch (err) { toast(err.message); }
+// Premium is announced on a Telegram channel, not by email: nothing about a visitor is collected,
+// stored or processed here, so there is no consent to take and nothing to delete later.
+// The channel address comes from the server (TELEGRAM_CHANNEL) so it can change without a redeploy
+// of the client, and the buttons stay hidden until there is a real channel to send people to.
+function paintChannel(url) {
+  const card = $('tgChanCard'); const link = $('tgChanLink'); const cta = $('tgChanCta');
+  if (url) {
+    if (link) link.href = url;
+    if (cta) cta.href = url;
+  } else {
+    // No channel configured yet: don't offer a dead link.
+    if (cta) { cta.removeAttribute('href'); cta.textContent = 'Premium is in private testing'; cta.classList.add('disabled'); }
+    if (link) link.hidden = true;
+    const sub = $('tgChanSub');
+    if (sub) sub.textContent = 'Premium is in private testing. The announcement channel opens shortly — check back here.';
+  }
+  if (card) card.hidden = false;
 }
 
+document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', () => {
+  sfx.chip();
+  if (b.dataset.plan === 'free') { document.querySelector('.tab[data-view="replay"]').click(); return; }
+  document.querySelectorAll('.plan').forEach((p) => p.classList.toggle('picked', p.contains(b)));
+}));
 
 // ================================================= Research Desk (Nansen Agent)
 const SIG_TXT = { buying: 'Insiders BUYING', selling: 'Insiders SELLING', mixed: 'Insiders MIXED', none: 'No insider trades' };
@@ -1468,11 +1419,13 @@ async function recheckCard(card) {
       else if (i >= 0) liveCache.items[i] = t;
     }
     const expanded = card.classList.contains('expanded');
+    const lit = card.classList.contains('spotlight'); // arriving from an alert: keep the "this one" glow
     const wrap = document.createElement('div');
     wrap.innerHTML = liveCard(t);
     const fresh = wrap.firstElementChild;
     card.replaceWith(fresh);
     if (expanded) fresh.classList.add('expanded');
+    if (lit) { fresh.classList.add('spotlight'); setTimeout(() => fresh.classList.remove('spotlight'), 4000); }
     wireLive();
     const nbox = fresh.querySelector('.lc-changed');
     nbox.innerHTML = `<b>Re-checked just now</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;
