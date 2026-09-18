@@ -939,3 +939,70 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
   .intro-steps{gap:8px}
   .intro-how{font-size:12.5px}
 }
+/* two-plan layout (no prices) */
+.plans.two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:900px;margin-left:auto;margin-right:auto}
+.pl-tag{display:inline-block;margin:8px 0 4px;padding:4px 12px;border-radius:999px;font-family:var(--display);font-weight:900;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#1a1204;background:linear-gradient(180deg,#fff0b8,var(--gold))}
+.pl-tag.free{color:#06251a;background:linear-gradient(180deg,#7ff0bd,var(--emerald))}
+@media (max-width:1099px){ .plans.two{grid-template-columns:1fr} }
+/* phones: a slightly tighter training hand so the whole position fits without scrolling */
+@media (max-width:760px){
+  .felt{padding:12px 10px}
+  .playcard .coin{font-size:27px}
+  .playcard .size{font-size:18px}
+  .playcard .side{font-size:11px;padding:3px 9px}
+  .playcard .inner{padding:12px}
+  .round .meta{font-size:12.5px}
+  .stat small{font-size:10px}
+  .stat b{font-size:17px}
+  .dossier{gap:6px}
+  .reasons li{font-size:12.5px;line-height:1.35}
+  .chips-row .chip{width:54px;height:54px}
+  .wager{gap:8px}
+  .bet{padding:12px;min-width:120px}
+  .bet span{font-size:20px}
+  .bet small{font-size:11.5px}
+  .table-title{font-size:11px}
+}
+@media (max-width:760px){
+  .intel{gap:6px}
+  .stat{padding:7px 9px;border-radius:11px}
+  .stat small{font-size:9.5px;line-height:1.2}
+  .stat b{font-size:16px}
+  .stat .sub{font-size:10.5px}
+  .dossier .meta{margin-bottom:8px}
+  .reasons{margin:8px 0}
+  .wager{padding-top:10px;margin-top:2px}
+  .chips-row{gap:10px;margin-bottom:10px}
+  .chips-row .chip{width:48px;height:48px}
+  .stake-box input{padding:8px 12px;font-size:17px}
+  .stake-box small{font-size:10px}
+  .actions{gap:10px}
+}
+/* phones: chips and stake on one row, so Follow/Fade sit on the first screen */
+@media (max-width:760px){
+  .wager{padding-top:8px}
+  .chips-row{flex-wrap:nowrap;gap:8px;margin-bottom:8px}
+  .chips-row .chip{width:44px;height:44px;font-size:11px}
+  .stake-box{flex:1 1 auto;margin-left:6px}
+  .stake-box small{display:none}
+  .stake-box input{padding:7px 10px;font-size:16px}
+  .table-title span:not(.line){font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .reasons .legend{display:none}
+  .potential{font-size:12px}
+}
+@media (max-width:760px){
+  .tt-pre{display:none}
+  .table-title span:not(.line){white-space:normal;font-size:12px}
+  .stat{padding:6px 9px}
+  .stat b{font-size:15px}
+  .stat .sub{font-size:10px}
+  .playcard .inner{padding:10px}
+  .reasons li{margin-bottom:2px}
+  .felt{padding:10px 8px 8px}
+}
+@media (max-width:760px){
+  .table-title span:not(.line){white-space:nowrap}
+  .bet{padding:9px 10px}
+  .bet span{font-size:18px}
+  .bet small{font-size:11px}
+}

@@ -63,7 +63,7 @@
     <div class="felt">
       <div class="felt-inner">
         <div class="table-title">
-          <span class="line"></span><span>Training hand · <b class="sec-q">Was the whale right?</b></span><button class="intro-help" data-intro="replay" aria-label="What is this section?" title="What is this section?">?</button><span class="line"></span>
+          <span class="line"></span><span><i class="tt-pre">Training hand · </i><b class="sec-q">Was the whale right?</b></span><button class="intro-help" data-intro="replay" aria-label="What is this section?" title="What is this section?">?</button><span class="line"></span>
         </div>
 
         <div id="dealing" class="dealing"><div class="deck"><i></i><i></i><i></i></div><p>The dealer is pulling a trade from Nansen…</p></div>
@@ -170,42 +170,34 @@
 
   <!-- ============ PLANS ============ -->
   <section id="view-plans" class="view">
-    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">Follow or Fade is <b class="gold">free during the beta</b>. Every feature is unlocked for everyone. Paid plans are coming soon: the Academy will stay free to try, and members will get the full floor.</p></div></div>
+    <div class="floor-head"><div><h2>Pick your seat</h2><p class="muted">Follow or Fade is <b class="gold">free during the beta</b>: every feature is unlocked for everyone. After the beta, Basic stays free and Premium adds the signals. Pricing is announced at launch.</p></div></div>
 
-    <div class="plans">
+    <div class="plans two">
       <article class="plan">
-        <div class="pl-head"><h3>Guest</h3><div class="price"><b>$0</b></div><p class="pl-sub">Try the Academy</p></div>
+        <div class="pl-head"><h3>Basic</h3><div class="pl-tag free">Free</div><p class="pl-sub">Learn to read Smart Money, with play money</p></div>
         <ul>
-          <li>5 training hands a day on real Smart Money trades</li>
-          <li>Watch the Live Floor</li>
-          <li>Basic skill level</li>
-          <li>Hall of Fame</li>
+          <li>Training Table: real Nansen Smart Money trades, judged on the whale's real exit</li>
+          <li>The dealer's tells after every hand: which signal called it, which was the trap</li>
+          <li>Live Floor: bet on whales who are still in the trade</li>
+          <li>Espresso, Cigar Lounge and Ride the Whale tables · cash out anytime</li>
+          <li>Whale track records and trust grades from Nansen (7D and 30D)</li>
+          <li>Your Skill Report, level and Hall of Fame</li>
+          <li>One-tap Trade on Nansen when you're ready</li>
         </ul>
         <button class="ghost-btn pl-cta" data-plan="free">Keep playing free</button>
       </article>
 
-      <article class="plan">
-        <div class="pl-head"><h3>Player</h3><div class="price"><b>$9</b><span>/month</span></div><p class="pl-sub">Train, practice live, trade on Nansen</p></div>
-        <ul>
-          <li>Unlimited hands on the Training Table</li>
-          <li>Bet on live whale trades: Espresso, Cigar Lounge, Ride the Whale</li>
-          <li>Cash out anytime, full whale track records and trust grades</li>
-          <li>Full Skill Report: your strengths, leaks and level</li>
-          <li>One-tap Trade on Nansen when you're ready</li>
-        </ul>
-        <button class="ghost-btn pl-cta" data-plan="basic">Join the waitlist</button>
-      </article>
-
       <article class="plan vip">
         <div class="pl-ribbon">Never miss a whale</div>
-        <div class="pl-head"><h3>High Roller</h3><div class="price"><b>$29</b><span>/month</span></div><p class="pl-sub">Everything in Player, plus the signals</p></div>
+        <div class="pl-head"><h3>Premium</h3><div class="pl-tag">Paid · coming soon</div><p class="pl-sub">Everything in Basic, plus the signals</p></div>
         <ul>
-          <li>Everything in Player</li>
-          <li><b>Real-time Telegram whale alerts</b> the moment a top trader opens</li>
+          <li>Everything in Basic</li>
+          <li><b>Real-time Telegram whale alerts</b> the moment a top-graded trader opens</li>
+          <li><b>Position updates</b>: alerts when that whale adds, trims or fully exits</li>
           <li>Only graded whales: win rate, coins traded, specialist filter</li>
-          <li>Your own filters: grade, size, coins</li>
-          <li>Nansen Agent insider research on stock whales, right in the alert</li>
-          <li>"Bet on it" and "Trade on Nansen" links right in the alert</li>
+          <li>Your own filters: grade, size, coins traded</li>
+          <li><b>Insider Pick of the Day</b> and Nansen Agent insider research on stock whales</li>
+          <li>Every alert links to the <b>full whale card</b> and to Trade on Nansen</li>
         </ul>
         <button class="gold-btn pl-cta" data-plan="premium">Join the waitlist</button>
       </article>
@@ -213,7 +205,7 @@
 
     <form id="waitForm" class="waitform" hidden>
       <h3 id="wfTitle">Save your seat</h3>
-      <p class="muted" id="wfSub">Leave your email and you'll hear first when plans open, with a founding-player discount.</p>
+      <p class="muted" id="wfSub">Leave your email and you'll hear first when Premium opens, with a founding-player offer.</p>
       <div class="wf-row"><input id="wfEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required maxlength="120"><button class="gold-btn" type="submit">Save my seat</button></div>
       <p class="wf-done" id="wfDone" hidden></p>
     </form>

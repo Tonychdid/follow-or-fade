@@ -371,6 +371,7 @@ async function bet(choice, btn) {
   catch (e) { $('btnFollow').disabled = $('btnFade').disabled = false; return showErr(e.message + ' — '); }
   // suspense: spin the wheel before the reveal
   $('round').hidden = true; $('suspense').hidden = false; sfx.roll(1.2);
+  setTimeout(() => scrollToResult('suspense'), 40);
   await sleep(1300);
   player = res.player; lastResult = { ...res, round, choice };
   showReveal(res, choice); renderPlayer(); refreshStatus();
@@ -379,9 +380,19 @@ $('btnFollow').onclick = (e) => bet('follow', e.currentTarget);
 $('btnFade').onclick = (e) => bet('fade', e.currentTarget);
 $('btnNext').onclick = () => { sfx.chip(); deal(); };
 
+/** After a bet on a phone, bring the result into view (the felt is taller than the screen). */
+function scrollToResult(id) {
+  if (!sheetMode()) return;
+  const el = $(id);
+  if (!el || el.hidden) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 72;
+  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+}
+
 function showReveal(res, choice) {
   const v = res.reveal, r = round;
   $('suspense').hidden = true; $('reveal').hidden = false;
+  setTimeout(() => scrollToResult('reveal'), 60);
   const big = res.result === 'win' && (res.whaleSlain || res.price >= 2.2 || res.delta >= 5000);
   const title = res.busted ? 'Rekt. The house reloads you.' : res.result === 'win' ? (res.whaleSlain ? 'Whale slain!' : big ? 'Jackpot call!' : 'You called it.') : res.result === 'loss' ? 'The house wins this one.' : 'Too close to call. Your chips are back.';
   const sub = res.result === 'push' ? `The whale moved only ${pct(v.ret, 2)}, inside the ±${((res.pushBand || 0.002) * 100).toFixed(1)}% no-call band · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}` : `You ${choice === 'follow' ? 'followed' : 'faded'} a ${r.side.toLowerCase()} on ${r.coin} at x${res.price.toFixed(2)} → ${res.delta >= 0 ? '+' : ''}${usd(res.delta)} · the whale ${v.closed ? `closed after ${hrs(v.heldMs)}` : `was still holding after ${v.maxHoldHours}h`}`;
@@ -686,7 +697,7 @@ function alertLine(a) {
       <div class="exit-ico">${a.kind.toUpperCase()}</div>
       <div class="ai-body"><div class="ai-title">${esc(a.trader)} ${x.title} <span class="muted">· ${ago(new Date(a.t).toISOString())}</span></div>
       <div class="ai-stats">${x.stats}</div>
-      <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div></div></div>`;
+      <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div></div></div>`;
   }
   const d30 = a.record?.d30 || {}, d7 = a.record?.d7, tr = a.record?.trust || { grade: '?' };
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
@@ -696,7 +707,7 @@ function alertLine(a) {
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
       ${a.specialist ? `<div class="ai-spec">${esc(a.coin)} specialist: ${Math.round(a.specialist.share * 100)}% of trades, <b class="pos">+${compact(a.specialist.pnl)}</b> realized on ${esc(a.coin)} (${(a.specialist.roi * 100).toFixed(1)}% return) in 30D</div>` : ''}
       <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
-      <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div>
+      <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><a class="link" href="https://app.nansen.ai/profiler?address=${esc(a.address)}&chain=hyperliquid" target="_blank" rel="noopener">Profile ↗</a></div>
     </div></div>`;
 }
 function renderAlertList() {
@@ -784,7 +795,7 @@ function announceAlert(a, count) {
     <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
       <div><b>${esc(a.trader)}</b> just opened <span class="side ${a.side}">${a.side.toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
       <div class="ai-stats">${a.specialist ? `${esc(a.coin)} specialist · <b class="pos">+${compact(a.specialist.pnl)}</b> on ${esc(a.coin)} · ${Math.round(a.specialist.share * 100)}% of trades` : `30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins`} · trust ${tr.score ?? '–'}/100</div></div></div>
-    <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><button class="link" id="popClose">Dismiss</button></div></div>`;
+    <div class="ai-actions"><button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button><a class="ghost-btn sm" href="${nansenTrade(a.coin)}" target="_blank" rel="noopener">Join on Nansen ↗</a><button class="link" id="popClose">Dismiss</button></div></div>`;
   pop.hidden = false;
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
@@ -801,7 +812,7 @@ function announceExit(a, count) {
     <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind.toUpperCase()}</div>
       <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">${a.kind === 'add' ? 'The whale is doubling down.' : 'Following this whale? Check your position.'}</div></div></div>
-    <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Bet on it</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
+    <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
   pop.hidden = false;
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
@@ -897,7 +908,7 @@ document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', 
   if (b.dataset.plan === 'free') return document.querySelector('.tab[data-view="replay"]').click();
   wantPlan = b.dataset.plan;
   document.querySelectorAll('.plan').forEach((p) => p.classList.toggle('picked', p.contains(b)));
-  $('wfTitle').textContent = wantPlan === 'premium' ? 'Save your High Roller seat' : 'Save your Player seat';
+  $('wfTitle').textContent = wantPlan === 'premium' ? 'Save your Premium seat' : 'Save your seat';
   $('waitForm').hidden = false; $('wfDone').hidden = true;
   $('waitForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => $('wfEmail').focus({ preventScroll: true }), 450);

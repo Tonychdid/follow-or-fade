@@ -24,7 +24,7 @@ The story is **Train → Practice live → Trade for real on Nansen**. Move the 
 | 23–31s | **Live Floor**: pause on the **Insider Pick of the Day**, open **Full research**, click **FOLLOW** | Nansen Agent screens every stock on Hyperliquid for insider buying |
 | 31–38s | On a stock whale (xyz: …) tap **Insider check**; on any whale pick **Ride the Whale** → **FOLLOW** | Whale vs insiders: same side or not? |
 | 38–44s | Your Table: point at the faces, click **CASH OUT** on a winning bet | Cash out anytime. The whale is my exit liquidity |
-| 44–50s | Bell → **Send a test alert** → click **Bet on it** | Alerts when a top whale opens a trade, even on Telegram |
+| 44–50s | Bell → **Send a test alert** → click **Open full card** | Alerts when a top whale opens a trade, even on Telegram |
 | 50–55s | Click **Trade … on Nansen ↗** and show the Nansen trading page for 3 seconds | Ready? Trade for real on Nansen |
 | 55–60s | End card (Clipchamp title) | Follow or Fade · Built on Nansen API · github.com/tonychdid/follow-or-fade |
 
