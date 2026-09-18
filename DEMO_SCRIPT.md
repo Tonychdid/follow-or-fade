@@ -3,7 +3,7 @@
 ## 1. Prepare (10 minutes before recording)
 
 1. Start the app with `start.bat` and wait until the Live Floor loads.
-2. Open a **fresh window**: press **Ctrl+Shift+N** in Chrome, go to `localhost:3000`. **Do not type the nickname yet** — the front door shows the real whale you are about to play, and that is your opening shot. Pick the nickname `Wassim` when you start recording.
+2. Open a **fresh window**: press **Ctrl+Shift+N** in Chrome, go to `localhost:3000`. **Do not type the nickname yet** — the front door shows the real whale you are about to play, and that is your opening shot. Pick a nickname that is not your real name when you start recording — `Maya` works.
 3. Press **F11** for full screen and keep the browser zoom at 100%.
 4. On the Live Floor, **place 3 live bets** ($500–$1,000 each): one on **Ride the Whale**, one on **Cigar Lounge (4 hours)** and one on **Espresso (15 min)**. By recording time some will be winning (money-printing face) and some losing (crying face).
 5. Sound **on**, volume around 50%.
@@ -17,7 +17,7 @@ The story is **Train → Practice live → Trade for real on Nansen**. Move the 
 
 | Time | What to do on screen | Caption to add |
 |---|---|---|
-| 0–4s | The front door: pause on "**A Smart Money whale just opened a $X LONG on Y. Do you FOLLOW or FADE?**", then type `Wassim` and click **Make my call** | A real Nansen whale trade. Follow it or fade it |
+| 0–4s | The front door: pause on "**A Smart Money whale just opened a $X LONG on Y. Do you FOLLOW or FADE?**", then type `Maya` and click **Make my call** | A real Nansen whale trade. Follow it or fade it |
 | 4–7s | Training Table with the hand dealt: hover the grade chip, the whale stats and the dealer's tells | Nansen data sets the odds |
 | 7–13s | Click **25%** → **FADE** or **FOLLOW** → roulette → reveal, pause on "the whale closed after …h" | Judged on the whale's real exit, not a random timer |
 | 13–17s | Scroll to **What the data said**: point at the tell and the trap | After every hand: which Nansen signal called it |
