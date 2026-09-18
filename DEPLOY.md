@@ -39,6 +39,9 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 ## 6. Manage your alerts (only you)
 Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is saved in that browser and removed from the address bar. The bell now shows the full alert settings and Telegram setup. Visitors only see the alerts.
 
+## 6b. Connect Telegram (optional)
+Bell → **Telegram** → paste the bot token from **@BotFather** → **Connect**. The app shows a short **pairing code**. Open your bot in Telegram, press **Start**, send it that code, then press **I sent the code**. The code is what ties the alert stream to *your* chat: without it, anyone who guessed your bot's username and messaged it first could have captured your alerts.
+
 ## 7. Download your waitlist
 Open `YOUR_URL/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in your browser. It downloads a spreadsheet with every email, the plan they picked and the date. Open it with Excel.
 
@@ -46,4 +49,5 @@ Open `YOUR_URL/admin/waitlist.csv?token=YOUR_ADMIN_TOKEN` in your browser. It do
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".
 - **Credits:** with the site open 24/7, background odds training and the whale scanner use roughly 2,000–3,000 credits a day, plus a few credits per training hand played. To leave more of a 5,000 cap for players, set the alert scan to every 10 minutes (bell → Alert rules), which saves about 700 credits a day. Check usage at https://app.nansen.ai/api.
 - **Updating:** upload new files to GitHub → Railway redeploys in about a minute.
+- **Security:** in public mode the app rate limits per client IP (using the address your proxy appends, which a visitor can't forge), sends a Content-Security-Policy and HSTS, caps stored players, and keeps alert rules, Telegram and the waitlist behind `ADMIN_TOKEN`.
 - **Custom domain (optional):** buy one (e.g. on Namecheap), then Settings → Networking → Custom Domain and follow Railway's DNS instructions. Update `PUBLIC_URL` to match.

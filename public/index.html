@@ -165,7 +165,7 @@
   <section id="view-board" class="view">
     <div class="floor-head"><div><h2>Hall of Fame</h2><p class="muted">The biggest bankrolls in the house.</p></div></div>
     <div id="podium" class="podium"></div>
-    <div class="board-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th>Bankroll</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+    <div class="board-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th title="Bankroll minus every $10,000 the house has staked you, reloads included">Net profit</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table></div>
   </section>
 
   <!-- ============ PLANS ============ -->
@@ -290,7 +290,7 @@
   <div class="actions">
     <a id="shareDownload" class="gold-btn" download="follow-or-fade.png">Download image</a>
     <a id="shareX" class="ghost-btn" target="_blank" rel="noopener">Post on X</a>
-    <button class="ghost-btn" onclick="this.closest('dialog').close()">Close</button>
+    <button class="ghost-btn" data-close-dialog>Close</button>
   </div>
 </dialog>
 
@@ -317,7 +317,7 @@
 <aside id="alertPanel" class="alert-panel" hidden>
   <div class="ap-head">
     <div><h3>Whale Alerts</h3><p>Get pinged the moment a top-graded Smart Money whale opens a position.</p></div>
-    <button class="icon-btn" id="alertClose" aria-label="Close">✕</button>
+    <div class="ap-head-btns"><button class="ghost-btn sm" id="alertClear" title="Clear the list (new alerts still arrive)">Clear</button><button class="icon-btn" id="alertClose" aria-label="Close">✕</button></div>
   </div>
   <div class="ap-status" id="apStatus"></div>
   <p class="ap-public" id="apPublicNote" hidden>Alerts on this public table follow the house rules above, and they are free for everyone. Click <b>Enable</b> for desktop notifications. <b>Your own rules and Telegram delivery are Premium</b> (in private testing) — or run your own copy from GitHub and set them yourself.</p>
@@ -344,8 +344,8 @@
           <div class="row"><input id="tgToken" placeholder="123456789:AA..." autocomplete="off"><button class="ghost-btn sm" id="tgSave">Connect</button></div>
         </div>
         <div id="tgVerify" class="tg-steps" hidden>
-          <p>Now open <b id="tgBotName">your bot</b> in Telegram and press <b>Start</b>, then:</p>
-          <button class="gold-btn sm" id="tgCheck">I pressed Start</button>
+          <p>Now open <b id="tgBotName">your bot</b> in Telegram, press <b>Start</b>, and send it this code so the alerts go to your chat and nobody else's: <code id="tgPair">—</code></p>
+          <button class="gold-btn sm" id="tgCheck">I sent the code</button>
         </div>
         <button class="ghost-btn sm" id="tgOff" hidden>Disconnect</button>
       </div>
