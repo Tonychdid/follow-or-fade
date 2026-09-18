@@ -43,8 +43,14 @@ Open **`YOUR_URL/?admin=YOUR_ADMIN_TOKEN`** once in your browser. The token is s
 ## 6b. Connect Telegram (optional)
 Bell → **Telegram** → paste the bot token from **@BotFather** → **Connect**. The app shows a short **pairing code**. Open your bot in Telegram, press **Start**, send it that code, then press **I sent the code**. The code is what ties the alert stream to *your* chat: without it, anyone who guessed your bot's username and messaged it first could have captured your alerts.
 
-## 7. Point the Plans page at your Telegram channel
-Create a public Telegram channel, then set `TELEGRAM_CHANNEL` to its link — `https://t.me/yourchannel`. The Plans page turns that into the "Join the Telegram channel" button. Leave it unset and the button says Premium is in private testing instead, with no dead link. Only `https://t.me/...` links are accepted; anything else is ignored.
+## 7. The Plans page is off by default
+The Plans page and the "FREE BETA" strip are the only places the site offers anything paid, and they stay **hidden** unless you set `SHOW_PLANS=1`. That is deliberate: while the site makes no commercial offer, the published mentions légales can use the short form available to a non-professional publisher (LCEN art. 1-1, II). Turning Plans on is the moment that stops being true, so treat `SHOW_PLANS=1` as a legal decision, not a feature flag — fill in the full mentions légales (the Option B block commented into `public/legal.html`) in the same deploy.
+
+It fails closed: a redeploy that loses the variable hides the offer rather than exposing it, and with Plans off the Telegram channel link is withheld from the API entirely.
+
+To turn it on, set both:
+- `SHOW_PLANS=1`
+- `TELEGRAM_CHANNEL=https://t.me/yourchannel` — the "Join the Telegram channel" button. Only `https://t.me/...` is accepted; anything else is ignored, so a typo can't become an open redirect. Leave it unset and the button reads "Premium is in private testing" with no dead link.
 
 ## Good to know
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".

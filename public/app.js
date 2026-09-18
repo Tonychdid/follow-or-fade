@@ -64,6 +64,9 @@ function deadEnd(msg) {
 const qp = (k) => { try { return new URL(location.href).searchParams.get(k); } catch { return null; } };
 let challengeId = (() => { const v = qp('challenge'); return v && /^[0-9a-f-]{4,36}$/i.test(v) ? v : null; })();
 
+// Set when the page was opened with ?view=plans, honoured only once the server confirms Plans is on.
+let wantPlansOnLoad = false;
+
 const whaleLine = (h) => {
   const size = h.valueUsd ? `<b>${compact(h.valueUsd)}</b> ` : '';
   return `${size}<b>${h.side === 'Short' ? 'SHORT' : 'LONG'}</b> on <b>${esc(String(h.coin).split(':').pop())}</b>`;
@@ -125,7 +128,12 @@ async function boot() {
   const startTrade = qp('trade');
   if (challengeId) history.replaceState(null, '', location.pathname);
   if (startTrade) { pickCollapsedByLink = true; setTimeout(() => goToTrade(startTrade), 60); }
-  if (!startTrade && ['live', 'report', 'board', 'plans'].includes(startView)) {
+  if (!startTrade && startView === 'plans') {
+    // Defer: paintPlans() opens it once the server confirms Plans is switched on, and silently
+    // ignores it when it isn't, so the tab never flashes up and bounce back.
+    history.replaceState(null, '', location.pathname);
+    wantPlansOnLoad = true;
+  } else if (!startTrade && ['live', 'report', 'board'].includes(startView)) {
     history.replaceState(null, '', location.pathname);
     setTimeout(() => document.querySelector(`.tab[data-view="${startView}"]`).click(), 50);
   }
@@ -174,7 +182,7 @@ async function refreshStatus() {
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
   $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
-  if (!refreshStatus.channelPainted) { refreshStatus.channelPainted = true; paintChannel(s.channel || ''); }
+  if (refreshStatus.plansOn !== !!s.plans) { refreshStatus.plansOn = !!s.plans; paintPlans(!!s.plans, s.channel || ''); }
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
     $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were in profit when the whale exited${s.medianHoldHours ? ` · median hold ${hrs(s.medianHoldHours * 3600e3)}` : ''}`;
@@ -1151,6 +1159,26 @@ boot();
 
 // ================================================= free beta + plans
 $('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
+
+// The Plans page and the beta strip are the only places the site makes a commercial offer, so they are
+// hidden in the markup and revealed only when the server says SHOW_PLANS=1. Failing closed matters here:
+// if the status call never lands, no offer is shown, which is the state the published mentions légales
+// describe. Anyone who deep-links to #plans while it is off is put back on the Training Table.
+function paintPlans(on, channel) {
+  const tab = document.querySelector('.tab-plans');
+  if (tab) tab.hidden = !on;
+  const strip = $('betaStrip');
+  if (strip) strip.hidden = !on;
+  if (on) {
+    paintChannel(channel);
+    if (wantPlansOnLoad && tab) tab.click(); // honour ?view=plans now that we know it exists
+  } else {
+    const view = $('view-plans');
+    // .view uses an 'active' class, not the hidden attribute
+    if (view && view.classList.contains('active')) document.querySelector('.tab[data-view="replay"]').click();
+  }
+  wantPlansOnLoad = false;
+}
 
 // Premium is announced on a Telegram channel, not by email: nothing about a visitor is collected,
 // stored or processed here, so there is no consent to take and nothing to delete later.

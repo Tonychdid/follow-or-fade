@@ -23,6 +23,11 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // address, stores nothing about a visitor who wants to be told, and has nothing to delete later.
 // Set TELEGRAM_CHANNEL to the channel's public link (https://t.me/yourchannel). Anything that is not
 // a t.me link is ignored rather than rendered, so a typo can't turn the Plans page into an open redirect.
+// SHOW_PLANS=1 reveals the Plans page and the free-beta strip. Left unset, both stay hidden and the
+// site makes no commercial offer at all — which is the condition for publishing the short mentions
+// légales available to a non-professional publisher (LCEN art. 1-1, II). Deliberately opt-IN: a
+// redeploy that loses an environment variable hides the offer rather than exposing it.
+const SHOW_PLANS = process.env.SHOW_PLANS === '1';
 const TG_CHANNEL = (() => {
   const v = (process.env.TELEGRAM_CHANNEL || '').trim();
   return /^https:\/\/t\.me\/[A-Za-z0-9_+\-\/]{1,64}$/.test(v) ? v : '';
@@ -89,7 +94,7 @@ const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, channel: TG_CHANNEL }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, plans: SHOW_PLANS, channel: SHOW_PLANS ? TG_CHANNEL : '' }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play

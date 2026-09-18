@@ -160,7 +160,7 @@ The whole game is free during the beta (training, live bets, Trader Profile, in-
 
 The alert scanner runs once for everyone, so Premium alerts cost the same in Nansen credits whether 10 or 1,000 people receive them.
 
-Set `TELEGRAM_CHANNEL=https://t.me/yourchannel` to point the Plans button at your channel. Unset, the button reads "Premium is in private testing" and links nowhere.
+The Plans page and the free-beta strip are hidden unless `SHOW_PLANS=1` is set, so by default the site makes no commercial offer at all — see DEPLOY.md for why that matters. With Plans on, `TELEGRAM_CHANNEL=https://t.me/yourchannel` points the button at your channel; unset, it reads "Premium is in private testing" and links nowhere.
 
 ## Project layout
 
