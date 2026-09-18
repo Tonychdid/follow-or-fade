@@ -543,11 +543,13 @@ function recordHtml(r) {
   <div class="rec-coins">${r.best ? `Best: <b class="${r.best.pnl >= 0 ? 'pos' : 'neg'}">${esc(r.best.coin)} ${r.best.pnl >= 0 ? '+' : ''}${compact(r.best.pnl)}</b>` : ''}${r.worst ? ` · Worst: <b class="neg">${esc(r.worst.coin)} ${compact(r.worst.pnl)}</b>` : ''} · ${r.coins} coins traded</div>`;
 }
 function liveCard(t) {
+  t.seenAt ??= Date.now();
   liveItems.set(t.key, t);
   const k = esc(t.key), tr = t.record?.trust || { grade: '?', label: 'No track record' };
   const gradeCls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[tr.grade] || 'gc';
   return `<div class="lcard${t.alert ? ' alerted' : ''}" data-key="${k}">${t.alert ? '<div class="ribbon">WHALE ALERT</div>' : ''}
-    <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="size">${compact(t.valueUsd)}</div></div>
+    <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="row-right"><button class="lc-refresh" data-refresh="${k}" title="Re-check this whale: price, odds, tells and whether they are still in">↻ Re-check</button><div class="size">${compact(t.valueUsd)}</div></div></div>
+    <div class="lc-changed" hidden></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
     <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
@@ -592,6 +594,8 @@ function wireLive() {
       input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(Math.floor(player.bankroll), Number(c.dataset.add));
       sfx.chip(); if (c.dataset.add === 'all') { sparkleAt(c, 20); toast('All in. The house respects it.'); }
     });
+    const rf = card.querySelector('[data-refresh]');
+    if (rf) rf.onclick = () => recheckCard(card);
     const rq = card.querySelector('.rq-btn');
     if (rq) rq.onclick = () => openResearch(card, liveItems.get(card.dataset.key));
     const more = card.querySelector('.lc-summary');
@@ -783,6 +787,7 @@ async function goToTrade(key) {
   await sleep(350);
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 4000);
+  recheckCard(card).catch(() => {}); // straight from an alert: show what changed since it was sent
 }
 
 function announceAlert(a, count) {
@@ -1124,3 +1129,53 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   if (v === 'live') setTimeout(() => showIntro('live'), liveShownOnce && !$('floorIntro').hidden ? 2400 : 400);
   else setTimeout(() => showIntro(v), 250);
 }));
+
+
+// ================================================= re-check one whale (from a Telegram alert, minutes later)
+/** What the numbers were when the alert went out, so "what changed" is measured from there. */
+function alertBaseline(key) {
+  const a = alertsCache.find((x) => !x.kind && x.key === key);
+  if (!a) return null;
+  return { at: a.t, pFollow: a.read?.pFollow ?? null, entry: a.entryPrice ?? null, label: `the alert ${ago(new Date(a.t).toISOString())}` };
+}
+async function recheckCard(card) {
+  const key = card.dataset.key;
+  const btn = card.querySelector('[data-refresh]');
+  const before = liveItems.get(key);
+  const base = alertBaseline(key) || (before ? { at: before.seenAt || Date.now(), pFollow: before.pFollow, entry: before.mid, label: 'you opened this card' } : null);
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Checking…'; }
+  try {
+    const t = await api('/api/live/one?key=' + encodeURIComponent(key));
+    const box = card.querySelector('.lc-changed');
+    const lines = [];
+    if (base) {
+      if (base.entry != null) {
+        const move = (t.side === 'Long' ? 1 : -1) * (t.mid - base.entry) / base.entry;
+        lines.push(`<span class="${move >= 0 ? 'pos' : 'neg'}">Price ${pct(move, 2)}</span> in the whale's favour since ${esc(base.label)}`);
+      }
+      if (base.pFollow != null) {
+        const d = t.pFollow - base.pFollow;
+        lines.push(`Follow odds ${Math.round(base.pFollow * 100)}% → <b>${Math.round(t.pFollow * 100)}%</b>${Math.abs(d) < 0.005 ? ' (unchanged)' : d > 0 ? ' <span class="pos">▲</span>' : ' <span class="neg">▼</span>'}`);
+      }
+    }
+    lines.push(t.gone ? '<b class="neg">The whale has closed this position.</b>'
+      : t.trimmed >= 0.1 ? `<b class="neg">The whale trimmed ${Math.round(t.trimmed * 100)}%</b> of the position`
+      : '<b class="pos">The whale is still in the trade</b>');
+    const expanded = card.classList.contains('expanded');
+    const wrap = document.createElement('div');
+    wrap.innerHTML = liveCard(t);
+    const fresh = wrap.firstElementChild;
+    card.replaceWith(fresh);
+    if (expanded) fresh.classList.add('expanded');
+    wireLive();
+    const nbox = fresh.querySelector('.lc-changed');
+    nbox.innerHTML = `<b>Re-checked just now</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;
+    nbox.hidden = false;
+    fresh.classList.add('rechecked'); setTimeout(() => fresh.classList.remove('rechecked'), 1500);
+    sfx.tick();
+  } catch (e) {
+    toast(e.message);
+    if (e.status === 410) { card.classList.add('gone'); setTimeout(() => card.remove(), 450); }
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Re-check'; }
+  }
+}

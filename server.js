@@ -51,7 +51,7 @@ function limited(req, cost = 1, perMin = 240) {
   if (buckets.size > 50000) { for (const [k, v] of buckets) if (now - v.t > 120e3) buckets.delete(k); } // drop idle clients only
   return b.tokens < 0;
 }
-const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'GET /api/research/intel': 3 };
+const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/waitlist': 20, 'GET /api/research/intel': 3, 'GET /api/live/one': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -70,6 +70,7 @@ const routes = {
   'GET /api/report': async (_, q) => game.skillReport(q.get('player')),
   'GET /api/leaderboard': async () => game.leaderboard(),
   'GET /api/live': async () => game.liveFeed(),
+  'GET /api/live/one': async (_, q) => game.refreshLiveItem(q.get('key')),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
   'POST /api/live/cashout': async (b) => game.cashOut(b.player, b.betId),
   'POST /api/waitlist': async (b) => waitlist.join(b),
@@ -143,7 +144,8 @@ setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
 setInterval(() => alerts.checkExits().catch(() => {}), 2 * 60e3);
-setTimeout(() => alerts.backfillWatches().catch(() => {}), 15e3); // exit alerts: whales we alerted on trimming or closing
+setTimeout(() => alerts.backfillWatches().catch(() => {}), 15e3);
+setTimeout(() => alerts.startTelegramPoll(), 10e3); // listen for the 🔄 Re-check button on Telegram alerts // exit alerts: whales we alerted on trimming or closing
 setInterval(calibrate, 60 * 60e3);
 setInterval(() => game.settleLive().catch(() => {}), 5e3);
 // keep the Live Floor warm (whale data is cached per hour, the trade feed per 15 min)
