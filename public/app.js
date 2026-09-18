@@ -759,7 +759,7 @@ function liveCard(t) {
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">100</button><button class="minichip g" data-add="500">500</button><button class="minichip r" data-add="1000">1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${hzOdds(t, 'ride').follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${hzOdds(t, 'ride').fade.toFixed(2)}</small></button></div>
-    <p class="lc-src">Figures as of ${esc(new Date(t.seenAt || Date.now()).toISOString().slice(0, 16).replace('T', ' '))} UTC, from Hyperliquid and Nansen. The grade is this site's own automated heuristic, not a judgement about any person or firm. <a href="/legal.html#traders" target="_blank" rel="noopener">Are you this trader?</a></p>
+    <p class="lc-src">Figures as of ${esc(new Date(t.seenAt || Date.now()).toISOString().slice(0, 16).replace('T', ' '))} UTC, from Hyperliquid and Nansen. The grade is this site's own automated heuristic, not a judgement about any person or firm. <a href="/legal.html" target="_blank" rel="noopener">Are you this trader?</a></p>
     <div class="links"><a href="https://app.nansen.ai/profiler?address=${esc(t.address)}&chain=hyperliquid" target="_blank" rel="noopener">Whale profile on Nansen ↗</a><a class="trade-nansen" href="https://app.nansen.ai/token-god-mode?tokenAddress=${encodeURIComponent(t.coin)}&chain=hyperliquid" target="_blank" rel="noopener">Look ${esc(t.coin)} up on Nansen ↗</a></div>
   </div>`;
 }

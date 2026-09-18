@@ -28,6 +28,11 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // légales available to a non-professional publisher (LCEN art. 1-1, II). Deliberately opt-IN: a
 // redeploy that loses an environment variable hides the offer rather than exposing it.
 const SHOW_PLANS = process.env.SHOW_PLANS === '1';
+// SHOW_LEGAL=1 publishes public/legal-full.html (the risk notice, the privacy notice and the terms).
+// Off by default while the site is free and makes no offer; /legal.html (mentions légales) is always
+// served. Opt-in for the same reason as SHOW_PLANS: losing the variable hides a page rather than
+// publishing one that is out of date.
+const SHOW_LEGAL = process.env.SHOW_LEGAL === '1';
 const TG_CHANNEL = (() => {
   const v = (process.env.TELEGRAM_CHANNEL || '').trim();
   return /^https:\/\/t\.me\/[A-Za-z0-9_+\-\/]{1,64}$/.test(v) ? v : '';
@@ -188,7 +193,12 @@ async function handle(req, res) {
     return res.end(renderIndex());
   }
   const file = path.join(ROOT, 'public', path.normalize(url.pathname));
-  if (!file.startsWith(path.join(ROOT, 'public') + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+  // legal-full.html is unpublished unless SHOW_LEGAL=1 — a plain 404, so its existence isn't advertised.
+  // Gate on the RESOLVED path, never on url.pathname: '//legal-full.html' survives URL parsing intact and
+  // only collapses to '/legal-full.html' in path.normalize above, so a raw-pathname test is bypassable.
+  const GATED = !SHOW_LEGAL ? [path.join(ROOT, 'public', 'legal-full.html')] : [];
+  if (!file.startsWith(path.join(ROOT, 'public') + path.sep) || GATED.includes(file)
+      || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     if (limited(req, 5)) return json(res, 429, { error: 'Too many requests' }); // a flood of unknown paths is still a flood
     res.writeHead(404); return res.end('Not found');
   }

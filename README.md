@@ -174,7 +174,8 @@ lib/coach.js         post-hand lessons (tell and trap with weekly signal reliabi
 lib/hyperliquid.js   public prices, candles, positions and fill history (whale exits, Ride the Whale, settlement)
 lib/demo.js          demo data in Nansen response shapes
 public/              the game UI (vanilla JS, no build): app.js, sfx.js (Web Audio), fx.js (particles)
-public/legal.html    risk notice, privacy notice and terms — DRAFTS with [BRACKETED] gaps to fill
+public/legal.html      mentions légales (LCEN art. 1-1) — always served
+public/legal-full.html risk notice, privacy notice and terms — served only when SHOW_LEGAL=1
 public/fonts/        self-hosted typefaces (SIL OFL) so no visitor request reaches a third party
 lib/excluded.js      traders who objected: consulted on every path that could show one
 ```
