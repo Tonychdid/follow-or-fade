@@ -143,8 +143,31 @@ async function showPreviewHand() {
   el.innerHTML = `A Smart Money whale opened a ${whaleLine(h)}${whenLine(h)}.`;
 }
 
+/**
+ * The arrival flourish: once in a visitor's life, at the Training Table.
+ * It cannot play on load, because browsers keep audio locked until the visitor interacts, so it waits
+ * for their first click or key press. It is deliberately NOT tied to the intro overlay: a returning
+ * visitor never sees that again, so hanging the sound off it meant almost nobody would ever hear it.
+ * Add ?welcome=1 to the URL to hear it again (useful when recording).
+ */
+function armWelcome() {
+  if (store.get('fof_welcomed') === '1' && !qp('welcome')) return;
+  const arm = () => ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
+    window.addEventListener(ev, fire, { once: true, capture: true }));
+  function fire() {
+    // Audio unlocks asynchronously: give the context a moment to actually start before playing.
+    setTimeout(() => {
+      if (isMuted()) { arm(); return; } // muted right now — keep the flourish owed, try again later
+      store.set('fof_welcomed', '1');
+      sfx.welcome();
+    }, 280);
+  }
+  arm();
+}
+
 async function boot() {
   syncMute();
+  armWelcome();
   if (resultToken) await handleResultLink(); // settle this before the welcome dialog covers it
   const id = store.get('fof_player');
   // Esc must not leave the app without a player (browsers may close the dialog anyway, so reopen it)
@@ -872,11 +895,11 @@ $('btnChallenge').onclick = async () => {
   const gap = 30, total = wF + gap + wOr + gap + wD;
   let x = 600 - total / 2;
   g.textAlign = 'left';
-  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#34d399';
+  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#a78bfa';
   g.fillText('FOLLOW', x, qY); x += wF + gap;
   g.font = 'italic 500 34px "Cormorant Garamond", Georgia, serif'; g.fillStyle = 'rgba(243,234,215,.75)';
   g.fillText('or', x, qY - 6); x += wOr + gap;
-  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#f06377';
+  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#fb923c';
   g.fillText('FADE', x, qY);
   g.textAlign = 'center';
 
@@ -959,7 +982,7 @@ async function loadBoard() {
   const net = (r) => (r.net ?? r.bankroll - 10000);
   $('podium').innerHTML = rows.length ? podium.map((r, i) => r ? `<div class="pod p${[2, 1, 3][i]}"><div class="medal">${[2, 1, 3][i]}</div><b>${esc(r.name)}</b><em>${net(r) >= 0 ? '+' : ''}${usd(net(r))}</em><div class="muted">${Math.round(r.winRate * 100)}% win rate</div></div>` : '<div></div>').join('') : '';
   $('boardBody').innerHTML = rows.length ? rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}${r.busts ? ` <span class="muted" title="Reloaded ${r.busts}\u00d7 after going broke: each reload counts against the net">\u00b7 ${r.busts} reload${r.busts > 1 ? 's' : ''}</span>` : ''}</td><td class="${net(r) >= 0 ? 'pos' : 'neg'}">${net(r) >= 0 ? '+' : ''}${usd(net(r))}</td><td>${r.bets}</td><td>${Math.round(r.winRate * 100)}%</td><td>${r.bestStreak}</td><td>${r.whalesSlain}</td></tr>`).join('')
-    : '<tr><td colspan="7" class="muted">No bets yet. Be the first legend.</td></tr>';
+    : '<tr><td colspan="7" class="muted">No one has qualified yet \u2014 play three hands and the seat is yours.</td></tr>';
 }
 
 // ================================================= live floor
@@ -1049,7 +1072,7 @@ function liveCard(t) {
       <div class="rec-body" data-panel="d30" hidden>${recordHtml(t.record?.d30)}</div>
     </div>
 
-    <div class="tells-title sm">The dealer's tells <span class="legend"><i class="g"></i>points to FOLLOW <i class="r"></i>points to FADE</span></div>
+    <div class="tells-title sm">The dealer's tells <span class="legend"><i class="g"></i>favors FOLLOW <i class="r"></i>favors FADE</span></div>
     <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('')}</ul>
     </div>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
@@ -1301,9 +1324,31 @@ async function goToTrade(key) {
   if (!card) return toast("That whale has closed the position, so the card is gone. Here are the latest whales.");
   await sleep(350);
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  card.classList.add('spotlight'); setTimeout(() => card.classList.remove('spotlight'), 4000);
+  focusCard(card);
   recheckCard(card).catch(() => {}); // straight from an alert: show what changed since it was sent
 }
+
+// Arriving from a Telegram alert or the bell, the floor can be twenty cards deep and the gold glow
+// alone is easy to lose — especially after a scroll lands you between two cards. Hold the rest of the
+// floor back for the same few seconds so there is exactly one card in focus.
+const FOCUS_MS = 4000;
+let focusTimer = null;
+function focusCard(card) {
+  const list = $('liveList');
+  document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
+  card.classList.add('spotlight');
+  if (list) list.classList.add('focusing');
+  clearTimeout(focusTimer);
+  focusTimer = setTimeout(clearFocus, FOCUS_MS);
+}
+function clearFocus() {
+  clearTimeout(focusTimer); focusTimer = null;
+  $('liveList')?.classList.remove('focusing');
+  document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
+}
+// Don't make an impatient player wait out the countdown: the first touch anywhere clears it.
+['pointerdown', 'keydown', 'wheel'].forEach((ev) =>
+  window.addEventListener(ev, () => { if (focusTimer) clearFocus(); }, { passive: true }));
 
 function announceAlert(a, count) {
   if (a.kind) return announceExit(a, count);
@@ -1655,16 +1700,8 @@ function closeIntro() {
   const o = $('introOverlay');
   const view = document.querySelector('.view.active')?.id.replace('view-', '');
   document.querySelectorAll('.intro-compare [data-sec].on').forEach((d) => store.set('fof_intro_' + d.dataset.sec, '1'));
-  o.hidden = true; introOpen = false;
-  // The arrival flourish, once in a visitor's life, as they step up to the Training Table for the
-  // first time. Played here rather than on load because browsers keep audio locked until a gesture,
-  // and dismissing this overlay is one. Muting still silences it, and it never plays twice.
-  if (view === 'replay' && !store.get('fof_welcomed')) {
-    store.set('fof_welcomed', '1');
-    sfx.welcome();
-  } else {
-    sfx.chip();
-  }
+  o.hidden = true; introOpen = false; sfx.chip();
+  void view;
 }
 $('introGo').onclick = closeIntro;
 $('introOverlay').addEventListener('click', (e) => { if (e.target === $('introOverlay')) closeIntro(); });
@@ -1729,7 +1766,7 @@ async function recheckCard(card) {
     const fresh = wrap.firstElementChild;
     card.replaceWith(fresh);
     if (expanded) fresh.classList.add('expanded');
-    if (lit) { fresh.classList.add('spotlight'); setTimeout(() => fresh.classList.remove('spotlight'), 4000); }
+    if (lit) focusCard(fresh); // the element was replaced; keep the spotlight on the new one
     wireLive();
     const nbox = fresh.querySelector('.lc-changed');
     nbox.innerHTML = `<b>Re-checked just now</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;

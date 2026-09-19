@@ -5,9 +5,16 @@
   --emerald:#22c07e; --emerald-d:#0e7a4c; --ruby:#e0445a; --ruby-d:#8f1a2c;
   /* The dealer's tells must NOT reuse green/red. On a card those two already mean LONG/SHORT and
      money up/down, so a green tell on a short read as "the position is winning" when it actually
-     meant "this points to following". Violet and orange carry no money meaning, and the dot is
+     meant "this favors following". Violet and orange carry no money meaning, and the dot is
      filled vs hollow so the difference survives colour blindness and greyscale screenshots. */
   --tell-follow:#a78bfa; --tell-fade:#fb923c;
+  /* deeper ends of the same two hues, for gradients and bars. Green/red stay reserved for
+     direction (LONG/SHORT) and money (P&L, flow) — never for the FOLLOW/FADE choice, because
+     a red FADE button reads as "go short" when fading a short actually means going long. */
+  --tell-follow-d:#5b21b6; --tell-fade-d:#a8430a;
+  /* button faces: the same two hues, one step deeper, so white 900-weight labels stay legible
+     after video compression. The legend dots and the odds bar keep the bright hues. */
+  --btn-follow:#8b5cf6; --btn-fade:#d9700f;
   --hair:rgba(212,175,55,.28); --hair2:rgba(212,175,55,.14);
   --mono:'JetBrains Mono',ui-monospace,monospace; --display:'Cinzel',Georgia,serif; --serif:'Cormorant Garamond',Georgia,serif;
 }
@@ -131,21 +138,24 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 .reasons li{display:flex;gap:10px;align-items:flex-start;color:rgba(243,234,215,.92);font-size:14.5px}
 .reasons li::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:transparent;border:2px solid var(--tell-fade);box-shadow:0 0 7px rgba(251,146,60,.55)}
 .reasons li.good::before{background:var(--tell-follow);border-color:var(--tell-follow);box-shadow:0 0 8px var(--tell-follow)}
-.probbar{position:relative;height:12px;border-radius:99px;background:linear-gradient(90deg,var(--ruby-d),var(--ruby));box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
-.pf{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,var(--emerald-d),var(--emerald));transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.probbar{position:relative;height:12px;border-radius:99px;background:linear-gradient(90deg,var(--tell-fade-d),var(--tell-fade));box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.pf{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,var(--tell-follow-d),var(--tell-follow));transition:width .8s cubic-bezier(.2,.8,.2,1)}
 .needle{position:absolute;top:-5px;width:3px;height:22px;background:var(--gold-l);border-radius:2px;box-shadow:0 0 10px var(--gold);transition:left .8s cubic-bezier(.2,.8,.2,1)}
 .problabels{display:flex;justify-content:space-between;color:rgba(243,234,215,.7);font-size:13px;margin-top:6px}
 .problabels b{color:var(--ivory);font-family:var(--mono)}
 
 .wager{grid-column:1/-1;border-top:1px dashed rgba(245,215,122,.3);padding-top:18px;margin-top:4px}
+/* The chips are the main control on the card, so they take the whole width that is going spare
+   instead of huddling at the left with dead space between them and the stake box. */
 .chips-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-.chip{--c:#1f4fd1;width:78px;height:78px;border-radius:50%;position:relative;display:grid;place-items:center;
+.chip-group{flex:1 1 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.chip{--c:#1f4fd1;width:92px;height:92px;border-radius:50%;position:relative;display:grid;place-items:center;
   background:radial-gradient(circle,var(--c) 0 52%,transparent 53%),repeating-conic-gradient(#fff 0 12deg,var(--c) 12deg 45deg);
   box-shadow:0 6px 0 rgba(0,0,0,.35),0 8px 16px rgba(0,0,0,.45),inset 0 0 0 3px rgba(255,255,255,.25);transition:transform .15s}
-.chip span{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;border:2px dashed rgba(255,255,255,.55);font-family:var(--display);font-weight:900;font-size:15px;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.chip span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;border:2px dashed rgba(255,255,255,.55);font-family:var(--display);font-weight:900;font-size:17px;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .chip:hover{transform:translateY(-4px) rotate(-8deg)} .chip:active{transform:translateY(1px) scale(.95)}
 .chip.c10{--c:#1d4ed8}.chip.c25{--c:#15803d}.chip.c50{--c:#b91c1c}.chip.call{--c:#111}
-.chip.call span{border-color:var(--gold);color:var(--gold-l);font-size:13px}
+.chip.call span{border-color:var(--gold);color:var(--gold-l);font-size:15px}
 .chip.picked{transform:translateY(-8px);box-shadow:0 12px 0 rgba(0,0,0,.35),0 0 24px rgba(245,215,122,.6)}
 .stake-box{margin-left:auto;display:flex;flex-direction:column;gap:2px}
 .stake-box small{font-family:var(--display);letter-spacing:.14em;font-size:11px;color:rgba(245,215,122,.9);text-transform:uppercase}
@@ -159,8 +169,8 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 @keyframes sheen{0%,60%{left:-60%}100%{left:130%}}
 .bet:hover{filter:brightness(1.08);box-shadow:0 0 30px rgba(255,255,255,.12)}
 .bet:active{transform:scale(.98)} .bet:disabled{filter:grayscale(.8);opacity:.5;cursor:not-allowed}
-.bet.follow{background:linear-gradient(180deg,#34d399,var(--emerald-d));color:#fff}
-.bet.fade{background:linear-gradient(180deg,#f06377,var(--ruby-d));color:#fff}
+.bet.follow{background:linear-gradient(180deg,var(--btn-follow),var(--tell-follow-d));color:#fff;border-color:rgba(196,181,253,.45)}
+.bet.fade{background:linear-gradient(180deg,var(--btn-fade),var(--tell-fade-d));color:#fff;border-color:rgba(253,186,116,.45)}
 .gold-btn{font-family:var(--display);font-weight:900;letter-spacing:.1em;border-radius:14px;padding:13px 22px;color:#1a1204;text-decoration:none;text-align:center;background:linear-gradient(180deg,#fff0b8,var(--gold) 55%,var(--gold-d));border:1px solid #fff0b8;box-shadow:0 8px 24px rgba(212,175,55,.3)}
 .gold-btn:hover{filter:brightness(1.07)}
 .ghost-btn{font-family:var(--display);font-weight:700;letter-spacing:.08em;border-radius:14px;padding:13px 20px;color:var(--gold-l);text-decoration:none;text-align:center;border:1px solid var(--hair);background:rgba(0,0,0,.25)}
@@ -278,8 +288,8 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 .wl-headline b{color:var(--gold-l)}
 .wl-ask{font-family:var(--display);font-weight:900;font-size:clamp(17px,3vw,21px);letter-spacing:.06em;margin:0!important;color:var(--read)}
 .wl-ask b{letter-spacing:.08em}
-.wl-f{color:#34d399}
-.wl-d{color:#f06377}
+.wl-f{color:var(--tell-follow)}
+.wl-d{color:var(--tell-fade)}
 .ap-retention{display:block;margin-top:3px;opacity:.75}
 .tg-alt{margin-top:6px!important;opacity:.8}
 .wl-sub{font-size:14.5px;line-height:1.5}
@@ -518,10 +528,23 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 .ribbon{position:absolute;top:-11px;left:18px;padding:3px 12px;border-radius:8px;font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.16em;color:#1a1204;background:linear-gradient(180deg,#fff0b8,var(--gold));box-shadow:0 4px 14px rgba(212,175,55,.5);animation:pulse2 1.6s ease-in-out infinite}
 .lcard.spotlight{animation:spot 1.2s ease-in-out 3}
 @keyframes spot{50%{box-shadow:0 0 0 3px var(--gold-l),0 0 60px rgba(245,215,122,.7)}}
+/* Opened from an alert: hold the rest of the floor back for a few seconds so there is no doubt
+   which card the alert meant. Cosmetic only — the other cards stay clickable throughout. */
+.lcard{transition:filter .45s ease,opacity .45s ease,transform .45s ease}
+.livelist.focusing .lcard:not(.spotlight){filter:blur(4px) saturate(.55);opacity:.38;transform:scale(.985)}
+@media (prefers-reduced-motion:reduce){
+  /* no blur, no scale: dim only, and instantly */
+  .lcard{transition:none}
+  .livelist.focusing .lcard:not(.spotlight){filter:none;transform:none;opacity:.35}
+}
 @media (max-width:760px){.ap-grid{grid-template-columns:1fr}.alert-panel{top:12px}}
 .alert-panel:not([hidden]) ~ .alert-pop, body:has(.alert-panel:not([hidden])) .alert-pop{left:calc(50% - 250px)}
 
-.spec-tag{display:inline-block;font-family:var(--display);font-weight:900;font-size:10px;letter-spacing:.14em;padding:2px 7px;border-radius:6px;color:#0b1f3a;background:linear-gradient(180deg,#bfdbfe,#60a5fa);vertical-align:middle;box-shadow:0 0 10px rgba(96,165,250,.45)}
+/* Was dark navy on a saturated blue pill: at 10px with wide tracking and a glow the letters washed
+   into the fill and the blue belonged to nothing else on the table. Gold on near-black is the same
+   "this one is special" language as the rest of the room, and it holds up small. */
+.spec-tag{display:inline-block;font-family:var(--display);font-weight:900;font-size:10.5px;letter-spacing:.1em;padding:2px 8px;border-radius:6px;
+  color:var(--gold-l);background:rgba(0,0,0,.55);border:1px solid var(--gold);vertical-align:middle;box-shadow:0 0 9px rgba(212,175,55,.35)}
 .ai-spec{font-size:13px;color:#bfdbfe;margin-top:4px}.ai-spec b{font-family:var(--mono)}
 .ap-grid .switch.wide{grid-column:1/-1;align-items:flex-start!important;line-height:1.35}
 .ap-grid .switch.wide input{margin-top:2px;flex:none}
@@ -537,8 +560,10 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 .lesson-head b{font-size:17px;color:var(--ivory)}
 .lesson-row{display:grid;grid-template-columns:12px 1fr;gap:10px;margin:8px 0}
 .lesson-row i{width:10px;height:10px;border-radius:50%;margin-top:6px}
-.lesson-row.tell i{background:var(--emerald);box-shadow:0 0 10px var(--emerald)}
-.lesson-row.trap i{background:var(--ruby);box-shadow:0 0 10px var(--ruby)}
+/* Not green/red: those mean direction and money everywhere else on the table. The tell that called
+   the hand gets the house gold; the trap that misled gets a hollow, unlit ring. */
+.lesson-row.tell i{background:var(--gold);box-shadow:0 0 10px rgba(212,175,55,.75)}
+.lesson-row.trap i{background:transparent;border:2px solid var(--muted);box-shadow:none}
 .lesson-row p{margin:0;color:var(--ivory);font-size:15px}
 .lesson-row small{display:block;color:var(--read2);font-size:13px;margin-top:2px}
 .lesson-foot{border-top:1px dashed rgba(245,215,122,.25);margin-top:10px;padding-top:10px;color:var(--read2);font-size:14px}
@@ -734,8 +759,10 @@ html,body{overflow-x:hidden}
   .reasons li{font-size:13px}
   .wager{padding-top:12px}
   .chips-row{gap:9px;margin-bottom:10px}
-  .chip{width:64px;height:64px}.chip span{width:44px;height:44px;font-size:13px}
+  .chip-group{gap:8px}
+  .chip{width:68px;height:68px}.chip span{width:48px;height:48px;font-size:14px}
   .stake-box{flex:1 1 100%}.stake-box input{width:100%;font-size:18px;padding:8px 12px}
+  .chip-group{flex:1 1 100%;justify-content:space-between}
   .bet{min-width:0;padding:12px 8px}.bet span{font-size:20px}.bet small{font-size:11px}
   .actions{gap:8px}
   .reveal .verdict{font-size:26px}.verdict small{font-size:13px}
@@ -1178,7 +1205,7 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
   .stat b{font-size:17px}
   .dossier{gap:6px}
   .reasons li{font-size:12.5px;line-height:1.35}
-  .chips-row .chip{width:64px;height:64px}
+  .chips-row .chip{width:70px;height:70px}
   .wager{gap:8px}
   .bet{padding:12px;min-width:120px}
   .bet span{font-size:20px}
@@ -1195,7 +1222,7 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
   .reasons{margin:8px 0}
   .wager{padding-top:10px;margin-top:2px}
   .chips-row{gap:9px;margin-bottom:10px}
-  .chips-row .chip{width:58px;height:58px}
+  .chips-row .chip{width:62px;height:62px}
   .stake-box input{padding:8px 12px;font-size:17px}
   .stake-box small{font-size:10px}
   .actions{gap:10px}
@@ -1204,8 +1231,9 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 @media (max-width:760px){
   .wager{padding-top:8px}
   .chips-row{flex-wrap:nowrap;gap:7px;margin-bottom:8px}
-  .chips-row .chip{width:54px;height:54px;font-size:12px}
-  .chips-row .chip span{width:38px;height:38px;font-size:12px}
+  .chip-group{gap:6px}
+  .chips-row .chip{width:58px;height:58px;font-size:13px}
+  .chips-row .chip span{width:41px;height:41px;font-size:13px}
   .stake-box{flex:1 1 auto;margin-left:6px}
   .stake-box small{display:none}
   .stake-box input{padding:7px 10px;font-size:16px}

@@ -87,7 +87,7 @@
               <div class="stat"><small>Everyone else · net 24h<button class="qmark" data-help="crowd" aria-label="What is this?">?</button></small><b id="iCrowd">–</b><span id="iCrowdSub" class="sub"></span></div>
             </div>
             <p id="flowRead" class="flow-read" hidden></p>
-            <div class="tells-title">The dealer's tells <span class="legend"><i class="g"></i>points to FOLLOW <i class="r"></i>points to FADE</span></div>
+            <div class="tells-title">The dealer's tells <span class="legend"><i class="g"></i>favors FOLLOW <i class="r"></i>favors FADE</span></div>
             <ul id="reasons" class="reasons"></ul>
             <div class="prob">
               <div class="probbar"><div id="pFollowBar" class="pf"></div><div class="needle" id="needle"></div></div>
@@ -97,10 +97,12 @@
 
           <div class="wager">
             <div class="chips-row" role="group" aria-label="Stake">
-              <button class="chip c10" data-pct="0.1"><span>10%</span></button>
-              <button class="chip c25" data-pct="0.25"><span>25%</span></button>
-              <button class="chip c50" data-pct="0.5"><span>50%</span></button>
-              <button class="chip call" data-pct="1"><span>ALL<br>IN</span></button>
+              <div class="chip-group">
+                <button class="chip c10" data-pct="0.1"><span>10%</span></button>
+                <button class="chip c25" data-pct="0.25"><span>25%</span></button>
+                <button class="chip c50" data-pct="0.5"><span>50%</span></button>
+                <button class="chip call" data-pct="1"><span>ALL<br>IN</span></button>
+              </div>
               <label class="stake-box"><small>Your stake</small><input id="stakeInput" type="number" min="1" step="1" value="1000" inputmode="numeric"></label>
             </div>
             <div class="actions">

@@ -58,7 +58,7 @@ The app opens on the **Training Table**.
 | **If a trader objects** | Wallet addresses, third-party labels and derived statistics are published under legitimate interests, which carries an unconditional right to object. A trader writes in, proves control of the address by signing a message, and the address goes on a permanent exclusion list: it is dropped from the live floor, the training pool, the pre-built deck, stored alerts, live watches, shared challenge links and anyone's open bets, and never returns on a later data refresh. There is deliberately **no self-service removal button** — an unverified one would let any visitor blank the game by excluding the whales it shows, and a public "is this address excluded?" check would publish who had asked to be hidden. |
 | **No paid promotion** | This site carries **no referral links, no affiliate codes and no tracking parameters**, and earns nothing from any link on it. Links to Nansen are plain links to a market page or a wallet profile so you can check the data yourself. That is a deliberate choice: promoting a crypto trading venue for commission to a French or EU audience engages advertising rules for digital-asset services that a small educational project should not be anywhere near. |
 | **Leaving the game** | Every link that opens a real trading venue goes through one confirmation first. It is a **disclosure, never guidance**: the game is educational and played with valueless chips, nothing on the site is advice or a signal, the venues are unaffiliated third parties, and any decision taken beyond the site — with the loss or cost that may follow — is the player's alone. It deliberately does **not** tell anyone how to configure a trading account; naming a leverage or a margin mode would itself be advice. Telegram alerts carry the same disclosure in the message, since that button leaves for a real venue directly. |
-| **Hall of Fame** | Ranked on **net profit**, not bankroll: every reload after going broke is $10,000 the house staked you, and it counts against your total, so going all-in forever can't buy a place on the board. Shows reloads, win rate, best streak and **whales slain** (correct fades of trades the model favored). |
+| **Hall of Fame** | Ranked on **net profit**, not bankroll: every reload after going broke is $10,000 the house staked you, and it counts against your total, so going all-in forever can't buy a place on the board. A player qualifies after **3 settled hands** (`BOARD_MIN_BETS`): net profit alone would let one lucky all-in top the table, and since a new player costs nothing to create, a handful of throwaway identities shoving once each would otherwise fill every slot with coin flips. Shows reloads, win rate, best streak and **whales slain** (correct fades of trades the model favored). |
 | **Share card** | One-click PNG plus a prefilled X post. |
 
 | | |
@@ -75,7 +75,22 @@ The theme is a luxury casino, with sound effects synthesized in the browser (Web
 
 ## Why bets are judged on the whale's exit
 
-We measured it. Of 150 recent Smart Money position opens, **only 11% were fully closed within an hour**. Among the positions that did close, the typical hold was about 13 hours, and half were still open when we checked (typically 1.8 days after opening). Judging a whale's call on a 15-minute price move mostly measures noise. So training hands are judged on the whale's real exit, the live tables are 4 hours or Ride the Whale, and the odds engine is calibrated on the same target. The sidebar shows the live median hold across this week's resolved trades.
+We measured it. Of 150 recent Smart Money position opens, **only 11% were fully closed within an hour**. Among the positions that did close, the typical hold was about 13 hours, and half were still open when we checked (typically 1.8 days after opening). Judging a whale's call on a 15-minute price move mostly measures noise. So training hands are judged on the whale's real exit, the Live Floor is **Ride the Whale only** (the fixed 15-minute and 4-hour tables were removed — a clock measures price noise, not whether the whale was right), and the odds engine is calibrated on the same target. The sidebar shows the live median hold across this week's resolved trades.
+
+## Reading the table: what the colours mean
+
+A trading table hands the same two colours three different jobs, and that is how players misread it. This one keeps them separate:
+
+| Colour | Means | Where you see it |
+| --- | --- | --- |
+| **Green / red** | **direction and money, nothing else** | LONG / SHORT badges, P&L, win rates, realized return, Smart Money and crowd flow |
+| **Violet `#a78bfa`** (filled dot) | this tell **favors FOLLOW** | the dealer's tells, the odds bar, the FOLLOW button |
+| **Orange `#fb923c`** (hollow ring) | this tell **favors FADE** | the dealer's tells, the odds bar, the FADE button |
+| **Gold** | the house voice: headings, your result, the tell that called the hand | throughout |
+
+The reason is specific. A red FADE button reads as "go short" — but fading a whale's **short** means going **long**, so the colour said the opposite of the action. And a green tell on a short position read as "this position is winning" when it actually meant "this points to following". Money colours now only ever mean money.
+
+The tells are also **filled vs hollow**, not colour alone, so the distinction survives colour blindness and greyscale screenshots.
 
 ## How Nansen data drives the game
 
@@ -134,6 +149,10 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `PUBLIC` | 0 | `1` for a public deployment: per-IP rate limits, alert rules and Telegram become admin-only |
 | `ADMIN_TOKEN` | none | With `PUBLIC=1`, open `/?admin=TOKEN` once to manage alerts |
 | `DATA_DIR` | `data` | Where bankrolls, bets and the leaderboard are stored (mount a volume here when hosting) |
+| `BOARD_MIN_BETS` | `3` | Settled hands a player needs before appearing on the Hall of Fame |
+| `ALERT_LOOKBACK_HOURS` | `6` | How far back each alert scan reads the Nansen feed (same 5-credit cost at any window) |
+| `ALERT_MAX_AGE_MIN` | `240` | How old a trade may be and still earn its first alert |
+| `ALERT_MAX_PER_SCAN` | `5` | Most alerts one scan may send, newest first (the rest wait for the next scan) |
 | `MAX_PLAYERS` | 100000 | Cap on stored players; above it, visitors who never placed a bet are pruned first |
 | `MAX_EXCLUDED` | 5000 | Cap on the trader exclusion list |
 | `ADMIN_TOKEN` | none | Required in public mode. **Set it and the admin routes fail closed**, even if `PUBLIC` is ever missing |
