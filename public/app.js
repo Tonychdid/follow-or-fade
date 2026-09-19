@@ -40,8 +40,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const coinHtml = (c) => c.includes(':') ? `<small class="dex">${esc(c.split(':')[0])}</small>${esc(c.split(':')[1])}` : esc(c);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Only two live bet types remain: riding a whale to their exit, and the daily Insider Pick. The old
+// 15-minute and 4-hour lanes are kept in this map only so bets placed before the change still name
+// themselves correctly in a player's history.
 const LANES = { 15: 'Espresso Shot', 30: 'Espresso Shot', 60: 'Cigar Lounge', 240: 'Cigar Lounge', 1440: 'Insider Pick', ride: 'Ride the Whale' };
-const laneOf = (b) => (b.pick ? 'pick' : b.ride || b.minutes === 'ride' ? 'ride' : Number(b.minutes || Math.round((b.settleAt - b.placedAt) / 60e3)) >= 60 ? '240' : '15');
+let rideCapHours = 72; // replaced by the server's real RIDE_MAX_HOURS on the first status poll
+// Two rails left. A timed bet placed before the lanes were removed still groups under Ride the Whale
+// rather than vanishing; its own row keeps naming itself correctly.
+const laneOf = (b) => (b.pick ? 'pick' : 'ride');
 const hrs = (ms) => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`; };
 
 let player = null, round = null, lastResult = null;
@@ -226,6 +232,11 @@ async function refreshStatus() {
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
   $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
+  if (s.rideMaxHours) {
+    rideCapHours = s.rideMaxHours;
+    const sub = $('rideLaneSub');
+    if (sub) sub.textContent = `ends when the whale exits · up to ${rideCapHours}h · cash out any time`;
+  }
   if (refreshStatus.plansOn !== !!s.plans) { refreshStatus.plansOn = !!s.plans; paintPlans(!!s.plans, s.channel || ''); }
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
@@ -235,6 +246,7 @@ async function refreshStatus() {
 
 // ---- live bets rail (polled every 5s, visible on every tab)
 const prevStatus = new Map();
+const toldHeld = new Set(); // bets whose 'what holding would have paid' verdict has been shown
 const cashingOut = new Set(); // bet ids with a cash-out request in flight (survives lane re-renders)
 let pollSeq = 0, pollApplied = 0;
 async function pollBets() {
@@ -244,10 +256,13 @@ async function pollBets() {
   if (!bets || seq < pollApplied) return; // an older response arriving late must not undo a newer one
   pollApplied = seq;
   for (const b of bets) if (b.status === 'cashing') b.status = 'open';
-  let settledNow = [];
+  let settledNow = []; const heldNow = [];
   for (const b of bets) {
     const before = prevStatus.get(b.id);
     if (before === 'open' && b.status !== 'open' && b.status !== 'cashed') settledNow.push(b);
+    // A cashed ride keeps being followed until the whale is actually out. When that lands, tell the
+    // player what their exit was worth against the whale's — that is the skill the floor now teaches.
+    if (b.status === 'cashed' && b.heldOutcome && !toldHeld.has(b.id)) { toldHeld.add(b.id); heldNow.push(b); }
     if (before !== 'cashed') prevStatus.set(b.id, b.status);
   }
   if (prevStatus.size > 400) { // the server only ever returns the last 30 bets: everything older is dead weight
@@ -258,6 +273,7 @@ async function pollBets() {
   lastBets = [...fresh, ...bets];
   renderLanes();
   if (settledNow.length) await announceSettled(settledNow);
+  for (const b of heldNow) announceHeld(b);
 }
 let lastBets = [];
 let pending = [];            // optimistic bets shown instantly while the server confirms
@@ -270,8 +286,9 @@ function renderLanes() {
   const now = Date.now();
   const open = [...pending, ...lastBets.filter((b) => b.status === 'open')];
   let total = 0;
-  for (const min of ['15', '240', 'pick', 'ride']) {
+  for (const min of ['pick', 'ride']) {
     const lane = document.querySelector(`.lane[data-min="${min}"]`);
+    if (!lane) continue;
     const mine = open.filter((b) => laneOf(b) === min);
     total += mine.length;
     lane.querySelector('.count').textContent = mine.length;
@@ -388,6 +405,35 @@ function banner(title, sub, kind) {
 }
 $('banner')?.addEventListener('click', () => ($('banner').hidden = true));
 
+/**
+ * The exit-timing lesson. You cashed out early; the whale has now closed. Was getting out the right
+ * call? This is the only place the game can answer that, and it is the reason cash-out exists.
+ */
+function announceHeld(b) {
+  const h = b.heldOutcome;
+  if (!h) return;
+  const took = (b.payout ?? 0) - b.stake;
+  const held = h.delta;
+  const coin = String(b.coin).split(':').pop();
+  const when = h.whaleClosed
+    ? `The whale closed ${esc(coin)}${h.heldMs ? ` after ${hrs(h.heldMs)}` : ''}.`
+    : `${esc(coin)} reached the ${rideCapHours}h cap with the whale still holding.`;
+  const same = Math.abs(held - took) < 1;
+  const line = same
+    ? `Your exit and the whale's came out the same: ${took >= 0 ? '+' : ''}${usd(took)}.`
+    : held > took
+      ? `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b> — you left ${usd(held - took)} on the table.`
+      : `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b> — <b>getting out early saved you ${usd(took - held)}</b>.`;
+  toast(`${when} ${line.replace(/<\/?b>/g, '')}`);
+  const box = $('heldLesson');
+  if (box) {
+    box.className = 'held-lesson ' + (same ? '' : held > took ? 'neg' : 'pos');
+    box.innerHTML = `<b>Exit timing</b> · ${when} ${line}`;
+    box.hidden = false;
+    clearTimeout(box._h); box._h = setTimeout(() => (box.hidden = true), 15000);
+  }
+}
+
 async function announceSettled(settledNow) {
   refreshReport();
   {
@@ -399,7 +445,7 @@ async function announceSettled(settledNow) {
       const dirMul = b.whaleSide === 'Long' ? 1 : -1;
       const mine = b.exit && b.entry ? (b.choice === 'follow' ? 1 : -1) * dirMul * (b.exit - b.entry) / b.entry : null;
       const both = mine != null && b.whaleTradeRet != null && !b.pick ? ` · you ${pct(mine, 2)} from your entry, whale ${pct(b.whaleTradeRet, 2)} from theirs` : '';
-      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap on ${b.coin}`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
+      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap reached on ${b.coin} — the whale was still holding`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
       if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}${both}`); }
       else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}${both}`); }
       else { sfx.push(); toast(b.band >= 0.001 || b.ride || b.pick ? `Too close to call on ${b.coin} (under ±${((b.band || 0.002) * 100).toFixed(1)}%): stake returned` : `Push on ${b.coin}: stake returned`); }
@@ -854,17 +900,15 @@ async function enterFloor(ready = false) {
 const liveItems = new Map();
 // Each table is a different bet, so each has its own price: 15 minutes of price action says much less
 // about a whale than riding them to their exit, and the odds say so.
-const hzOdds = (t, hz) => (t.oddsByHz && t.oddsByHz[hz]) || t.odds;
-// The floor re-renders on its own every few minutes. Without this, a player who picked "Espresso"
-// and then paused would have their next click booked as a 48-hour Ride the Whale.
-const cardChoice = new Map(); // key -> { hz, stake }
+const hzOdds = (t, hz = 'ride') => (t.oddsByHz && t.oddsByHz[hz]) || t.odds;
+// The floor re-renders on its own every few minutes; this keeps a half-typed stake across a re-render.
+const cardChoice = new Map(); // key -> { stake }  (the horizon is no longer a choice)
 const rememberCard = (key, patch) => { cardChoice.set(key, { ...(cardChoice.get(key) || {}), ...patch });
   if (cardChoice.size > 200) for (const k of [...cardChoice.keys()].slice(0, cardChoice.size - 200)) cardChoice.delete(k); };
 function paintOdds(card) {
   const t = liveItems.get(card.dataset.key);
-  const hz = card.querySelector('.hz.on')?.dataset.min || 'ride';
   if (!t) return;
-  const o = hzOdds(t, hz);
+  const o = hzOdds(t, 'ride');
   const set = (sel, v) => { const el = card.querySelector(sel); if (el) el.textContent = 'x' + v.toFixed(2); };
   set('.bet.follow small', o.follow); set('.bet.fade small', o.fade);
 }
@@ -906,11 +950,7 @@ function liveCard(t) {
     </div>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
     <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
-    <div class="horizons">
-      <button class="hz" data-min="15" title="Quick and just for fun: doesn't count toward your Trader Profile"><b>Espresso</b><small>15 min</small></button>
-      <button class="hz" data-min="240"><b>Cigar Lounge</b><small>4 hours</small></button>
-      <button class="hz on ride" data-min="ride" title="Your bet ends when this whale closes the position (max 48h)"><b>Ride the Whale</b><small>until exit</small></button>
-    </div>
+    <div class="ride-note"><b>Ride the Whale</b> — this bet ends when the whale closes their position, or at the ${rideCapHours}-hour mark if they are still holding. <b>Cash out any time</b> at the current price.</div>
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">100</button><button class="minichip g" data-add="500">500</button><button class="minichip r" data-add="1000">1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${hzOdds(t, 'ride').follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${hzOdds(t, 'ride').fade.toFixed(2)}</small></button></div>
@@ -927,17 +967,8 @@ function wireLive() {
       sfx.tick();
     });
     const saved = cardChoice.get(card.dataset.key);
-    if (saved?.hz) {
-      const want = card.querySelector(`.hz[data-min="${saved.hz}"]`);
-      if (want) card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === want));
-    }
     if (saved?.stake >= 1) input.value = Math.min(saved.stake, Math.max(1, Math.floor(player.bankroll)));
     paintOdds(card);
-    card.querySelectorAll('.hz').forEach((h) => h.onclick = () => {
-      card.querySelectorAll('.hz').forEach((x) => x.classList.toggle('on', x === h));
-      rememberCard(card.dataset.key, { hz: h.dataset.min });
-      paintOdds(card); sfx.tick();
-    });
     card.querySelectorAll('[data-add]').forEach((c) => c.onclick = () => {
       input.value = c.dataset.add === 'all' ? Math.floor(player.bankroll) : Math.min(Math.floor(player.bankroll), Number(c.dataset.add));
       rememberCard(card.dataset.key, { stake: Number(input.value) });
@@ -951,7 +982,7 @@ function wireLive() {
     if (more) more.onclick = () => { card.classList.toggle('expanded'); more.setAttribute('aria-expanded', card.classList.contains('expanded')); sfx.tick(); };
     card.querySelectorAll('.bet').forEach((btn) => btn.onclick = async () => {
       if (card.dataset.busy) return;
-      const minRaw = card.querySelector('.hz.on').dataset.min; const minutes = minRaw === 'ride' ? 'ride' : Number(minRaw);
+      const minutes = 'ride'; // the only lane on the floor
       const stake = Math.floor(Number(input.value));
       const t = liveItems.get(card.dataset.key);
       if (!(stake >= 1) || stake > player.bankroll) return toast('Stake must be between $1 and your bankroll');
@@ -960,7 +991,7 @@ function wireLive() {
       const unlock = () => { delete card.dataset.busy; card.querySelectorAll('.bet').forEach((x) => (x.disabled = false)); };
       // 1) show it on Your Table instantly
       const tmp = { id: 'tmp-' + Math.random().toString(36).slice(2), pending: true, coin: t.coin, whaleSide: t.side, choice, stake,
-        price: choice === 'follow' ? hzOdds(t, minRaw).follow : hzOdds(t, minRaw).fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + (minutes === 'ride' ? 48 * 3600e3 : minutes * 60e3), minutes, ride: minutes === 'ride', status: 'open' };
+        price: choice === 'follow' ? hzOdds(t).follow : hzOdds(t).fade, entry: t.mid, placedAt: Date.now(), settleAt: Date.now() + rideCapHours * 3600e3, minutes, ride: true, status: 'open' };
       pending.push(tmp); renderLanes();
       player.bankroll -= stake; renderPlayer();
       sfx.bet(); sparkleAt(btn, 26);
@@ -971,7 +1002,7 @@ function wireLive() {
         pending = pending.filter((x) => x !== tmp);
         lastBets = [b, ...lastBets]; renderLanes();
         sfx.chip();
-        toast(`Chips down at the ${LANES[minutes]}: ${choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
+        toast(`Riding the whale: ${choice.toUpperCase()} ${b.coin} for ${usd(b.stake)}`);
         nudgeBets();
         pollBets(); unlock();
       } catch (e) {
@@ -1274,7 +1305,7 @@ function renderReport(r) {
   }
   body.innerHTML = `
     <div class="report-card">
-      <p class="counts-note">Counts training hands (judged on the whale's real exit), 4-hour and Ride the Whale bets${r.funHands ? `. ${r.funHands} Espresso bet${r.funHands === 1 ? ' is' : 's are'} just for fun and not counted` : ''}.</p>
+      <p class="counts-note">Counts training hands, Ride the Whale bets and Insider Picks — all judged on a real exit, never a timer.</p>
       <div class="level-row"><div class="level-badge l${r.level.index}">${r.level.index + 1}</div><div><small>Your level</small><h3>${esc(r.level.name)}</h3><p>${r.level.next ? 'Next: ' + esc(r.level.next) : 'You beat the odds consistently. Take the reads you are best at to real trades on Nansen.'}</p></div></div>
       <div class="ladder">${ladder}</div>
       <div class="kpis">
@@ -1507,17 +1538,17 @@ const INTROS = {
   replay: { kicker: 'Training Table', q: 'Was the whale right?', go: 'Deal me in',
     steps: ['You get a real Smart Money trade from this week, at the <b>whale\'s exact entry</b>. The wallet and the ending are hidden.',
       'Read Nansen\'s tells: the whale\'s track record, Smart Money flow, the crowd and funding.',
-      '<b>Follow</b> if you think the whale was right, <b>Fade</b> if not. It\'s judged on when the whale really closed (held 1h+, max 48h).',
+      '<b>Follow</b> if you think the whale was right, <b>Fade</b> if not. It\'s judged on when the whale really closed.',
       'After every hand you see which signal called it, and which one was the trap.'],
     how: 'Entry: <b>the whale\'s price</b> · Judged on: <b>the whale\'s real exit</b>' },
   live: { kicker: 'Live Floor', q: 'Is this whale still worth following now?', go: 'Take me to the floor',
     steps: ['Whales who opened in the last 6 hours and <b>still hold the position</b>, graded A+ to F by their Nansen track record.',
       'You enter at <b>today\'s price</b>, like copying the trade for real. Each card shows how far the whale is already up or down.',
-      'Pick a table: <b>Espresso</b> (15 min), <b>Cigar Lounge</b> (4 hours) or <b>Ride the Whale</b> (ends when they exit, max 48h). Cash out anytime.',
+      '<b>Ride the Whale</b>: your bet ends when the whale closes their position, not on a timer. <b>Cash out any time</b> — and knowing when to get out is the skill.',
       'Plus the <b>Insider Pick</b>: a stock where company insiders are buying, held 1 week to 6 months.'],
-    how: 'Entry: <b>today\'s price</b> · Judged on: <b>your table\'s timer</b> or <b>the whale\'s exit</b>' },
+    how: 'Entry: <b>today\'s price</b> · Judged on: <b>the whale\'s real exit</b>' },
   report: { kicker: 'Trader Profile', q: 'How well do you actually read Smart Money?', go: 'Show my profile',
-    steps: ['Every Training hand, Cigar Lounge and Ride the Whale bet is analysed (Espresso is just for fun).',
+    steps: ['Every Training hand, Ride the Whale bet and Insider Pick is analysed.',
       'Seven named skills, each scored 0–100 against <b>what the odds expected of you</b> — 50 means you read those hands as well as the data did.',
       'Levels are earned by beating the odds, never by playing more hands: <b>Rookie</b> → <b>Market Operator</b>.'],
     how: 'Play money only. Build the skill here, then decide what to do with it.' },

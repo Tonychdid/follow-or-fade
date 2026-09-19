@@ -147,7 +147,7 @@
       <div>
         <h2>The Live Floor <button class="intro-help" data-intro="live" aria-label="What is this section?" title="What is this section?">?</button></h2>
         <div class="sec-q-pill">Is this whale still worth following now? <span>You enter at today's price</span></div>
-        <p class="muted">Whales who opened positions in the last 6 hours. Pick your table, place your chips, watch it settle on the Hyperliquid price.</p>
+        <p class="muted">Whales who opened positions in the last 6 hours and still hold them. Place your chips, then ride the whale to their exit — or cash out when you think they have run out of road.</p>
       </div>
       <button id="btnRefreshLive" class="ghost-btn">Refresh the floor</button>
     </div>
@@ -179,7 +179,7 @@
           <li>Training Table: real Nansen Smart Money trades, judged on the whale's real exit</li>
           <li>The dealer's tells after every hand: which signal called it, which was the trap</li>
           <li>Live Floor: bet on whales who are still in the trade</li>
-          <li>Espresso, Cigar Lounge and Ride the Whale tables · cash out anytime</li>
+          <li>Ride the Whale: your bet ends when the whale exits, not on a timer · cash out anytime</li>
           <li>Whale track records and trust grades from Nansen (7D and 30D)</li>
           <li>Your Trader Profile, level and Hall of Fame</li>
           <li>Whale alerts in the app (the bell) with the house rules, plus desktop notifications</li>
@@ -230,17 +230,8 @@
     <div class="record"><span>Record <b id="sRecord">0–0</b></span><span>Streak <b id="sStreak">0</b></span><span>Whales slain <b id="sSlain">0</b></span></div>
     <button class="level-mini" id="levelMini" title="Open your Trader Profile"><span class="lm-top"><b id="lvlName">Rookie</b><em id="lvlHands">0 hands</em></span><span class="lm-bar"><i id="lvlBar"></i></span></button>
   </div>
+  <p id="heldLesson" class="held-lesson" hidden></p>
   <div class="lanes" id="lanes">
-    <div class="lane" data-min="15">
-      <div class="lane-head"><svg viewBox="0 0 24 24"><path d="M4 8h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8zm12 2h1.5a2.5 2.5 0 0 1 0 5H16M7 3c0 1.2 1 1.2 1 2.4M11 3c0 1.2 1 1.2 1 2.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <div><b>Espresso Shot</b><small>15 min · in and out before it gets cold</small></div><em class="count">0</em></div>
-      <div class="lane-body"></div>
-    </div>
-    <div class="lane" data-min="240">
-      <div class="lane-head"><svg viewBox="0 0 24 24"><rect x="2.5" y="13" width="15" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 13v4M20 16.5v.5M19 9c0 1.5 2 1.5 2 3M16.5 8c0 1.5 2 1.5 2 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <div><b>Cigar Lounge</b><small>4 hours · sit back and let the whale cook</small></div><em class="count">0</em></div>
-      <div class="lane-body"></div>
-    </div>
     <div class="lane" data-min="pick">
       <div class="lane-head"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M15 15l5.5 5.5M8 10.5h5M10.5 8v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <div><b>Insider Pick</b><small>1 week to 6 months · insiders play the long game</small></div><em class="count">0</em></div>
@@ -248,7 +239,7 @@
     </div>
     <div class="lane" data-min="ride">
       <div class="lane-head"><svg viewBox="0 0 24 24"><path d="M2.5 13.5c2.5-4.5 8-6 12.5-4.2 1.9.8 3.3 2.2 4 3.7.4-1 1.2-2.4 2.5-3-.2 1.6-.6 3-1.5 4 .6 1.8.2 3.3-1.3 4-3.8 1.9-12.7 1.4-16.2-4.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.5" cy="12.8" r=".9" fill="currentColor"/><path d="M11 6.5c0-1.4.8-2.5 2-3M13 6.2c.6-1 1.6-1.6 2.8-1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        <div><b>Ride the Whale</b><small>ends when the whale exits · max 48h</small></div><em class="count">0</em></div>
+        <div><b>Ride the Whale</b><small id="rideLaneSub">ends when the whale exits · cash out any time</small></div><em class="count">0</em></div>
       <div class="lane-body"></div>
     </div>
   </div>

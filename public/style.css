@@ -109,6 +109,12 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 .flow-read{margin:10px 0 0;padding:9px 12px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid var(--hair2);font-size:13px;line-height:1.5;color:var(--read)}
 .flow-read b{color:var(--ivory)}
 .vs-reply{margin-top:9px}
+.ride-note{margin:12px 0 0;padding:10px 12px;border-radius:12px;border:1px solid rgba(245,215,122,.28);background:rgba(0,0,0,.28);font-size:13px;line-height:1.5;color:var(--read)}
+.ride-note b{color:var(--gold-l)}
+.held-lesson{margin:0 0 12px;padding:11px 13px;border-radius:12px;border:1px solid var(--hair2);background:rgba(0,0,0,.34);font-size:13px;line-height:1.55;color:var(--read)}
+.held-lesson b{color:var(--ivory)}
+.held-lesson.pos{border-color:rgba(16,185,129,.5)}
+.held-lesson.neg{border-color:rgba(240,99,119,.45)}
 @media (max-width:520px){.help-pop{max-width:calc(100vw - 32px)}}
 .stat .sub{font-size:12px;color:rgba(243,234,215,.6)}
 .tells-title{margin:16px 0 6px;font-family:var(--display);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:rgba(245,215,122,.9);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}

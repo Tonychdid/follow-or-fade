@@ -99,11 +99,12 @@ const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, plans: SHOW_PLANS, channel: SHOW_PLANS ? TG_CHANNEL : '' }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, plans: SHOW_PLANS, rideMaxHours: game.rideMaxHours(), channel: SHOW_PLANS ? TG_CHANNEL : '' }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play
   'GET /api/round': async (_, q) => game.newRound(q.get('player'), q.get('challenge')),
+  'GET /api/usage': admin(async () => nansen.getUsageDetail()),
   'GET /api/result': async (_, q) => ({ result: game.resultView(q.get('id')) }),
   'GET /api/challenge': async (_, q) => ({ challenge: game.challengeView(q.get('id')) }),
   'POST /api/bet': async (b) => game.placeBet(b.player, b.roundId, b.choice, b.stake),
@@ -188,6 +189,17 @@ async function handle(req, res) {
       json(res, e.status || 500, e.status ? { error: e.message, code: e.code } : { error: 'Something went wrong on the table. Try again in a moment.' });
     }
     return;
+  }
+  // Browser-openable credit ledger: /admin/usage.json?token=YOUR_ADMIN_TOKEN
+  // The API route needs an x-admin-token header, which you cannot set from an address bar.
+  if (url.pathname === '/admin/usage.json') {
+    const t = url.searchParams.get('token') || '';
+    if (!ADMIN_TOKEN || t.length !== ADMIN_TOKEN.length
+        || !crypto.timingSafeEqual(sha(t), sha(ADMIN_TOKEN))) {
+      if (limited(req, 10)) return json(res, 429, { error: 'Too many requests' });
+      return json(res, 403, { error: 'Admin only' });
+    }
+    return json(res, 200, { nansen: nansen.getUsageDetail(), agent: agent.status() });
   }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY });

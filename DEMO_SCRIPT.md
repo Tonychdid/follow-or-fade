@@ -5,7 +5,7 @@
 1. Start the app with `start.bat` and wait until the Live Floor loads.
 2. Open a **fresh window**: press **Ctrl+Shift+N** in Chrome, go to `localhost:3000`. **Do not type the nickname yet** — the front door shows the real whale you are about to play, and that is your opening shot. Pick a nickname that is not your real name when you start recording — `Maya` works.
 3. Press **F11** for full screen and keep the browser zoom at 100%.
-4. On the Live Floor, **place 3 live bets** ($500–$1,000 each): one on **Ride the Whale**, one on **Cigar Lounge (4 hours)** and one on **Espresso (15 min)**. By recording time some will be winning (money-printing face) and some losing (crying face).
+4. On the Live Floor, **place 3 Ride the Whale bets** ($500–$1,000 each) on different whales. By recording time some will be winning (money-printing face) and some losing (crying face) — and you can **cash one out on camera**, which is the most interesting thing to show.
 5. Sound **on**, volume around 50%.
 6. Press **Win+G**, open **Settings → Capturing**, and make sure the microphone is **off** and "Audio to record" is **Game** (so it records the app sounds only).
 
