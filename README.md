@@ -160,7 +160,7 @@ The whole game is free during the beta (training, live bets, Trader Profile, in-
 
 The alert scanner runs once for everyone, so Premium alerts cost the same in Nansen credits whether 10 or 1,000 people receive them.
 
-The Plans page and the free-beta strip are hidden unless `SHOW_PLANS=1` is set, so by default the site makes no commercial offer at all — see DEPLOY.md for why that matters. With Plans on, `TELEGRAM_CHANNEL=https://t.me/yourchannel` points the button at your channel; unset, it reads "Premium is in private testing" and links nowhere.
+The **Premium** page describes the Telegram alert side (Premium) and the automated bet taker (Premium Plus). Both are **free, unfinished and invite-only**, and the page says so above everything else — there is no price, no plan, no checkout and no waiting list, so it makes no commercial offer and is always visible. The free-beta strip is still hidden unless `SHOW_PLANS=1`, because it implies a future paid tier. **If a paid tier is ever offered, re-gate the Premium page and fill in the Option B legal notice** — see DEPLOY.md. With Plans on, `TELEGRAM_CHANNEL=https://t.me/yourchannel` points the button at your channel; unset, it reads "Premium is in private testing" and links nowhere.
 
 ## Project layout
 

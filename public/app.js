@@ -1438,23 +1438,27 @@ boot();
 
 // ================================================= free beta + plans
 $('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
+// The footer is the only route to Premium on a phone, where the bottom nav has no room for it.
+$('footPremium')?.addEventListener('click', () => {
+  document.querySelector('.tab[data-view="plans"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 // The Plans page and the beta strip are the only places the site makes a commercial offer, so they are
 // hidden in the markup and revealed only when the server says SHOW_PLANS=1. Failing closed matters here:
 // if the status call never lands, no offer is shown, which is the state the published mentions légales
 // describe. Anyone who deep-links to #plans while it is off is put back on the Training Table.
+// The Premium page makes no commercial offer at all: everything on it is free, unfinished and
+// invite-only, and it says so before anything else. So the page itself is always available — people
+// could not otherwise discover that Telegram alerts exist. SHOW_PLANS still gates the beta strip,
+// which does imply a future paid tier.
 function paintPlans(on, channel) {
-  const tab = document.querySelector('.tab-plans');
-  if (tab) tab.hidden = !on;
   const strip = $('betaStrip');
   if (strip) strip.hidden = !on;
-  if (on) {
-    paintChannel(channel);
-    if (wantPlansOnLoad && tab) tab.click(); // honour ?view=plans now that we know it exists
-  } else {
-    const view = $('view-plans');
-    // .view uses an 'active' class, not the hidden attribute
-    if (view && view.classList.contains('active')) document.querySelector('.tab[data-view="replay"]').click();
+  paintChannel(channel);
+  if (wantPlansOnLoad) {
+    const tab = document.querySelector('.tab-plans');
+    if (tab) tab.click(); // honour ?view=plans
   }
   wantPlansOnLoad = false;
 }
@@ -1470,19 +1474,13 @@ function paintChannel(url) {
     if (cta) cta.href = url;
   } else {
     // No channel configured yet: don't offer a dead link.
-    if (cta) { cta.removeAttribute('href'); cta.textContent = 'Premium is in private testing'; cta.classList.add('disabled'); }
+    if (cta) { cta.removeAttribute('href'); cta.textContent = 'Closed private testing'; cta.classList.add('disabled'); }
     if (link) link.hidden = true;
     const sub = $('tgChanSub');
-    if (sub) sub.textContent = 'Premium is in private testing. The announcement channel opens shortly — check back here.';
+    if (sub) sub.textContent = 'Testing places are handed out by hand, a few at a time. The announcement channel opens shortly — check back here. Nothing on this site is for sale and no payment is ever taken.';
   }
   if (card) card.hidden = false;
 }
-
-document.querySelectorAll('.pl-cta').forEach((b) => b.addEventListener('click', () => {
-  sfx.chip();
-  if (b.dataset.plan === 'free') { document.querySelector('.tab[data-view="replay"]').click(); return; }
-  document.querySelectorAll('.plan').forEach((p) => p.classList.toggle('picked', p.contains(b)));
-}));
 
 // ================================================= Research Desk (Nansen Agent)
 const SIG_TXT = { buying: 'Insiders BUYING', selling: 'Insiders SELLING', mixed: 'Insiders MIXED', none: 'No insider trades' };

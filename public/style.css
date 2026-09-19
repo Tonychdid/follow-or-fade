@@ -241,9 +241,9 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 .hz b{display:block;font-family:var(--display);font-size:11.5px;letter-spacing:.04em;color:var(--gold-l)}
 .hz small{font-family:var(--mono);font-size:11px;color:var(--muted)}
 .hz.on{background:linear-gradient(180deg,rgba(245,215,122,.3),rgba(212,175,55,.12));border-color:var(--gold-l);box-shadow:0 0 14px rgba(212,175,55,.35)}
-.lstake{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-.lstake input{flex:1;min-width:0;background:rgba(0,0,0,.45);border:1px solid rgba(245,215,122,.35);border-radius:10px;padding:8px 10px;font-family:var(--mono);color:var(--gold-l);outline:none}
-.minichip{width:34px;height:34px;border-radius:50%;font-family:var(--display);font-size:9.5px;font-weight:900;color:#fff;background:radial-gradient(circle,var(--c) 0 50%,transparent 51%),repeating-conic-gradient(#fff 0 14deg,var(--c) 14deg 45deg);--c:#1d4ed8;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.lstake{display:flex;gap:9px;align-items:center;margin-bottom:10px}
+.lstake input{flex:0 1 auto;width:104px;min-width:72px;background:rgba(0,0,0,.45);border:1px solid rgba(245,215,122,.35);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:16px;color:var(--gold-l);outline:none}
+.minichip{width:46px;height:46px;flex:none;border-radius:50%;font-family:var(--display);font-size:12px;font-weight:900;color:#fff;background:radial-gradient(circle,var(--c) 0 50%,transparent 51%),repeating-conic-gradient(#fff 0 14deg,var(--c) 14deg 45deg);--c:#1d4ed8;box-shadow:0 3px 0 rgba(0,0,0,.35)}
 .minichip.g{--c:#15803d}.minichip.r{--c:#b91c1c}
 .lcard .bet{padding:10px;min-width:0} .lcard .bet span{font-size:17px}
 .links{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12.5px}
@@ -765,9 +765,9 @@ html,body{overflow-x:hidden}
   .rec-grid{grid-template-columns:repeat(2,1fr)}
   .horizons{gap:5px;margin:10px 0 8px}
   .hz{padding:6px 2px}.hz b{font-size:10px}.hz small{font-size:10px}
-  .lstake{gap:5px}
-  .lstake input{padding:8px;font-size:15px}
-  .minichip{width:36px;height:36px;font-size:9px;flex:none}
+  .lstake{gap:7px}
+  .lstake input{padding:9px 10px;font-size:15px;width:88px}
+  .minichip{width:46px;height:46px;font-size:12px;flex:none}
   .lcard .bet span{font-size:16px}
   .links{font-size:12px;flex-wrap:wrap}
   .links a{flex:1 1 auto}
@@ -792,8 +792,8 @@ html,body{overflow-x:hidden}
 @media (max-width:1099px){ .recent{display:block} .lanes:not(:has(.lane:not(.empty)))::before{content:none} }
 /* never let wide content push the page wider than the phone */
 .layout>main,.view,.lcard,.livelist,.felt,.felt-inner,.round,.dossier,.wager{min-width:0}
-.lstake input{width:0;min-width:0;flex:1 1 auto}
-@media (max-width:760px){ .lstake .minichip{width:34px;height:34px} .lcard .row{min-width:0} .lcard .size{white-space:nowrap} }
+.lstake input{flex:0 1 auto}
+@media (max-width:760px){ .lstake .minichip{width:44px;height:44px} .lcard .row{min-width:0} .lcard .size{white-space:nowrap} }
 /* narrow phones: keep bankroll fully visible */
 @media (max-width:400px){
   .logo{font-size:15px;gap:4px;letter-spacing:.04em}
@@ -832,6 +832,12 @@ html,body{overflow-x:hidden}
 .plan li::before{content:'';position:absolute;left:2px;top:.45em;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--gold-l),var(--gold-d));box-shadow:0 0 0 2px rgba(212,175,55,.18)}
 .plan.vip li b{color:var(--gold-l)}
 .pl-cta{width:100%}
+.sf-link{background:none;border:0;padding:0;font:inherit;color:var(--gold-l);cursor:pointer;text-decoration:underline}
+.sf-link:hover{color:var(--ivory)}
+.free-banner{margin:14px 0 20px;padding:14px 18px;border-radius:14px;border:1px solid rgba(245,215,122,.55);background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(212,175,55,.05));font-size:14.5px;line-height:1.6;color:var(--ivory)}
+.free-banner b{color:var(--gold-l)}
+.plan-warn{margin:12px 0 0;padding:10px 12px;border-radius:10px;border:1px solid rgba(243,234,215,.22);background:rgba(0,0,0,.3);font-size:12.5px;line-height:1.55;color:var(--read2)}
+.plan-warn b{color:var(--ivory)}
 .tg-card{display:flex;align-items:center;justify-content:space-between;gap:22px;margin:24px 0 0;padding:22px 24px;border-radius:18px;border:1px solid var(--gold);background:radial-gradient(500px 200px at 0 0,rgba(212,175,55,.13),transparent 70%),rgba(0,0,0,.34)}
 .tg-card h3{margin:0 0 6px;font-family:var(--display);color:var(--gold-l);letter-spacing:.05em}
 .tg-card p{margin:0;max-width:62ch}
@@ -847,7 +853,13 @@ html,body{overflow-x:hidden}
   .bs-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .plan{padding:22px 18px}
   .price b{font-size:30px}
-  .tg-card{flex-direction:column;align-items:flex-start}
+  .sf-link{background:none;border:0;padding:0;font:inherit;color:var(--gold-l);cursor:pointer;text-decoration:underline}
+.sf-link:hover{color:var(--ivory)}
+.free-banner{margin:14px 0 20px;padding:14px 18px;border-radius:14px;border:1px solid rgba(245,215,122,.55);background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(212,175,55,.05));font-size:14.5px;line-height:1.6;color:var(--ivory)}
+.free-banner b{color:var(--gold-l)}
+.plan-warn{margin:12px 0 0;padding:10px 12px;border-radius:10px;border:1px solid rgba(243,234,215,.22);background:rgba(0,0,0,.3);font-size:12.5px;line-height:1.55;color:var(--read2)}
+.plan-warn b{color:var(--ivory)}
+.tg-card{flex-direction:column;align-items:flex-start}
 }
 @media (max-width:400px){
   .bs-txt{font-size:12px}
