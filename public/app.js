@@ -741,11 +741,11 @@ $('btnShare').onclick = async () => {
 };
 
 // ================================================= leaving the game
-// Every link that opens a real trading venue goes through one confirmation first. The game is
-// unleveraged and teaches no futures mechanics, so a player can arrive at a perps screen with no idea
-// that the leverage slider is theirs to set. Leverage and margin mode are account settings on
-// Hyperliquid, signed by the account owner — no link from here can set them, so the least we can do
-// is say so before they click.
+// Every link that opens a real trading venue goes through one confirmation first. It is a disclosure,
+// not guidance: it states that the game is educational, that we are not involved in what happens on a
+// third-party venue, and that the risk and the responsibility are entirely the player's. It must never
+// tell anyone HOW to trade — naming a leverage or a margin mode would be advice, which this product
+// does not give.
 const TRADE_HOST = 'https://app.nansen.ai/token-god-mode';
 const gateTrade = (e) => {
   const a = e.target.closest?.('a[href]');
@@ -1038,6 +1038,7 @@ function liveCard(t) {
       <div class="rec-body" data-panel="d30" hidden>${recordHtml(t.record?.d30)}</div>
     </div>
 
+    <div class="tells-title sm">The dealer's tells <span class="legend"><i class="g"></i>points to FOLLOW <i class="r"></i>points to FADE</span></div>
     <ul class="reasons">${t.reasons.map((x) => `<li class="${x.good ? 'good' : ''}">${esc(x.text)}</li>`).join('')}</ul>
     </div>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
