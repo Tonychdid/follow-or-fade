@@ -14,7 +14,9 @@ if not exist .env (
   set /p KEY=" Paste your Nansen API key (or just press Enter for demo mode): "
   call :writeenv
 )
-start "" http://localhost:3000
+REM Give the server a few seconds to bind the port before the browser goes looking for it,
+REM otherwise the first thing you see is a connection error and you have to refresh.
+start "" /b cmd /c "timeout /t 4 /nobreak >nul & start "" http://localhost:3000"
 node server.js
 pause
 exit /b
@@ -23,7 +25,7 @@ exit /b
 (
   echo NANSEN_API_KEY=%KEY%
   echo PORT=3000
-  echo MAX_HOLD_HOURS=48
+  echo MAX_HOLD_HOURS=72
   echo CALIBRATION_SAMPLE=60
   echo DEMO=0
 ) > .env

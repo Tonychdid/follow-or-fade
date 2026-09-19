@@ -2,18 +2,23 @@
 
 ## 1. Prepare (10 minutes before recording)
 
-1. Start the app with `start.bat` and wait until the Live Floor loads.
-2. Open a **fresh window**: press **Ctrl+Shift+N** in Chrome, go to `localhost:3000`. **Do not type the nickname yet** — the front door shows the real whale you are about to play, and that is your opening shot. Pick a nickname that is not your real name when you start recording — `Maya` works.
-3. Press **F11** for full screen and keep the browser zoom at 100%.
-4. On the Live Floor, **place 3 Ride the Whale bets** ($500–$1,000 each) on different whales. By recording time some will be winning (money-printing face) and some losing (crying face) — and you can **cash one out on camera**, which is the most interesting thing to show.
+**Double-click `record-prep.bat`.** It starts the app in its own window, waits until the Live Floor
+has actually filled with whale cards, warns you if the app is running on demo data instead of your
+real Nansen key, and then prints this same checklist on screen. Leave the second window
+("Follow or Fade server") open - that window *is* the site.
+
+Then:
+
+1. Open a **fresh window**: press **Ctrl+Shift+N** in Chrome, go to `localhost:3000`. **Do not type the nickname yet** — the front door shows the real whale you are about to play, and that is your opening shot. Pick a nickname that is not your real name when you start recording — `Maya` works.
+2. On the Live Floor, **place 3 Ride the Whale bets** ($500–$1,000 each) on different whales, then leave it running ~20 minutes. By recording time some will be winning (money-printing face) and some losing (crying face) — and you can **cash one out on camera**, which is the most interesting thing to show.
+3. In a **second** private window, play 10–12 quick training hands, so the Trader Profile has real scores when you open it on camera. Keep the window you will actually record on the front door.
+4. Press **F11** for full screen and keep the browser zoom at 100%.
 5. Sound **on**, volume around 50%.
 6. Press **Win+G**, open **Settings → Capturing**, and make sure the microphone is **off** and "Audio to record" is **Game** (so it records the app sounds only).
 
 ## 2. Record (press Win+Alt+R to start and stop)
 
 The story is **Train → Practice live → Trade for real on Nansen**. Move the mouse slowly and pause about 1 second on anything important. Record 2–3 minutes; you'll cut it to 60 seconds after.
-
-**Before recording:** play 10–12 quick hands on the Training Table in a *second* private window (not the one you will record), so the Trader Profile has real scores to show. Keep the recording window on the front door.
 
 | Time | What to do on screen | Caption to add |
 |---|---|---|
