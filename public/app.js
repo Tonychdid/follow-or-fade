@@ -773,26 +773,117 @@ $('btnChallenge').onclick = async () => {
   if (!L || !L.challenge) return toast('Play a hand first.');
   sfx.chip();
   const link = `${siteUrl()}/?challenge=${encodeURIComponent(L.challenge)}`;
-  const r = L.round, mine = L.choice === 'fade' ? 'FADED' : 'FOLLOWED';
+  const sizeUsd = Number(L.round?.valueUsd) > 0 ? compact(L.round.valueUsd) : null;
   const c = $('chCanvas'), g = c.getContext('2d');
-  const bg = g.createRadialGradient(600, 190, 40, 600, 340, 820); bg.addColorStop(0, '#146b4b'); bg.addColorStop(0.55, '#0d4a35'); bg.addColorStop(1, '#041a12');
-  g.fillStyle = bg; g.fillRect(0, 0, 1200, 675);
-  const rim = g.createLinearGradient(0, 0, 1200, 675); rim.addColorStop(0, '#8a6d1d'); rim.addColorStop(0.45, '#f5d77a'); rim.addColorStop(1, '#8a6d1d');
-  g.strokeStyle = rim; g.lineWidth = 18; g.strokeRect(9, 9, 1182, 657);
-  g.strokeStyle = 'rgba(245,215,122,.4)'; g.lineWidth = 2; g.strokeRect(34, 34, 1132, 607);
+  const W = 1200, H = 675;
+  // The card is a dare, not a spec sheet. It deliberately does NOT say which coin or which side:
+  // the moment someone reads "LONG BTC" they start forming an opinion before they have seen the tells,
+  // and the whole point of a challenge is that they walk in blind, exactly as the sender did.
+  const gold = '#f5d77a', ivory = '#f3ead7';
+  const fit = (t, n) => (t.length > n ? t.slice(0, n - 1) + '\u2026' : t);
+  const track = (px) => { try { g.letterSpacing = px + 'px'; } catch {} };
+  const roundRect = (x, y, w, h, r) => {
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y, w, h, r);
+    else { g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  };
+
+  // ---- felt + spotlight
+  const bg = g.createRadialGradient(600, 210, 30, 600, 340, 860);
+  bg.addColorStop(0, '#12684a'); bg.addColorStop(0.45, '#0a3d2b'); bg.addColorStop(1, '#02100a');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // a second pass of darkness at the corners, so the type sits in a pool of light
+  const vig = g.createRadialGradient(600, 338, 260, 600, 338, 760);
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.62)');
+  g.fillStyle = vig; g.fillRect(0, 0, W, H);
+
+  // ---- two face-down cards behind the type: the whale is hidden, and it looks it
+  g.save();
+  g.globalAlpha = 0.2;
+  for (const [cx, cy, rot] of [[182, 392, -0.2], [1018, 392, 0.2]]) {
+    g.save(); g.translate(cx, cy); g.rotate(rot);
+    g.fillStyle = '#031a11'; g.strokeStyle = gold; g.lineWidth = 4;
+    roundRect(-88, -124, 176, 248, 18); g.fill(); g.stroke();
+    g.fillStyle = gold; g.font = '900 116px Cinzel, Georgia, serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('?', 0, 4);
+    g.restore();
+  }
+  g.restore();
+  g.textBaseline = 'alphabetic';
+
+  // ---- frame
+  const rim = g.createLinearGradient(0, 0, W, H);
+  rim.addColorStop(0, '#8a6d1d'); rim.addColorStop(0.45, gold); rim.addColorStop(1, '#8a6d1d');
+  g.strokeStyle = rim; g.lineWidth = 13; g.strokeRect(6.5, 6.5, W - 13, H - 13);
+  g.strokeStyle = 'rgba(245,215,122,.34)'; g.lineWidth = 2; g.strokeRect(29, 29, W - 58, H - 58);
+
   g.textAlign = 'center';
-  g.fillStyle = rim; g.font = '900 40px Cinzel, Georgia, serif'; g.fillText('FOLLOW ◆ FADE', 600, 96);
-  g.fillStyle = 'rgba(243,234,215,.62)'; g.font = '600 20px Cinzel, Georgia, serif'; g.fillText('REAL SMART MONEY TRADE · NANSEN × HYPERLIQUID', 600, 134);
-  g.fillStyle = r.side === 'Long' ? '#34d399' : '#f06377'; g.font = '900 64px "JetBrains Mono", monospace';
-  g.fillText(`${r.side.toUpperCase()} ${String(r.coin).split(':').pop()}`, 600, 232);
-  g.fillStyle = '#f3ead7'; g.font = '600 30px Inter, sans-serif';
-  g.fillText(`${compact(r.valueUsd)} position · whale graded ${r.grade?.grade || '?'} · odds x${(L.choice === 'follow' ? r.odds.follow : r.odds.fade).toFixed(2)}`, 600, 286);
-  g.fillStyle = 'rgba(245,215,122,.9)'; g.font = 'italic 500 32px "Cormorant Garamond", Georgia, serif';
-  g.fillText(`${player.name} ${mine} this whale.`, 600, 376);
-  g.fillStyle = '#f5d77a'; g.font = '900 58px Cinzel, Georgia, serif'; g.fillText('WOULD YOU?', 600, 456);
-  g.fillStyle = 'rgba(243,234,215,.8)'; g.font = '500 26px Inter, sans-serif';
-  g.fillText("The result stays hidden until you call it. Judged on the whale's real exit.", 600, 512);
-  g.fillStyle = '#f5d77a'; g.font = '700 28px Cinzel, Georgia, serif'; g.fillText(siteLabel(), 600, 592);
+  track(6);
+  g.fillStyle = rim; g.font = '900 28px Cinzel, Georgia, serif'; g.fillText('FOLLOW \u25c6 FADE', 600, 80);
+  track(0);
+
+  // ---- the hero line
+  g.save();
+  g.shadowColor = 'rgba(245,215,122,.55)'; g.shadowBlur = 34;
+  const heroGrad = g.createLinearGradient(0, 124, 0, 208);
+  heroGrad.addColorStop(0, '#fff3cf'); heroGrad.addColorStop(1, '#e0b64a');
+  g.fillStyle = heroGrad; g.font = '900 84px Cinzel, Georgia, serif';
+  track(1);
+  g.fillText('I CHALLENGE YOU', 600, 196);
+  track(0);
+  g.restore();
+
+  g.fillStyle = 'rgba(243,234,215,.85)'; g.font = 'italic 500 33px "Cormorant Garamond", Georgia, serif';
+  g.fillText(`${fit(player.name, 20)} has already made the call.`, 600, 246);
+
+  // One hard number, and only one: how big the position was. It proves there is a real trade behind
+  // the card without giving away the coin or the direction, which is what would let them pre-judge it.
+  if (sizeUsd) {
+    const label = `${sizeUsd} POSITION`;
+    g.font = '700 25px "JetBrains Mono", monospace';
+    track(3);
+    const tw = g.measureText(label).width;
+    const pw = tw + 56, px = 600 - pw / 2, py = 274, ph = 46;
+    g.fillStyle = 'rgba(0,0,0,.42)'; g.strokeStyle = 'rgba(245,215,122,.55)'; g.lineWidth = 2;
+    roundRect(px, py, pw, ph, 24); g.fill(); g.stroke();
+    g.fillStyle = gold; g.fillText(label, 600, py + 32);
+    track(0);
+  }
+
+  // ---- the question, in the two colours the whole game runs on
+  const qY = 398;
+  g.font = '900 66px Cinzel, Georgia, serif';
+  const wF = g.measureText('FOLLOW').width, wD = g.measureText('FADE').width;
+  g.font = '500 34px "Cormorant Garamond", Georgia, serif';
+  const wOr = g.measureText('or').width;
+  const gap = 30, total = wF + gap + wOr + gap + wD;
+  let x = 600 - total / 2;
+  g.textAlign = 'left';
+  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#34d399';
+  g.fillText('FOLLOW', x, qY); x += wF + gap;
+  g.font = 'italic 500 34px "Cormorant Garamond", Georgia, serif'; g.fillStyle = 'rgba(243,234,215,.75)';
+  g.fillText('or', x, qY - 6); x += wOr + gap;
+  g.font = '900 66px Cinzel, Georgia, serif'; g.fillStyle = '#f06377';
+  g.fillText('FADE', x, qY);
+  g.textAlign = 'center';
+
+  g.fillStyle = 'rgba(243,234,215,.78)'; g.font = '500 25px Inter, sans-serif';
+  g.fillText("A real Smart Money trade from this week, at the whale's exact entry.", 600, 448);
+  g.fillText('You get the same tells I did. The whale\u2019s real exit settles it.', 600, 482);
+
+  // ---- call to action
+  const btnW = 442, btnH = 70, btnX = 600 - btnW / 2, btnY = 518;
+  const btnGrad = g.createLinearGradient(0, btnY, 0, btnY + btnH);
+  btnGrad.addColorStop(0, '#f7e2a1'); btnGrad.addColorStop(1, '#d8ad3e');
+  g.save(); g.shadowColor = 'rgba(245,215,122,.45)'; g.shadowBlur = 26;
+  g.fillStyle = btnGrad; roundRect(btnX, btnY, btnW, btnH, 33); g.fill(); g.restore();
+  g.fillStyle = '#1a1204'; g.font = '900 31px Cinzel, Georgia, serif';
+  track(3); g.fillText('TAKE THE CHALLENGE', 600, btnY + 46); track(0);
+
+  g.fillStyle = 'rgba(245,215,122,.92)'; g.font = '700 25px Cinzel, Georgia, serif';
+  track(2); g.fillText(siteLabel(), 600, 632); track(0);
   c.toBlob((b) => {
     const a = $('chDownload');
     if (a.dataset.blob) URL.revokeObjectURL(a.dataset.blob);
@@ -800,7 +891,8 @@ $('btnChallenge').onclick = async () => {
     shareBlob = b; // kept so the native share sheet can carry the card image, not just the link
   });
   $('chLink').value = link;
-  const text = `I just ${mine.toLowerCase()} a ${compact(r.valueUsd)} @nansen_ai Smart Money whale on ${String(r.coin).split(':').pop()}.\n\nSame whale, same tells, result hidden. Would you follow or fade?\n${link}`;
+  // Same rule as the card: no coin, no side, no size. They call it blind or it is not a challenge.
+  const text = `I challenge you.\n\nA real ${sizeUsd ? sizeUsd + ' ' : ''}@nansen_ai Smart Money position on Hyperliquid, at the whale's exact entry. I have made my call \u2014 would you FOLLOW or FADE?\n\nYou get the same tells I did, and the ending stays hidden until you call it.\n${link}`;
   $('chX').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text);
   // Send the link straight to a chat app instead of making them copy and paste it.
   // wa.me and t.me/share both work in the mobile apps and on the web.
@@ -1541,7 +1633,7 @@ const INTROS = {
       '<b>Follow</b> if you think the whale was right, <b>Fade</b> if not. It\'s judged on when the whale really closed.',
       'After every hand you see which signal called it, and which one was the trap.'],
     how: 'Entry: <b>the whale\'s price</b> · Judged on: <b>the whale\'s real exit</b>' },
-  live: { kicker: 'Live Floor', q: 'Is this whale still worth following now?', go: 'Take me to the floor',
+  live: { kicker: 'Live Floor', q: 'Follow or fade real positions, open right now', go: 'Take me to the floor',
     steps: ['Whales who opened in the last 6 hours and <b>still hold the position</b>, graded A+ to F by their Nansen track record.',
       'You enter at <b>today\'s price</b>, like copying the trade for real. Each card shows how far the whale is already up or down.',
       '<b>Ride the Whale</b>: your bet ends when the whale closes their position, not on a timer. <b>Cash out any time</b> — and knowing when to get out is the skill.',
