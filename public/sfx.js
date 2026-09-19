@@ -71,6 +71,29 @@ export const sfx = {
     [1319, 1760].forEach((f, i) => { tone(f, 0.75 + i * 0.16, 0.8, { type: 'sine', gain: 0.2 }); tone(f * 2, 0.75 + i * 0.16, 0.4, { type: 'sine', gain: 0.05 }); }); },
   /** grand entrance: velvet whoosh + rising chord */
   enter() { noise(0, 0.6, { freq: 600, q: 0.5, gain: 0.25, type: 'lowpass' }); [262, 330, 392, 523].forEach((f, i) => tone(f, 0.15 + i * 0.12, 0.9, { type: 'triangle', gain: 0.1 })); tone(1047, 0.7, 1, { type: 'sine', gain: 0.06 }); },
+  /**
+   * The one-time arrival flourish: a red-carpet welcome, played once ever, never again.
+   * Built from the same oscillators as everything else — no audio file, no licensing, no download.
+   * A slow swell underneath, a rising major arpeggio over it, a held chord, and a shimmer of chips.
+   */
+  welcome() {
+    // low swell: the room opening up
+    noise(0, 1.1, { freq: 420, q: 0.4, gain: 0.3, type: 'lowpass' });
+    tone(65.4, 0, 2.6, { type: 'sine', gain: 0.1, attack: 0.5 });
+    tone(130.8, 0.05, 2.5, { type: 'sine', gain: 0.07, attack: 0.5 });
+    // rising arpeggio, warm and brassy
+    const arp = [261.6, 329.6, 392.0, 523.3];
+    arp.forEach((f, i) => {
+      tone(f, 0.18 + i * 0.13, 0.85, { type: 'triangle', gain: 0.16, attack: 0.02 });
+      tone(f * 2, 0.18 + i * 0.13, 0.5, { type: 'sine', gain: 0.05, attack: 0.02 });
+    });
+    // the held major chord it lands on
+    [523.3, 659.3, 784.0].forEach((f, i) => tone(f, 0.72, 1.5, { type: 'triangle', gain: 0.1, attack: 0.09 + i * 0.02 }));
+    tone(1046.5, 0.78, 1.6, { type: 'sine', gain: 0.055, attack: 0.12 });
+    // chips glittering over the top
+    for (let i = 0; i < 7; i++) noise(0.85 + i * 0.075, 0.05, { freq: 5200 + i * 380, q: 6, gain: 0.07 });
+    tone(2093, 1.15, 1.2, { type: 'sine', gain: 0.04, attack: 0.1 });
+  },
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)

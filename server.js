@@ -19,24 +19,16 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC = process.env.PUBLIC === '1';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-// Premium is announced on a public Telegram channel instead of by email, so the site collects no
-// address, stores nothing about a visitor who wants to be told, and has nothing to delete later.
-// Set TELEGRAM_CHANNEL to the channel's public link (https://t.me/yourchannel). Anything that is not
-// a t.me link is ignored rather than rendered, so a typo can't turn the Plans page into an open redirect.
-// SHOW_PLANS=1 reveals the Plans page and the free-beta strip. Left unset, both stay hidden and the
-// site makes no commercial offer at all — which is the condition for publishing the short mentions
-// légales available to a non-professional publisher (LCEN art. 1-1, II). Deliberately opt-IN: a
-// redeploy that loses an environment variable hides the offer rather than exposing it.
+// SHOW_PLANS=1 reveals the free-beta strip. Left unset, both stay hidden and the
+// strip implies a future paid tier, which is what the short legal notice (LCEN art. 1-1, II) cannot
+// sit beside. The Premium page itself is always shown: it offers nothing for sale. Deliberately
+// opt-IN: a redeploy that loses an environment variable hides the claim rather than exposing it.
 const SHOW_PLANS = process.env.SHOW_PLANS === '1';
 // SHOW_LEGAL=1 publishes public/legal-full.html (the risk notice, the privacy notice and the terms).
-// Off by default while the site is free and makes no offer; /legal.html (mentions légales) is always
+// Off by default while the site is free and makes no offer; /legal.html (the legal notice) is always
 // served. Opt-in for the same reason as SHOW_PLANS: losing the variable hides a page rather than
 // publishing one that is out of date.
 const SHOW_LEGAL = process.env.SHOW_LEGAL === '1';
-const TG_CHANNEL = (() => {
-  const v = (process.env.TELEGRAM_CHANNEL || '').trim();
-  return /^https:\/\/t\.me\/[A-Za-z0-9_+\-\/]{1,64}$/.test(v) ? v : '';
-})();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
 // Everything is same-origin: fonts are self-hosted, so no visitor request reaches a third party.
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'";
@@ -99,7 +91,7 @@ const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
-  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, plans: SHOW_PLANS, rideMaxHours: game.rideMaxHours(), channel: SHOW_PLANS ? TG_CHANNEL : '' }),
+  'GET /api/status': async () => ({ ...game.stats(), usage: nansen.getUsage(), public: PUBLIC, beta: { status: 'free-beta' }, plans: SHOW_PLANS, rideMaxHours: game.rideMaxHours() }),
   'POST /api/player': async (b) => game.createPlayer(b.name),
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play

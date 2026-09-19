@@ -49,8 +49,7 @@ The Plans page and the "FREE BETA" strip are the only places the site offers any
 It fails closed: a redeploy that loses the variable hides the offer rather than exposing it, and with Plans off the Telegram channel link is withheld from the API entirely.
 
 To turn it on, set both:
-- `SHOW_PLANS=1`
-- `TELEGRAM_CHANNEL=https://t.me/yourchannel` — the "Join the Telegram channel" button. Only `https://t.me/...` is accepted; anything else is ignored, so a typo can't become an open redirect. Leave it unset and the button reads "Premium is in private testing" with no dead link.
+- `SHOW_PLANS=1` reveals the free-beta strip.
 
 ## Good to know
 - **Logs:** service → **Deployments → View logs**. You'll see "Mode: LIVE Nansen API" and "Public mode".

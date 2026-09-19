@@ -79,7 +79,7 @@
           </div>
 
           <div class="dossier">
-            <div class="meta"><span id="rGrade" class="grade-chip"></span> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
+            <div class="meta"><button id="rGrade" class="grade-chip" title="What does this grade mean?"></button> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
             <div class="intel">
               <div class="stat"><small>Whale win rate · 30d before<button class="qmark" data-help="win" aria-label="What is this?">?</button></small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
               <div class="stat"><small>Whale realized PnL · 30d<button class="qmark" data-help="pnl" aria-label="What is this?">?</button></small><b id="iPnl">–</b></div>
@@ -170,7 +170,7 @@
 
   <!-- ============ PLANS ============ -->
   <section id="view-plans" class="view">
-    <div class="floor-head"><div><h2>Premium &amp; Premium Plus</h2><p class="muted">The <b class="gold">whole game is free</b>: training, live bets, whale track records and your Trader Profile. Premium is the <b>signals side</b> — whale alerts delivered to Telegram — and it is in <b>closed private testing</b>.</p></div></div>
+    <div class="floor-head"><div><h2>Premium &amp; Premium Plus</h2><p class="muted">The <b class="gold">whole game is free</b>: training, live bets, whale track records and your Trader Profile. Premium is the <b>alerts side</b> — whale alerts delivered to Telegram — and it is in <b>closed private testing</b>.</p></div></div>
 
     <!-- Unmissable and first, because the one thing people will assume about a page headed "Premium"
          is that it is something they can buy. It is not, and nothing on this page may imply it is. -->
@@ -182,6 +182,18 @@
 
     <div class="plans two">
       <article class="plan">
+        <div class="pv-demo" aria-hidden="true">
+          <div class="pv-app">Telegram</div>
+          <div class="pv-note n1">
+            <b>🐋 WHALE ALERT · A+</b>
+            <span>Smart Money opened <b class="pv-up">LONG BTC</b> · $1.2M</span>
+            <span class="pv-dim">Follow x1.61 · Fade x2.43</span>
+          </div>
+          <div class="pv-note n2">
+            <b>✂️ WHALE TRIMMED 50%</b>
+            <span>The same whale just cut half the position</span>
+          </div>
+        </div>
         <div class="pl-head"><h3>Premium</h3><div class="pl-tag">Free · private testing</div><p class="pl-sub">The whale alerts, on your phone</p></div>
         <ul>
           <li><b>Telegram whale alerts</b> the moment a graded trader opens a position, with the model read, the dealer's tells and Smart Money positioning already in the message</li>
@@ -195,6 +207,18 @@
 
       <article class="plan vip">
         <div class="pl-ribbon">First on the floor</div>
+        <div class="pv-demo plus" aria-hidden="true">
+          <div class="pv-app">Telegram</div>
+          <div class="pv-note n1">
+            <b>🐋 WHALE ALERT · A+</b>
+            <span>Smart Money opened <b class="pv-up">LONG BTC</b> · $1.2M</span>
+          </div>
+          <div class="pv-bolt">⚡</div>
+          <div class="pv-bet">
+            <i class="pv-chip"></i>
+            <span><b>BET PLACED</b><em>FOLLOW · 500 chips · 0.4s after the alert</em></span>
+          </div>
+        </div>
         <div class="pl-head"><h3>Premium Plus</h3><div class="pl-tag">Free · private testing</div><p class="pl-sub">Everything in Premium, and it bets for you</p></div>
         <ul>
           <li>Everything in Premium</li>
@@ -209,9 +233,9 @@
     <div class="tg-card" id="tgChanCard">
       <div>
         <h3>How to get in</h3>
-        <p class="muted" id="tgChanSub">Testing places are handed out by hand, a few at a time, so that the alerts can be watched closely while they are still unreliable. Announcements go out on the Telegram channel — no email, no signup, no account here, and you can leave whenever you like.</p>
+        <p class="muted">Testing places are earned, not requested. They go to the <b class="gold">top players on the Hall of Fame leaderboard</b> — the people whose reading of Smart Money is good enough that their feedback on an unfinished alert is worth having. Climb the board and you put yourself in line.</p>
+        <p class="muted">There is nothing to sign up for and nobody to message. Announcements, including when testing opens more widely, will be posted on <b>X</b>.</p>
       </div>
-      <div class="ref-actions"><a class="gold-btn big" id="tgChanLink" href="#" target="_blank" rel="noopener">Open the channel ↗</a></div>
     </div>
 
     <div class="ref-card">
@@ -306,6 +330,24 @@
     <button class="ghost-btn" data-close-dialog>Stay in the game</button>
     <a id="lvGo" class="nansen-btn" target="_blank" rel="noopener">I understand — continue ↗</a>
   </div>
+</dialog>
+
+<dialog id="grDlg">
+  <div class="lv-head"><span class="lv-warn gr-badge" aria-hidden="true">A+</span><h3>How whales are graded</h3></div>
+  <p class="lv-lead">Every whale carries a grade from <b>A+</b> to <b>F</b>. It is this site's own automated score — not a rating by Nansen, and not a judgement about any person or firm.</p>
+  <table class="gr-table">
+    <tbody>
+      <tr><td><span class="grade ga">A+</span></td><td><b>Elite</b><small>Score 85–100. Strong realised profit across a broad set of coins.</small></td></tr>
+      <tr><td><span class="grade ga">A</span></td><td><b>Strong hands</b><small>Score 75–84. Consistently profitable with a real sample behind it.</small></td></tr>
+      <tr><td><span class="grade gb">B</span></td><td><b>Solid</b><small>Score 62–74. Good, but thinner evidence — or a narrow range of coins.</small></td></tr>
+      <tr><td><span class="grade gc">C</span></td><td><b>Coin flip</b><small>Score 48–61. Roughly break-even. Their side tells you little.</small></td></tr>
+      <tr><td><span class="grade gd">D</span></td><td><b>Shaky</b><small>Score 35–47. Losing more than winning over the window.</small></td></tr>
+      <tr><td><span class="grade gf">F</span></td><td><b>Fade material</b><small>Score under 35. The record argues against following them.</small></td></tr>
+    </tbody>
+  </table>
+  <p class="lv-foot"><b>What goes into it:</b> realised return, win rate and how many trades are behind them over the <b>last 30 days</b>, adjusted by the <b>last 7</b>. A big sample counts for more than a lucky streak, and a whale whose record rests on only one or two coins is capped at B — a win rate built on two coins is easy to inflate. The one exception is a <b>specialist</b>: a whale who trades few coins but has proven realised profit on the exact coin they are opening now.
+  <br><br>A grade describes the <b>past</b>. It is not a prediction, not advice, and an A+ whale is still wrong often — the odds on each card say how often.</p>
+  <div class="actions"><button class="gold-btn" data-close-dialog>Got it</button></div>
 </dialog>
 
 <dialog id="rsDlg">

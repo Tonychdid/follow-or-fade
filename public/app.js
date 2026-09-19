@@ -237,7 +237,7 @@ async function refreshStatus() {
     const sub = $('rideLaneSub');
     if (sub) sub.textContent = `ends when the whale exits · up to ${rideCapHours}h · cash out any time`;
   }
-  if (refreshStatus.plansOn !== !!s.plans) { refreshStatus.plansOn = !!s.plans; paintPlans(!!s.plans, s.channel || ''); }
+  if (refreshStatus.plansOn !== !!s.plans) { refreshStatus.plansOn = !!s.plans; paintPlans(!!s.plans); }
   if (s.smWinRate != null) {
     $('smWin').textContent = Math.round(s.smWinRate * 100) + '%';
     $('smWinTxt').textContent = `of ${s.sampleSize} Smart Money opens were in profit when the whale exited${s.medianHoldHours ? ` · median hold ${hrs(s.medianHoldHours * 3600e3)}` : ''}`;
@@ -611,6 +611,17 @@ document.addEventListener('click', (e) => {
   helpPop.style.top = (r.bottom + window.scrollY + 8) + 'px';
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(); });
+
+// A grade badge is the most-asked-about thing on a card, and it appears in several places, so the
+// explainer is wired once by delegation rather than per render.
+document.addEventListener('click', (e) => {
+  const g = e.target.closest('#rGrade, .grade');
+  if (!g) return;
+  // inside the whale-record summary the badge shares a row with the expand toggle: don't do both
+  e.preventDefault(); e.stopPropagation();
+  sfx.tick();
+  try { $('grDlg').showModal(); } catch {}
+});
 
 /** After a bet on a phone, bring the result into view (the felt is taller than the screen). */
 function scrollToResult(id) {
@@ -1452,34 +1463,14 @@ $('footPremium')?.addEventListener('click', () => {
 // invite-only, and it says so before anything else. So the page itself is always available — people
 // could not otherwise discover that Telegram alerts exist. SHOW_PLANS still gates the beta strip,
 // which does imply a future paid tier.
-function paintPlans(on, channel) {
+function paintPlans(on) {
   const strip = $('betaStrip');
   if (strip) strip.hidden = !on;
-  paintChannel(channel);
   if (wantPlansOnLoad) {
     const tab = document.querySelector('.tab-plans');
     if (tab) tab.click(); // honour ?view=plans
   }
   wantPlansOnLoad = false;
-}
-
-// Premium is announced on a Telegram channel, not by email: nothing about a visitor is collected,
-// stored or processed here, so there is no consent to take and nothing to delete later.
-// The channel address comes from the server (TELEGRAM_CHANNEL) so it can change without a redeploy
-// of the client, and the buttons stay hidden until there is a real channel to send people to.
-function paintChannel(url) {
-  const card = $('tgChanCard'); const link = $('tgChanLink'); const cta = $('tgChanCta');
-  if (url) {
-    if (link) link.href = url;
-    if (cta) cta.href = url;
-  } else {
-    // No channel configured yet: don't offer a dead link.
-    if (cta) { cta.removeAttribute('href'); cta.textContent = 'Closed private testing'; cta.classList.add('disabled'); }
-    if (link) link.hidden = true;
-    const sub = $('tgChanSub');
-    if (sub) sub.textContent = 'Testing places are handed out by hand, a few at a time. The announcement channel opens shortly — check back here. Nothing on this site is for sale and no payment is ever taken.';
-  }
-  if (card) card.hidden = false;
 }
 
 // ================================================= Research Desk (Nansen Agent)
@@ -1664,8 +1655,16 @@ function closeIntro() {
   const o = $('introOverlay');
   const view = document.querySelector('.view.active')?.id.replace('view-', '');
   document.querySelectorAll('.intro-compare [data-sec].on').forEach((d) => store.set('fof_intro_' + d.dataset.sec, '1'));
-  o.hidden = true; introOpen = false; sfx.chip();
-  void view;
+  o.hidden = true; introOpen = false;
+  // The arrival flourish, once in a visitor's life, as they step up to the Training Table for the
+  // first time. Played here rather than on load because browsers keep audio locked until a gesture,
+  // and dismissing this overlay is one. Muting still silences it, and it never plays twice.
+  if (view === 'replay' && !store.get('fof_welcomed')) {
+    store.set('fof_welcomed', '1');
+    sfx.welcome();
+  } else {
+    sfx.chip();
+  }
 }
 $('introGo').onclick = closeIntro;
 $('introOverlay').addEventListener('click', (e) => { if (e.target === $('introOverlay')) closeIntro(); });
