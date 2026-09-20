@@ -1507,10 +1507,12 @@ boot();
 // ================================================= free beta + plans
 $('betaGo').onclick = () => document.querySelector('.tab[data-view="plans"]').click();
 // The footer is the only route to Premium on a phone, where the bottom nav has no room for it.
-$('footPremium')?.addEventListener('click', () => {
+const goPremium = () => {
   document.querySelector('.tab[data-view="plans"]').click();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-});
+};
+$('footPremium')?.addEventListener('click', goPremium);
+$('mobPremium')?.addEventListener('click', goPremium);
 
 // The Plans page and the beta strip are the only places the site makes a commercial offer, so they are
 // hidden in the markup and revealed only when the server says SHOW_PLANS=1. Failing closed matters here:

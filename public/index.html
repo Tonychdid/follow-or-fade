@@ -390,6 +390,15 @@
   </div>
 </dialog>
 
+<!-- Mobile has no top tab row, so the only route to Premium was a text link buried in the legal
+     footer, styled exactly like "Legal notice". This is the mobile entry point; hidden on desktop,
+     where the green Premium tab already sits in the header. -->
+<button class="mob-premium" id="mobPremium">
+  <span class="mp-tag">PREMIUM</span>
+  <span class="mp-txt"><b>Premium &amp; Premium Plus</b><small>Whale alerts to Telegram, and the automated bet taker — free, in private testing</small></span>
+  <span class="mp-go" aria-hidden="true">›</span>
+</button>
+
 <footer class="site-foot">
   <b>Play money only.</b> Follow or Fade is an educational game on real Nansen Smart Money data. It is not financial advice, it does not promise profits, and no real order is ever placed from this site.<br>
   <button class="sf-link" id="footPremium">Premium &amp; Premium Plus</button><span class="sf-sep">·</span><a href="/legal.html">Legal notice</a><span class="sf-sep">·</span>No paid promotion: this site earns no commission from any link
