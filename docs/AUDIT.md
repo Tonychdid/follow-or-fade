@@ -90,6 +90,46 @@ A price-drift gate was considered and **rejected on this evidence**: bucketing b
 
 **Changed:** lookback 1h → 6h (`ALERT_LOOKBACK_HOURS`), age cap 45min → 4h (`ALERT_MAX_AGE_MIN`), plus a per-scan cap (`ALERT_MAX_PER_SCAN`, default 5) and a warm start that adopts the window without alerting on a first boot with empty `seen`. Measured live at the moment of the change: the old settings would have sent **1** alert, the new ones **7**, for the same 5-credit scan.
 
+## Second pass — re-run against the final build (20 Sep)
+
+The audit above was written before the alert-gate change, the `openDialog` fix and the four mobile
+fixes. Everything below was re-run against the code as shipped.
+
+**Server:** every `.js` file parses. Money paths all rejected — negative stake, stake above bankroll,
+`"1e999"`, betting on another player's round, replaying a round, taking both sides. Path traversal
+(`/../server.js`, `/..%2fserver.js`, `/%2e%2e/server.js`, `/../../etc/passwd`, `/../.env`,
+`/data/players.json`) all 404, and `legal-full.html` still 404s with `SHOW_LEGAL` off. Under
+`PUBLIC=1`: `/api/usage` 403, `/api/alerts/scan` 403 without a token and 200 with, `/admin/usage.json`
+403 on a wrong token. Rate limiter allowed 8 then returned 429. All four security headers present.
+
+**Front end**, at 360 / 390 / 412 / 768 / 1100 / 1440 px — a full training hand played and settled at
+every width, every view opened, and:
+
+| | result |
+| --- | --- |
+| page errors | **0** |
+| console errors | **0** |
+| horizontal overflow (all views) | **0 px** |
+| grade dialog scroll position on open | **0** (top) |
+| plans order | PREMIUM → PLUS |
+
+**The new alert-scan code**, exercised end to end:
+- Warm start: first scan on an empty `seen` adopted 5 trades and sent **0** alerts, persisting
+  `alertseen.json` with 5 entries.
+- Per-scan cap: with `ALERT_MAX_PER_SCAN=2` the scans produced **2 → 2 → 0**; with `5` they produced
+  **4 → 0 → 0**. Four alerts either way, so the cap throttles delivery without dropping anything —
+  the overflow stays unseen and goes out on the next scan.
+
+## Known, deliberately not fixed before recording
+
+`public/style.css` has **90 duplicated (media-query, selector) keys** out of 1,064. Only **8** are
+byte-identical dead weight; the other **82 have different bodies**, so the rendered result depends on
+their cascade order — a later block partially overriding an earlier one. Two of those overlaps caused
+real bugs (the mobile chip row spilling onto the stake input, and a duplicated `.grade-chip::after`),
+and both are fixed at source. Merging the remaining 82 is a refactor whose only honest validation is
+re-checking every affected component at every width, so it belongs after the deadline, not the night
+before it.
+
 ## Gotcha worth knowing
 
 `server.js` calls `loadEnv(ROOT)` **before** it imports `lib/nansen.js`. Any standalone script that imports `lib/nansen.js` directly without calling `loadEnv` first will find `NANSEN_API_KEY` unset, so `isDemo()` returns **true** and the script silently measures the demo generator while looking exactly like a live run. Every analysis script must start with:

@@ -637,13 +637,25 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHelp(
 
 // A grade badge is the most-asked-about thing on a card, and it appears in several places, so the
 // explainer is wired once by delegation rather than per render.
+/** showModal(), but always showing the start of the dialog.
+ *  showModal focuses the first focusable child; in these panels that is the button at the bottom,
+ *  so the browser scrolls straight past the content. Focus the dialog itself and reset the scroll. */
+function openDialog(d) {
+  if (!d) return;
+  try { d.showModal(); } catch { return; }
+  d.scrollTop = 0;
+  try { d.focus({ preventScroll: true }); } catch { try { d.focus(); } catch {} }
+  // Some engines apply the autofocus scroll a frame later; undo it on the next frame too.
+  requestAnimationFrame(() => { d.scrollTop = 0; });
+}
+
 document.addEventListener('click', (e) => {
   const g = e.target.closest('#rGrade, .grade');
   if (!g) return;
   // inside the whale-record summary the badge shares a row with the expand toggle: don't do both
   e.preventDefault(); e.stopPropagation();
   sfx.tick();
-  try { $('grDlg').showModal(); } catch {}
+  openDialog($('grDlg'));
 });
 
 /** After a bet on a phone, bring the result into view (the felt is taller than the screen). */
@@ -771,7 +783,7 @@ $('btnShare').onclick = async () => {
   // the tweet carries the site, so a shared card sends people here and not only to Nansen
   const text = `I turned $10k into ${usd(p.bankroll)} betting for and against @nansen_ai Smart Money on Hyperliquid. ${p.whalesSlain} whales slain.\n\nFollow or fade? ${siteUrl()}`;
   $('shareX').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text);
-  $('shareDlg').showModal();
+  openDialog($('shareDlg'));
 };
 
 // ================================================= leaving the game
@@ -789,7 +801,7 @@ const gateTrade = (e) => {
   e.preventDefault();
   $('lvGo').href = a.href;
   sfx.tick();
-  try { $('lvDlg').showModal(); } catch { window.open(a.href, '_blank', 'noopener'); }
+  if ($('lvDlg')) openDialog($('lvDlg')); else window.open(a.href, '_blank', 'noopener');
 };
 document.addEventListener('click', gateTrade, true);
 document.addEventListener('auxclick', gateTrade, true); // middle-click opens a tab without firing click
@@ -936,7 +948,7 @@ $('btnChallenge').onclick = async () => {
   // app they actually have, including ones we would never think to add.
   shareText = text; shareLink = link;
   $('chNative').hidden = !navigator.share;
-  $('chDlg').showModal();
+  openDialog($('chDlg'));
 };
 let shareBlob = null, shareText = '', shareLink = '';
 $('chNative').onclick = async () => {
