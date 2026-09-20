@@ -139,7 +139,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `NANSEN_API_KEY` | – | Your key from https://app.nansen.ai/api |
 | `PORT` | 3000 | Web port |
 | `MAX_HOLD_HOURS` | 48 | Training hands are judged on the whale's real exit, capped at this many hours |
-| `MIN_HOLD_MINUTES` | 60 | Training hands and odds training skip scalps: whales who fully closed faster than this |
+| `MIN_HOLD_MINUTES` | 0 | Drop training hands whose whale closed faster than this. **Off by default** — scalpers are in. Measured on 70 live Smart Money whales (Sep 2026), a 60-minute floor discarded three quarters of the cohort, including its most consistent members. Quality is judged on the wallet's record instead (see *Which whales qualify* below) |
 | `PUSH_BAND_PCT` | 0.2 | Whale results smaller than ±this % are a push (stake back) on training hands, Ride the Whale and the Insider Pick, and are left out of odds training |
 | `RIDE_MAX_HOURS` | 48 | Ride the Whale bets end when the whale closes, capped at this many hours |
 | `CALIBRATION_SAMPLE` | 60 | Trades resolved per hourly calibration run |
@@ -153,10 +153,87 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ALERT_LOOKBACK_HOURS` | `6` | How far back each alert scan reads the Nansen feed (same 5-credit cost at any window) |
 | `ALERT_MAX_AGE_MIN` | `240` | How old a trade may be and still earn its first alert |
 | `ALERT_MAX_PER_SCAN` | `5` | Most alerts one scan may send, newest first (the rest wait for the next scan) |
+| `WHALE_COOLDOWN` | `10` | Hands that must pass before the same whale can be dealt to a player again |
+| `ROSTER_DAYS` | `7` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off. Costs ~267 Nansen credits per run (~38/day at weekly) |
+| `ROSTER_LOOKBACK_HOURS` | `168` | The window the re-assessment reads to decide who is "in the pool" |
+| `ROSTER_MIN_USD` | `25000` | Smallest position that counts as being active in the pool |
+| `SCALPER_TRADES_PER_DAY` | `20` | A wallet averaging this many closed trades a day over 30D is labelled **SCALPER** on cards and alerts. The tag is descriptive, not a quality judgement — it warns you the position may not last long |
 | `MAX_PLAYERS` | 100000 | Cap on stored players; above it, visitors who never placed a bet are pruned first |
 | `MAX_EXCLUDED` | 5000 | Cap on the trader exclusion list |
 | `ADMIN_TOKEN` | none | Required in public mode. **Set it and the admin routes fail closed**, even if `PUBLIC` is ever missing |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
+
+## Which whales qualify
+
+Not every Smart Money wallet is worth watching, so a wallet has to clear a set of quality gates before
+the app will deal it as a hand or fire an alert about it. The gates are edited in the app under
+**bell → Alert rules & channels** and stored in `data/alertcfg.json`; the defaults below come from the
+live distribution of 70 Smart Money whales measured in September 2026.
+
+| Rule | Default | What it rejects |
+|---|---|---|
+| `minGrade` | `A` | Wallets whose trust grade is below this |
+| `minWinRate` | `0.55` | Wallets winning less than 55% of their closed trades |
+| `minClosed` | `20` | Wallets with too small a 30-day sample to judge |
+| `minCoins7d` / `minCoins30d` | `3` / `5` | One-trick wallets with no breadth |
+| `minSizeUsd` | `50000` | Positions too small to be a real conviction bet |
+| `requireProfit30d` | `true` | Wallets that lost money over 30 days |
+| `minRoi30d` | `0.02` | Wallets up in dollars but below a 2% return on closes — big size masking a thin edge |
+| `requireProfit7d` | `true` | Wallets coasting on an old 30-day number while losing right now |
+| `minPnlPerFee` | `3` | **Wash-trade guard.** Profit must be at least 3× fees paid. A wallet churning volume for rebates or points fails here |
+| `minPnlPerTrade` | `10` | **Wash-trade guard.** At least $10 of profit per closed trade. Thousands of near-zero round-trips fail here |
+| `requireCoinMajority` | `true` | Wallets carried by a single lucky coin — more than half the coins they traded must be profitable |
+
+**Scalpers are included.** An earlier build excluded any whale who closed positions quickly, on the
+assumption that fast hands were noise. Measuring the cohort showed the opposite: 53 of the 70 whales
+close more than 20 trades a day, and 51 of those 53 were profitable over 30 days. The exclusion was
+throwing away the most consistent traders in the set. They are now judged on their record like anyone
+else, and carry a **SCALPER** tag on cards, popups, desktop notifications and Telegram so you know the
+position may not last long (see `SCALPER_TRADES_PER_DAY` above).
+
+Against the same 70-whale sample, the rules above pass **26 wallets (37%)**, 20 of them scalpers.
+
+> Honest note: in that sample the two wash-trade guards (`minPnlPerFee`, `minPnlPerTrade`) excluded
+> nobody — every wallet that cleared the other rules also cleared these. They are insurance against a
+> wallet type that exists on Hyperliquid but did not appear in this cohort, not active filters today.
+
+## The roster and the journal
+
+Two things are written down that the game itself never reads. Both are admin-only.
+
+**`/admin/roster.json?token=…`** — the whale pool as of the last assessment. Every wallet that opened a
+qualifying-size position in the window, whether it clears the bar, and **when it does not, the first
+rule it broke**. Plus the diff against the previous run: who entered, who left, and why.
+
+The pool was always rolling — the feed is a 7-day sliding window, so a whale who stops trading falls
+out by themselves and a new one is picked up the moment they appear. What was missing was the record
+of it. Without a snapshot there is no way to see a good trader quietly degrade, and no way to tell
+whether a rule change helped or merely churned the list.
+
+Measured on a live run: **131 wallets seen, 47 qualifying (36%), 34 of them scalpers**, 267 credits,
+61 seconds. The reasons the other 84 were left out:
+
+| Rule they broke first | Wallets |
+|---|---|
+| 30D return under the minimum | 28 |
+| Unprofitable over the last 7D | 13 |
+| Unprofitable over 30D | 12 |
+| Too few coins in 30D | 12 |
+| Grade below the minimum | 9 |
+| No closed trades in the last 7D | 7 |
+| Fewer than half their coins profitable | 2 |
+| Under the minimum closed trades | 1 |
+
+**`/admin/journal.jsonl?token=…`** — append-only, one line per alert, never trimmed. `alerts.json`
+keeps the last 200 and drops the rest, which is right for the screen and useless for any question
+asked in weeks rather than hours. Each line carries the whale (address, grade, scalper flag, trades
+per day, 30D and 7D records), the position (coin, side, size, the whale's fill), and — the field that
+makes the file worth keeping — **`priceAtAlert`, the mark when the alert went out, which is the entry
+a follower could actually have got**. The whale's own fill is already gone by then. Follow-up lines
+(`exit`, `trim`, `add`) carry the exit price, the return and how long it was held, and point back at
+the opening line through `parentId`.
+
+Test alerts are journaled too, flagged `test: true`. A flagged row is easier to explain than a gap.
 
 ## Research Desk (Nansen Agent)
 

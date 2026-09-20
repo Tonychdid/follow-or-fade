@@ -14,6 +14,20 @@ function ac() {
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
+/**
+ * Create and start the audio context, synchronously enough to count as "inside a user gesture".
+ * ac() calls ctx.resume(), but resume() is ASYNCHRONOUS: the state is still 'suspended' on the very
+ * next line, so ready() rejected the sound and the first effect after a page load was dropped. On
+ * desktop a later click happened to start it in time; on a phone the arrival fanfare never played.
+ * Call this in the click handler itself, then await it before playing.
+ */
+export async function unlock() {
+  gestured = true;                 // we are being called from a real gesture
+  const c = ac();
+  if (!c) return false;
+  if (c.state === 'suspended') { try { await c.resume(); } catch {} }
+  return c.state === 'running';
+}
 export const isMuted = () => muted;
 export function setMuted(m) { muted = m; try { localStorage.setItem('fof_muted', m ? '1' : '0'); } catch {} }
 
@@ -76,7 +90,12 @@ export const sfx = {
    * Built from the same oscillators as everything else — no audio file, no licensing, no download.
    * A slow swell underneath, a rising major arpeggio over it, a held chord, and a shimmer of chips.
    */
-  welcome() {
+  async welcome() {
+    // Wait for the context to actually be running before scheduling: see unlock(). Without this the
+    // whole flourish is silently dropped on a phone, which is exactly what happened.
+    if (muted) return;
+    const running = await unlock();
+    if (!running || muted) return;
     // low swell: the room opening up
     noise(0, 1.1, { freq: 420, q: 0.4, gain: 0.3, type: 'lowpass' });
     tone(65.4, 0, 2.6, { type: 'sine', gain: 0.1, attack: 0.5 });
@@ -97,5 +116,5 @@ export const sfx = {
   push() { tone(440, 0, 0.25, { type: 'triangle', gain: 0.15 }); tone(440, 0.2, 0.25, { type: 'triangle', gain: 0.15 }); },
 };
 // unlock audio on first interaction (browser autoplay rules)
-const unlock = () => { const c = ac(); if (c && c.state === 'running') ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.removeEventListener(ev, unlock)); };
-['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, unlock));
+const primeAudio = () => { const c = ac(); if (c && c.state === 'running') ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.removeEventListener(ev, primeAudio)); };
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, primeAudio));

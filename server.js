@@ -14,6 +14,8 @@ const game = await import('./lib/game.js');
 const alerts = await import('./lib/alerts.js');
 const excluded = await import('./lib/excluded.js');
 const agent = await import('./lib/agent.js');
+const roster = await import('./lib/roster.js');
+const store = await import('./lib/store.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
@@ -193,6 +195,26 @@ async function handle(req, res) {
     }
     return json(res, 200, { nansen: nansen.getUsageDetail(), agent: agent.status() });
   }
+  // Browser-openable admin views, same token-in-the-URL pattern as the ledger above.
+  //   /admin/roster.json   who is in the whale pool right now, who entered, who dropped and why
+  //   /admin/journal.jsonl every alert ever sent and how the whale's position ended (the study data)
+  if (url.pathname === '/admin/roster.json' || url.pathname === '/admin/journal.jsonl') {
+    const t = url.searchParams.get('token') || '';
+    if (!ADMIN_TOKEN || t.length !== ADMIN_TOKEN.length
+        || !crypto.timingSafeEqual(sha(t), sha(ADMIN_TOKEN))) {
+      if (limited(req, 10)) return json(res, 429, { error: 'Too many requests' });
+      return json(res, 403, { error: 'Admin only' });
+    }
+    if (url.pathname === '/admin/roster.json') {
+      return json(res, 200, { current: roster.lastRoster(), due: roster.isDue(), everyDays: roster.ROSTER_DAYS(), history: roster.rosterHistory(20) });
+    }
+    // Streamed straight off disk: this file is meant to grow for months and must never be
+    // read into memory whole just to be handed over.
+    const jp = store.jsonlPath('alertjournal');
+    if (!fs.existsSync(jp)) { res.writeHead(200, { 'Content-Type': 'application/x-ndjson', ...SECURITY }); return res.end(''); }
+    res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Content-Disposition': 'attachment; filename="alertjournal.jsonl"', ...SECURITY });
+    return fs.createReadStream(jp).on('error', () => { try { res.end(); } catch {} }).pipe(res);
+  }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY });
     return res.end(renderIndex());
@@ -219,6 +241,10 @@ const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds 
 setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
+// The whale pool re-assesses itself every ROSTER_DAYS (7): new whales in, non-performers out, with a
+// written diff each time. Delayed on boot so it never competes with the first alert scan.
+setTimeout(() => roster.assessPool().catch(() => {}), 45e3);
+roster.schedule();
 setInterval(() => alerts.checkExits().catch(() => {}), 60e3); // exits are real-money signals: check every minute
 setTimeout(() => alerts.backfillWatches().catch(() => {}), 15e3);
 setTimeout(() => alerts.startTelegramPoll(), 10e3); // listen for the 🔄 Re-check button on Telegram alerts // exit alerts: whales we alerted on trimming or closing

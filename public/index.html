@@ -28,7 +28,9 @@
 <header class="top">
   <div class="brand">
     <div class="logo"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
-    <div class="est">The Smart Money Academy, disguised as a casino</div>
+    <!-- .est is hidden below 1100px, so this one is the desktop route; the front door, the stats strip
+       and the Trader Profile pill carry the same explainer where phones can reach it. -->
+    <div class="est">The Smart Money Academy, disguised as a casino <button type="button" class="qmark" data-help="smartmoney" aria-label="What is Smart Money?" title="What is Smart Money?">?</button></div>
   </div>
   <nav class="tabs" role="tablist">
     <button class="tab active" data-view="replay">Training Table</button>
@@ -81,10 +83,10 @@
           <div class="dossier">
             <div class="meta"><button id="rGrade" class="grade-chip" title="What does this grade mean?"></button> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
             <div class="intel">
-              <div class="stat"><small>Whale win rate · 30d before<button class="qmark" data-help="win" aria-label="What is this?">?</button></small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
-              <div class="stat"><small>Whale realized PnL · 30d<button class="qmark" data-help="pnl" aria-label="What is this?">?</button></small><b id="iPnl">–</b></div>
-              <div class="stat"><small>Smart Money · net 24h<button class="qmark" data-help="sm" aria-label="What is this?">?</button></small><b id="iSm">–</b><span id="iSmSub" class="sub"></span></div>
-              <div class="stat"><small>Everyone else · net 24h<button class="qmark" data-help="crowd" aria-label="What is this?">?</button></small><b id="iCrowd">–</b><span id="iCrowdSub" class="sub"></span></div>
+              <div class="stat"><small>Whale win rate · 30d before<button type="button" class="qmark" data-help="win" aria-label="What is this?">?</button></small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
+              <div class="stat"><small>Whale realized PnL · 30d<button type="button" class="qmark" data-help="pnl" aria-label="What is this?">?</button></small><b id="iPnl">–</b></div>
+              <div class="stat"><small>Smart Money · net 24h<button type="button" class="qmark" data-help="sm" aria-label="What is this?">?</button></small><b id="iSm">–</b><span id="iSmSub" class="sub"></span></div>
+              <div class="stat"><small>Everyone else · net 24h<button type="button" class="qmark" data-help="crowd" aria-label="What is this?">?</button></small><b id="iCrowd">–</b><span id="iCrowdSub" class="sub"></span></div>
             </div>
             <p id="flowRead" class="flow-read" hidden></p>
             <div class="tells-title">The dealer's tells <span class="legend"><i class="g"></i>favors FOLLOW <i class="r"></i>favors FADE</span></div>
@@ -138,7 +140,7 @@
 
     <div class="house-strip">
       <div class="hs"><small>This week on Hyperliquid</small><b id="smWin">–</b><span id="smWinTxt">of Smart Money opens were green 4h later</span></div>
-      <div class="hs"><small>Odds trained on</small><b id="uModel">–</b><span>real Smart Money trades</span></div>
+      <div class="hs"><small>Odds trained on</small><b id="uModel">–</b><span>real Smart Money trades <button type="button" class="qmark" data-help="smartmoney" aria-label="What is Smart Money?" title="What is Smart Money?">?</button></span></div>
       <div class="hs"><small>Nansen API calls</small><b id="uCalls">0</b><span><span id="uCredits">0</span> credits used</span></div>
     </div>
   </section>
@@ -159,7 +161,7 @@
 
   <!-- ============ SKILL REPORT ============ -->
   <section id="view-report" class="view">
-    <div class="floor-head"><div><h2>Your Trader Profile <button class="intro-help" data-intro="report" aria-label="What is this section?" title="What is this section?">?</button></h2><div class="sec-q-pill">How well do you actually read Smart Money?</div><p class="muted">Every call you make is scored against what the odds expected of you, and rolled into named skills. This is the measurable part: real reading ability, none of your capital.</p></div></div>
+    <div class="floor-head"><div><h2>Your Trader Profile <button class="intro-help" data-intro="report" aria-label="What is this section?" title="What is this section?">?</button></h2><div class="sec-q-pill">How well do you actually read Smart Money? <button type="button" class="qmark" data-help="smartmoney" aria-label="What is Smart Money?" title="What is Smart Money?">?</button></div><p class="muted">Every call you make is scored against what the odds expected of you, and rolled into named skills. This is the measurable part: real reading ability, none of your capital.</p></div></div>
     <div id="reportBody"></div>
   </section>
 
@@ -283,7 +285,7 @@
     <div class="rope" aria-hidden="true"></div>
     <div class="logo big"><span class="f">FOLLOW</span><span class="gem">◆</span><span class="x">FADE</span></div>
     <div class="wl-hand" id="wlHand">
-      <div class="wl-live"><i></i>A REAL SMART MONEY TRADE FROM THIS WEEK</div>
+      <div class="wl-live"><i></i>A REAL SMART MONEY TRADE FROM THIS WEEK <button type="button" class="qmark" data-help="smartmoney" aria-label="What is Smart Money?" title="What is Smart Money?">?</button></div>
       <p class="wl-headline" id="wlHeadline">A real Smart Money trade from this week, at the whale's exact entry.</p>
       <p class="wl-ask">Do you <b class="wl-f">FOLLOW</b> or <b class="wl-d">FADE</b>?</p>
     </div>
@@ -305,6 +307,7 @@
       <div data-sec="live"><small>Live Floor</small><b>Still worth following now?</b><span>Entry: today's price</span></div>
       <div data-sec="report"><small>Trader Profile</small><b>How well do you read them?</b><span>Seven skills, scored</span></div>
     </div>
+    <div class="intro-dots" id="introDots" aria-hidden="true"></div>
     <button class="gold-btn" id="introGo"></button>
   </div>
 </div>
@@ -442,7 +445,13 @@
       <label>Min coins traded · 30D<select id="cfgC30"><option value="0">Any</option><option value="3">3+</option><option value="4">4+</option><option value="5">5+ (suggested)</option><option value="8">8+</option><option value="12">12+</option></select></label>
       <label>Minimum position size<select id="cfgSize"><option value="10000">$10K</option><option value="25000">$25K</option><option value="50000">$50K</option><option value="100000">$100K</option><option value="250000">$250K</option><option value="1000000">$1M</option></select></label>
       <label>Scan every<select id="cfgInt"><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option></select></label>
+      <label>Min closed trades · 30D<select id="cfgClosed"><option value="0">Any</option><option value="10">10+</option><option value="20">20+ (suggested)</option><option value="50">50+</option><option value="100">100+</option></select></label>
+      <label>Minimum 30D return on closes<select id="cfgRoi"><option value="0">Any</option><option value="0.01">1%+</option><option value="0.02">2%+ (suggested)</option><option value="0.03">3%+</option><option value="0.05">5%+</option><option value="0.1">10%+</option></select></label>
+      <label>Profit must be at least this many times fees paid<select id="cfgFee"><option value="0">Off</option><option value="1">1x</option><option value="2">2x</option><option value="3">3x (suggested)</option><option value="5">5x</option><option value="10">10x</option></select></label>
+      <label>Minimum profit per closed trade<select id="cfgPpt"><option value="0">Any</option><option value="5">$5</option><option value="10">$10 (suggested)</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></label>
       <label class="switch"><input type="checkbox" id="cfgProfit"><span></span> Whale must be profitable over 30D</label>
+      <label class="switch"><input type="checkbox" id="cfgProfit7"><span></span> Whale must also be profitable over the last 7D</label>
+      <label class="switch wide"><input type="checkbox" id="cfgMajority"><span></span> More than half the coins they traded must be profitable: keeps out whales carried by one lucky coin</label>
       <label class="switch wide"><input type="checkbox" id="cfgSpec"><span></span> Let proven specialists through: trading only a few coins is OK if the coin they're opening is one of their main coins (40%+ of their trades) with $25K+ realized profit and a 3%+ return over 30D, and no losing week on it</label>
     </div>
     <p class="ap-cost" id="apCost"></p>

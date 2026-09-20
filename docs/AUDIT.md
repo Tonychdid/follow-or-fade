@@ -120,6 +120,35 @@ every width, every view opened, and:
   **4 → 0 → 0**. Four alerts either way, so the cap throttles delivery without dropping anything —
   the overflow stays unseen and goes out on the next scan.
 
+## Third pass — re-run after the shuffle and help-text work (20 Sep)
+
+**One real bug found and fixed, by the test rather than by reading.** The new "What is Smart Money?"
+help button sits inside the welcome dialog's `<form>`. A `<button>` with no `type` defaults to
+**submit**, and being first in tree order it became the form's default button — so pressing Enter on
+the nickname field fired the help popover instead of submitting, and the front door stopped working.
+All eight `.qmark` buttons now carry `type="button"`, and the audit gained a check that no button
+inside any `<form>` is missing an explicit type.
+
+**Whale-address leak check.** The new whale cooldown stores wallet addresses on the player record, and
+a training hand hides the whale — so the addresses must never ship. `recentWhales` is stripped in
+`publicPlayer`; verified that `/api/round`, `/api/player` and `/api/preview` contain no `0x…` address
+after several hands.
+
+**Whale shuffle**, four independent 40-hand runs on the final build: 0 back-to-back repeats, 21–23
+distinct whales per run, minimum gap **11 hands** every time, 0 violations.
+
+**Alert scan** unchanged and still correct: warm start sends 0 on an empty `seen`; the per-scan cap
+gives 2 → 2 → 0 at a cap of 2 and 4 → 0 → 0 at a cap of 5.
+
+**Server**, re-run in full: every `.js` parses; all six money attacks rejected; all six traversal
+attempts 404; under `PUBLIC=1` admin endpoints 403 without a token and 200 with; rate limiter cut in
+at 8; all four security headers present.
+
+**Front end**, 360 / 390 / 412 / 768 / 1100 / 1440 — a hand played and settled at every width, every
+view opened: **0 page errors, 0 console errors, 0 px horizontal overflow**, grade dialog opening at
+the top, Premium before Premium Plus. The mobile Premium card shows below 1100px and is hidden above
+it, where the desktop tab takes over.
+
 ## Known, deliberately not fixed before recording
 
 `public/style.css` has **90 duplicated (media-query, selector) keys** out of 1,064. Only **8** are

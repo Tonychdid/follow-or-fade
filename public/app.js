@@ -155,12 +155,16 @@ function armWelcome() {
   const arm = () => ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
     window.addEventListener(ev, fire, { once: true, capture: true }));
   function fire() {
-    // Audio unlocks asynchronously: give the context a moment to actually start before playing.
-    setTimeout(() => {
-      if (isMuted()) { arm(); return; } // muted right now — keep the flourish owed, try again later
-      store.set('fof_welcomed', '1');
-      sfx.welcome();
-    }, 280);
+    // Fallback only. The real trigger is the intro's closing button ("Deal me in"), because that is
+    // the moment the visitor expects the room to open up. Defer while the nickname dialog or an intro
+    // is on screen — otherwise the very first tap spends the flourish before anyone has arrived.
+    if (store.get('fof_welcomed') === '1' && !qp('welcome')) return;
+    if (isMuted()) { arm(); return; }                     // muted: keep it owed, try again later
+    if (introOpen || $('welcome')?.open) { arm(); return; } // their buttons do the honours
+    // Play straight from the gesture: sfx.welcome() awaits the audio unlock itself, and any timeout
+    // here loses the gesture on a phone, which is why nobody on mobile heard it.
+    store.set('fof_welcomed', '1');
+    sfx.welcome();
   }
   arm();
 }
@@ -497,7 +501,7 @@ async function deal() {
   $('rWhen').textContent = r.openedDay ? new Date(r.openedDay + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' · this week' : '';
   $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`; $('rHorizon').title = r.minHoldMinutes ? `Only real positions: whales who closed in under ${r.minHoldMinutes >= 60 ? r.minHoldMinutes / 60 + 'h' : r.minHoldMinutes + ' min'} (scalps) are left out` : '';
   const gr = r.grade || { grade: '?' };
-  $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}`;
+  $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}${gr.scalper ? ' · scalper' : ''}`;
   $('rGrade').className = 'grade-chip ' + ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[gr.grade] || 'gc');
   const i = r.intel;
   setStat('iWin', i.walletWinRate != null ? Math.round(i.walletWinRate * 100) + '%' : 'n/a', i.walletWinRate != null ? i.walletWinRate >= 0.5 : null);
@@ -608,6 +612,10 @@ $('btnNext').onclick = () => { sfx.chip(); deal(); };
 // Plain-English explanations for the four numbers above the tells. A tester asked what "Smart Money
 // flow" meant, which means everyone was wondering and only one person said so.
 const HELP = {
+  // The whole site is built on the phrase "Smart Money", and someone new to crypto has no reason
+  // to know it is a specific Nansen label rather than a figure of speech. Plain words, and honest
+  // about what the label does not promise.
+  smartmoney: ['What is Smart Money?', 'It is <b>Nansen\u2019s label for wallets worth watching</b> \u2014 traders whose record stands out once you follow the money on-chain. Nansen watches every wallet trading on Hyperliquid, adds up what each one has actually made and lost, and tags the ones that keep coming out ahead.<br><br>So when a card here says a <b>Smart Money whale</b> opened a trade, it means one of those wallets just put real money on the line, and you are being asked whether they are right this time.<br><br><b>It is not a tip and not a guarantee.</b> Good traders are wrong often \u2014 that is exactly what makes the call worth making.'],
   win: ['Whale win rate', 'Of everything this whale closed in the 30 days <b>before</b> this trade, the share that made money. It stops at this trade, so it can never include the hand you are being asked to judge.'],
   pnl: ['Whale realized PnL', 'Actual dollars this whale locked in over those same 30 days \u2014 profit they took, not paper gains on open positions. A high win rate with a negative PnL means lots of small wins and a few big losses.'],
   sm: ['Smart Money \u00b7 net 24h', 'Every wallet Nansen labels Smart Money, not just this whale: dollars they <b>bought minus</b> dollars they <b>sold</b> on this coin in the last 24 hours. <b>Green means net buying, red means net selling.</b> It is background on the coin, not a read on this whale.'],
@@ -1007,6 +1015,7 @@ function fetchLive() {
 function renderLive(items) {
   $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No whales opened positions in the last 6 hours. Check back soon.</p>';
   wireLive();
+  restoreFocus();
 }
 async function loadLive({ refresh = false } = {}) {
   loadPick();
@@ -1071,13 +1080,13 @@ function liveCard(t) {
     <div class="lc-changed" hidden></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
-    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
+    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}${tr.scalper ? ` <span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>` : ''}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
     <div class="lc-more">
     <div class="dossier-box">
       <div class="dossier-top">
         <div class="grade ${gradeCls}" title="Trust score ${tr.score ?? '–'}/100, from realized return, win rate and sample size (30d), adjusted by the last 7 days">${tr.grade}</div>
-        <div class="dossier-title"><b>Whale track record${tr.specialist ? ' <span class="spec-tag">SPECIALIST</span>' : ''}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
+        <div class="dossier-title"><b>Whale track record${tr.specialist ? ' <span class="spec-tag">SPECIALIST</span>' : ''}${tr.scalper ? ` <span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>` : ''}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
         <div class="rec-tabs" role="tablist"><button class="on" data-win="d7">7D</button><button data-win="d30">30D</button></div>
       </div>
       <div class="rec-body" data-panel="d7">${recordHtml(t.record?.d7)}</div>
@@ -1230,7 +1239,7 @@ function alertLine(a) {
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
     <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
     <div class="ai-body">
-      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
+      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''}${a.scalper ? `<span class="spec-tag scalp-tag" title="~${Math.round(a.tradesPerDay || 0)} closed trades a day over 30D">SCALPER</span>` : ''} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
       ${a.specialist ? `<div class="ai-spec">${esc(a.coin)} specialist: ${Math.round(a.specialist.share * 100)}% of trades, <b class="pos">+${compact(a.specialist.pnl)}</b> realized on ${esc(a.coin)} (${(a.specialist.roi * 100).toFixed(1)}% return) in 30D</div>` : ''}
       <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
@@ -1257,6 +1266,9 @@ function renderAlertCfg() {
   $('apPublicNote').hidden = alertCfg.canAdmin !== false;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
   $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d; $('cfgSpec').checked = alertCfg.allowSpecialists !== false;
+  $('cfgClosed').value = String(alertCfg.minClosed ?? 20); $('cfgRoi').value = String(alertCfg.minRoi30d ?? 0.02);
+  $('cfgFee').value = String(alertCfg.minPnlPerFee ?? 3); $('cfgPpt').value = String(alertCfg.minPnlPerTrade ?? 10);
+  $('cfgProfit7').checked = alertCfg.requireProfit7d !== false; $('cfgMajority').checked = alertCfg.requireCoinMajority !== false;
   $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
@@ -1276,10 +1288,15 @@ function renderAlertCfg() {
 }
 async function saveCfg() {
   alertCfg = await api('/api/alerts/config', { enabled: $('cfgEnabled').checked, minGrade: $('cfgGrade').value, minWinRate: $('cfgWin').value,
-    minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked, allowSpecialists: $('cfgSpec').checked }).catch((e) => { toast(e.message); return alertCfg; });
+    minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked, allowSpecialists: $('cfgSpec').checked,
+    minClosed: $('cfgClosed').value, minRoi30d: $('cfgRoi').value, minPnlPerFee: $('cfgFee').value,
+    minPnlPerTrade: $('cfgPpt').value, requireProfit7d: $('cfgProfit7').checked, requireCoinMajority: $('cfgMajority').checked }).catch((e) => { toast(e.message); return alertCfg; });
   renderAlertCfg(); sfx.tick();
 }
-['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30', 'cfgSpec'].forEach((id) => $(id).addEventListener('change', saveCfg));
+// Every control in the panel saves on change. A control left off this list renders, accepts a click
+// and silently does nothing, which is worse than not shipping it.
+['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30', 'cfgSpec',
+  'cfgClosed', 'cfgRoi', 'cfgFee', 'cfgPpt', 'cfgProfit7', 'cfgMajority'].forEach((id) => $(id).addEventListener('change', saveCfg));
 
 function openAlerts() {
   $('alertPanel').hidden = false; sfx.tick();
@@ -1345,18 +1362,30 @@ async function goToTrade(key) {
 // floor back for the same few seconds so there is exactly one card in focus.
 const FOCUS_MS = 4000;
 let focusTimer = null;
+let focusKey = null;   // which card the spotlight belongs to, by data-key
 function focusCard(card) {
   const list = $('liveList');
   document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
   card.classList.add('spotlight');
+  focusKey = card.dataset.key || null;
   if (list) list.classList.add('focusing');
   clearTimeout(focusTimer);
   focusTimer = setTimeout(clearFocus, FOCUS_MS);
 }
 function clearFocus() {
-  clearTimeout(focusTimer); focusTimer = null;
+  clearTimeout(focusTimer); focusTimer = null; focusKey = null;
   $('liveList')?.classList.remove('focusing');
   document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
+}
+/** renderLive() replaces the whole list, which throws away the spotlighted element while `focusing`
+ *  stays on the container — every card then matches the dim rule and the card you were sent to is
+ *  blurred along with the rest. Re-attach the spotlight after a re-render, or drop the focus if that
+ *  card is no longer on the floor. */
+function restoreFocus() {
+  if (!focusTimer) return;
+  const card = focusKey && $('liveList')?.querySelector(`.lcard[data-key="${CSS.escape(focusKey)}"]`);
+  if (card) card.classList.add('spotlight');
+  else clearFocus();
 }
 // Don't make an impatient player wait out the countdown: the first touch anywhere clears it.
 ['pointerdown', 'keydown', 'wheel'].forEach((ev) =>
@@ -1368,7 +1397,7 @@ function announceAlert(a, count) {
   sfx.alarm();
   const pop = $('alertPop');
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${a.scalper ? ' · Scalper' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
       <div><b>${esc(a.trader)}</b> just opened <span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
       <div class="ai-stats">${a.specialist ? `${esc(a.coin)} specialist · <b class="pos">+${compact(a.specialist.pnl)}</b> on ${esc(a.coin)} · ${Math.round(a.specialist.share * 100)}% of trades` : `30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins`} · trust ${tr.score ?? '–'}/100</div></div></div>
@@ -1377,7 +1406,7 @@ function announceAlert(a, count) {
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`Whale alert · Grade ${tr.grade}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
+    const n = new Notification(`Whale alert · Grade ${tr.grade}${a.scalper ? ' · SCALPER' : ''}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
@@ -1386,7 +1415,7 @@ function announceExit(a, count) {
   const x = exitLine(a), pop = $('alertPop');
   sfx.alarm();
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${a.scalper ? ' · SCALPER' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind.toUpperCase()}</div>
       <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">${a.kind === 'add' ? 'The whale is doubling down.' : 'Following this whale? Check your position.'}</div></div></div>
     <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
@@ -1696,6 +1725,18 @@ const INTROS = {
 };
 const introSeen = (v) => store.get('fof_intro_' + v) === '1';
 let introOpen = false, suppressIntro = false;
+/** Split the steps into exactly three pages, any remainder going to the last one (4 -> 1,1,2). */
+function introPages(steps) {
+  const n = steps.length;
+  if (n <= 3) return steps.map((x) => [x]).concat(Array(Math.max(0, 3 - n)).fill([])).slice(0, 3).filter((g, i) => i < Math.max(3, n));
+  const per = Math.floor(n / 3);
+  return [steps.slice(0, per), steps.slice(per, per * 2), steps.slice(per * 2)];
+}
+let introState = null;   // { view, pages, i, go } while a first-time intro is being stepped through
+/**
+ * First visit walks the intro three screens at a time, so nobody is handed a wall of text; the "?"
+ * reopens it (force) as the single page it has always been.
+ */
 function showIntro(view, { force = false } = {}) {
   const it = INTROS[view];
   if (!it || introOpen || (!force && (introSeen(view) || suppressIntro))) return;
@@ -1703,21 +1744,64 @@ function showIntro(view, { force = false } = {}) {
   introOpen = true;
   $('introKicker').textContent = it.kicker;
   $('introQ').textContent = it.q;
-  $('introSteps').innerHTML = it.steps.map((x) => `<li>${x}</li>`).join('');
   $('introHow').innerHTML = it.how;
-  $('introGo').textContent = it.go;
   document.querySelectorAll('.intro-compare [data-sec]').forEach((d) => d.classList.toggle('on', d.dataset.sec === view));
-  const o = $('introOverlay'); o.hidden = false; o.classList.remove('show'); void o.offsetWidth; o.classList.add('show');
+  const o = $('introOverlay');
+  if (force) {
+    introState = null;
+    o.classList.remove('stepped');
+    $('introSteps').style.counterReset = '';
+    $('introSteps').innerHTML = it.steps.map((x) => `<li>${x}</li>`).join('');
+    $('introGo').textContent = it.go;
+    $('introDots').innerHTML = '';
+  } else {
+    const pages = introPages(it.steps).filter((g) => g.length);
+    const offsets = []; let run = 0;
+    for (const g of pages) { offsets.push(run); run += g.length; }
+    introState = { view, pages, offsets, i: 0, go: it.go };
+    o.classList.add('stepped');
+    paintIntroPage();
+  }
+  o.hidden = false; o.classList.remove('show'); void o.offsetWidth; o.classList.add('show');
   sfx.deal();
+}
+function paintIntroPage() {
+  const st = introState; if (!st) return;
+  const last = st.i === st.pages.length - 1;
+  const ol = $('introSteps');
+  // the badges are a CSS counter, which would restart at 1 on every screen: continue the real numbering
+  ol.style.counterReset = 's ' + (st.offsets[st.i] || 0);
+  ol.innerHTML = st.pages[st.i].map((x) => `<li>${x}</li>`).join('');
+  $('introGo').textContent = last ? st.go : 'Next';
+  $('introHow').hidden = !last;                     // the summary line belongs on the closing screen
+  document.querySelector('.intro-compare')?.toggleAttribute('hidden', !last);
+  $('introDots').innerHTML = st.pages.map((_, i) =>
+    `<i class="${i === st.i ? 'on' : ''}"${i < st.i ? ' data-done="1"' : ''}></i>`).join('');
+}
+function introNext() {
+  if (!introState) return closeIntro();
+  if (introState.i < introState.pages.length - 1) { introState.i++; paintIntroPage(); sfx.tick(); return; }
+  closeIntro();
 }
 function closeIntro() {
   const o = $('introOverlay');
-  const view = document.querySelector('.view.active')?.id.replace('view-', '');
   document.querySelectorAll('.intro-compare [data-sec].on').forEach((d) => store.set('fof_intro_' + d.dataset.sec, '1'));
-  o.hidden = true; introOpen = false; sfx.chip();
-  void view;
+  o.hidden = true; o.classList.remove('stepped'); introOpen = false; introState = null;
+  $('introSteps').style.counterReset = '';
+  $('introHow').hidden = false;
+  document.querySelector('.intro-compare')?.removeAttribute('hidden');
+  sfx.chip();
 }
-$('introGo').onclick = closeIntro;
+// The arrival flourish belongs on the button that actually starts the game, not on whatever the
+// visitor happened to touch first — and it must be fired from inside the click, or a phone drops it.
+$('introGo').onclick = () => {
+  const finishing = !introState || introState.i === introState.pages.length - 1;
+  if (finishing && store.get('fof_welcomed') !== '1' && !isMuted()) {
+    store.set('fof_welcomed', '1');
+    sfx.welcome();                                  // async inside: it awaits the audio unlock itself
+  }
+  introNext();
+};
 $('introOverlay').addEventListener('click', (e) => { if (e.target === $('introOverlay')) closeIntro(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && introOpen) closeIntro(); });
 // the small "?" next to each section title reopens its intro
