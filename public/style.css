@@ -1382,3 +1382,7 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 
 /* SCALPER sits beside SPECIALIST but must not read as the same badge: same shape, cooler ink. */
 .spec-tag.scalp-tag{color:#cfe6ff;border-color:rgba(147,197,253,.75);background:rgba(59,130,246,.18);margin-left:5px}
+/* Four tags, four hues, all outlined pills so they read as one family. Green and red stay reserved
+   for direction and money, and violet/orange for FOLLOW/FADE, so these take teal and magenta. */
+.spec-tag.early-tag{color:#a7f3e0;border-color:rgba(45,212,191,.75);background:rgba(20,184,166,.18);margin-left:5px}
+.spec-tag.printer-tag{color:#f5d0fe;border-color:rgba(232,121,249,.75);background:rgba(217,70,239,.18);margin-left:5px}

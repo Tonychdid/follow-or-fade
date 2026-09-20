@@ -501,7 +501,7 @@ async function deal() {
   $('rWhen').textContent = r.openedDay ? new Date(r.openedDay + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' · this week' : '';
   $('rType').textContent = r.orderType || 'Market'; $('rHorizon').textContent = `the whale's real exit (max ${r.maxHoldHours}h)`; $('rHorizon').title = r.minHoldMinutes ? `Only real positions: whales who closed in under ${r.minHoldMinutes >= 60 ? r.minHoldMinutes / 60 + 'h' : r.minHoldMinutes + ' min'} (scalps) are left out` : '';
   const gr = r.grade || { grade: '?' };
-  $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}${gr.scalper ? ' · scalper' : ''}`;
+  $('rGrade').textContent = gr.grade === '?' ? 'Ungraded whale' : `Grade ${gr.grade}${gr.specialist ? ' · specialist' : ''}${gr.early ? ' · early finder' : ''}${gr.printer ? ' · printer' : ''}${gr.scalper ? ' · scalper' : ''}`;
   $('rGrade').className = 'grade-chip ' + ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[gr.grade] || 'gc');
   const i = r.intel;
   setStat('iWin', i.walletWinRate != null ? Math.round(i.walletWinRate * 100) + '%' : 'n/a', i.walletWinRate != null ? i.walletWinRate >= 0.5 : null);
@@ -1069,6 +1069,30 @@ function recordHtml(r) {
   </div>
   <div class="rec-coins">${r.best ? `Best: <b class="${r.best.pnl >= 0 ? 'pos' : 'neg'}">${esc(r.best.coin)} ${r.best.pnl >= 0 ? '+' : ''}${compact(r.best.pnl)}</b>` : ''}${r.worst ? ` · Worst: <b class="neg">${esc(r.worst.coin)} ${compact(r.worst.pnl)}</b>` : ''} · ${r.coins} coins traded</div>`;
 }
+
+/**
+ * The tags that sit beside a whale's grade. One helper, because these appear on the live card, in the
+ * dossier, on the alert popup, in the alert list and on the training table — and a tag that shows in
+ * one place and not another reads as a bug.
+ */
+function whaleTags(tr, a) {
+  if (!tr) return '';
+  const t = [];
+  if (tr.specialist) t.push(`<span class="spec-tag" title="Trades few coins, but has proven realised profit on this one">SPECIALIST</span>`);
+  if (tr.early) {
+    const e = tr.earlyStats;
+    const tip = e ? `Got into ${e.goodFinds} of ${e.finds} big moves early and held for them (median ${Math.round((e.capture || 0) * 100)}% of the move captured, across ${e.coins} coins). Most traders keep about a quarter.` : 'Gets in before big moves and holds for them';
+    t.push(`<span class="spec-tag early-tag" title="${esc(tip)}">EARLY</span>`);
+  }
+  if (tr.printer) {
+    const f = tr.printerStats;
+    const tip = f ? `Prints money on small size: about ${compact(f.medNotional)} a position, under the whale floor, with a ${Math.round((f.winRate || 0) * 100)}% win rate and ${((f.medRet || 0) * 100).toFixed(1)}% return on a typical trade over ${f.closed} closed trades.` : 'Prints money on size well under the whale floor';
+    t.push(`<span class="spec-tag printer-tag" title="${esc(tip)}">PRINTER</span>`);
+  }
+  if (tr.scalper) t.push(`<span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay || 0)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>`);
+  return t.length ? ' ' + t.join(' ') : '';
+}
+
 function liveCard(t) {
   t.seenAt ??= Date.now();
   liveItems.set(t.key, t);
@@ -1080,13 +1104,13 @@ function liveCard(t) {
     <div class="lc-changed" hidden></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
-    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}${tr.scalper ? ` <span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>` : ''}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
+    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}${whaleTags(tr)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
     <div class="lc-more">
     <div class="dossier-box">
       <div class="dossier-top">
         <div class="grade ${gradeCls}" title="Trust score ${tr.score ?? '–'}/100, from realized return, win rate and sample size (30d), adjusted by the last 7 days">${tr.grade}</div>
-        <div class="dossier-title"><b>Whale track record${tr.specialist ? ' <span class="spec-tag">SPECIALIST</span>' : ''}${tr.scalper ? ` <span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>` : ''}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
+        <div class="dossier-title"><b>Whale track record${whaleTags(tr)}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
         <div class="rec-tabs" role="tablist"><button class="on" data-win="d7">7D</button><button data-win="d30">30D</button></div>
       </div>
       <div class="rec-body" data-panel="d7">${recordHtml(t.record?.d7)}</div>
@@ -1239,7 +1263,7 @@ function alertLine(a) {
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
     <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
     <div class="ai-body">
-      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''}${a.scalper ? `<span class="spec-tag scalp-tag" title="~${Math.round(a.tradesPerDay || 0)} closed trades a day over 30D">SCALPER</span>` : ''} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
+      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''}${whaleTags({ early: a.early, printer: a.printer, scalper: a.scalper, tradesPerDay: a.tradesPerDay, earlyStats: a.earlyStats, printerStats: a.printerStats })} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
       ${a.specialist ? `<div class="ai-spec">${esc(a.coin)} specialist: ${Math.round(a.specialist.share * 100)}% of trades, <b class="pos">+${compact(a.specialist.pnl)}</b> realized on ${esc(a.coin)} (${(a.specialist.roi * 100).toFixed(1)}% return) in 30D</div>` : ''}
       <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
@@ -1269,6 +1293,7 @@ function renderAlertCfg() {
   $('cfgClosed').value = String(alertCfg.minClosed ?? 20); $('cfgRoi').value = String(alertCfg.minRoi30d ?? 0.02);
   $('cfgFee').value = String(alertCfg.minPnlPerFee ?? 3); $('cfgPpt').value = String(alertCfg.minPnlPerTrade ?? 10);
   $('cfgProfit7').checked = alertCfg.requireProfit7d !== false; $('cfgMajority').checked = alertCfg.requireCoinMajority !== false;
+  $('cfgEarly').checked = alertCfg.allowEarly !== false; $('cfgPrinter').checked = alertCfg.allowPrinter !== false;
   $('apCost').textContent = `Scanning every ${alertCfg.intervalMin} min uses about ${alertCfg.estCreditsPerDay.toLocaleString()} Nansen credits per day while the app is open, plus 2 credits per new whale checked.`;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   $('notifState').textContent = perm === 'granted' ? 'On' : perm === 'denied' ? 'Blocked in browser settings' : perm === 'unsupported' ? 'Not supported' : 'Off';
@@ -1290,13 +1315,14 @@ async function saveCfg() {
   alertCfg = await api('/api/alerts/config', { enabled: $('cfgEnabled').checked, minGrade: $('cfgGrade').value, minWinRate: $('cfgWin').value,
     minSizeUsd: $('cfgSize').value, minCoins7d: $('cfgC7').value, minCoins30d: $('cfgC30').value, intervalMin: $('cfgInt').value, requireProfit30d: $('cfgProfit').checked, allowSpecialists: $('cfgSpec').checked,
     minClosed: $('cfgClosed').value, minRoi30d: $('cfgRoi').value, minPnlPerFee: $('cfgFee').value,
-    minPnlPerTrade: $('cfgPpt').value, requireProfit7d: $('cfgProfit7').checked, requireCoinMajority: $('cfgMajority').checked }).catch((e) => { toast(e.message); return alertCfg; });
+    minPnlPerTrade: $('cfgPpt').value, requireProfit7d: $('cfgProfit7').checked, requireCoinMajority: $('cfgMajority').checked,
+    allowEarly: $('cfgEarly').checked, allowPrinter: $('cfgPrinter').checked }).catch((e) => { toast(e.message); return alertCfg; });
   renderAlertCfg(); sfx.tick();
 }
 // Every control in the panel saves on change. A control left off this list renders, accepts a click
 // and silently does nothing, which is worse than not shipping it.
 ['cfgEnabled', 'cfgGrade', 'cfgWin', 'cfgSize', 'cfgInt', 'cfgProfit', 'cfgC7', 'cfgC30', 'cfgSpec',
-  'cfgClosed', 'cfgRoi', 'cfgFee', 'cfgPpt', 'cfgProfit7', 'cfgMajority'].forEach((id) => $(id).addEventListener('change', saveCfg));
+  'cfgClosed', 'cfgRoi', 'cfgFee', 'cfgPpt', 'cfgProfit7', 'cfgMajority', 'cfgEarly', 'cfgPrinter'].forEach((id) => $(id).addEventListener('change', saveCfg));
 
 function openAlerts() {
   $('alertPanel').hidden = false; sfx.tick();
@@ -1397,7 +1423,7 @@ function announceAlert(a, count) {
   sfx.alarm();
   const pop = $('alertPop');
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${a.scalper ? ' · Scalper' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${a.early ? ' · Early finder' : ''}${a.printer ? ' · Printer' : ''}${a.scalper ? ' · Scalper' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
       <div><b>${esc(a.trader)}</b> just opened <span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
       <div class="ai-stats">${a.specialist ? `${esc(a.coin)} specialist · <b class="pos">+${compact(a.specialist.pnl)}</b> on ${esc(a.coin)} · ${Math.round(a.specialist.share * 100)}% of trades` : `30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins`} · trust ${tr.score ?? '–'}/100</div></div></div>
@@ -1406,7 +1432,7 @@ function announceAlert(a, count) {
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`Whale alert · Grade ${tr.grade}${a.scalper ? ' · SCALPER' : ''}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
+    const n = new Notification(`Whale alert · Grade ${tr.grade}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
@@ -1415,7 +1441,7 @@ function announceExit(a, count) {
   const x = exitLine(a), pop = $('alertPop');
   sfx.alarm();
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${a.scalper ? ' · SCALPER' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind.toUpperCase()}</div>
       <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">${a.kind === 'add' ? 'The whale is doubling down.' : 'Following this whale? Check your position.'}</div></div></div>
     <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;

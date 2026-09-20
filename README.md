@@ -157,6 +157,16 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ROSTER_DAYS` | `7` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off. Costs ~267 Nansen credits per run (~38/day at weekly) |
 | `ROSTER_LOOKBACK_HOURS` | `168` | The window the re-assessment reads to decide who is "in the pool" |
 | `ROSTER_MIN_USD` | `25000` | Smallest position that counts as being active in the pool |
+| `EARLY_PUMP_PCT` | `0.15` | How big a move has to be, within the horizon, to count as one worth being early to. 15% is the top 15% of all measured opportunities |
+| `EARLY_CAPTURE_PCT` | `0.5` | How much of that move they must keep. The median trader keeps 26%, so half is top-quartile behaviour |
+| `EARLY_HORIZON_HOURS` | `48` | Window after entry for both the move and the return. 24h and 72h select almost the same wallets |
+| `EARLY_MIN_FINDS` | `4` | Good early calls needed in 30 days — four, not one, is what separates skill from a lucky week |
+| `EARLY_MIN_CONVERT` / `EARLY_MIN_COINS` / `EARLY_MIN_DAYS` | `0.4` / `2` / `3` | Conversion rate, and spread across coins and days, so one hot streak on one coin cannot qualify |
+| `PRINTER_MIN_USD` / `PRINTER_MAX_USD` | `15000` / `50000` | The size band for a printer. **Never set the minimum lower**: below $15K is noise |
+| `PRINTER_MIN_TRADES` / `PRINTER_MIN_WIN` / `PRINTER_MIN_RET` | `8` / `0.55` / `0.01` | Sample, win rate and typical return per closed trade a printer must beat |
+| `CLASS_WINDOW_DAYS` | `30` | History read from Hyperliquid when classifying a wallet |
+| `LIVE_LOOKBACK_HOURS` | `96` | How far back the Live Floor looks for whales **still in** a position. Was 6h, which silently asked a different question — who *opened* recently — and handed the floor to the fastest wallets |
+| `LIVE_FLOOR_SLOTS` / `LIVE_FLOOR_PER_COIN` | `8` / `2` | Cards on the floor, and the most from any one coin. One card per wallet is fixed |
 | `SCALPER_TRADES_PER_DAY` | `20` | A wallet averaging this many closed trades a day over 30D is labelled **SCALPER** on cards and alerts. The tag is descriptive, not a quality judgement — it warns you the position may not last long |
 | `MAX_PLAYERS` | 100000 | Cap on stored players; above it, visitors who never placed a bet are pruned first |
 | `MAX_EXCLUDED` | 5000 | Cap on the trader exclusion list |
@@ -196,6 +206,98 @@ Against the same 70-whale sample, the rules above pass **26 wallets (37%)**, 20 
 > Honest note: in that sample the two wash-trade guards (`minPnlPerFee`, `minPnlPerTrade`) excluded
 > nobody — every wallet that cleared the other rules also cleared these. They are insurance against a
 > wallet type that exists on Hyperliquid but did not appear in this cohort, not active filters today.
+
+## Two kinds of trader the grade cannot see
+
+The grade is built from win rate and realised return. That works, and it is blind in two specific
+ways — so there are two extra ways into the pool, each measured rather than assumed.
+
+### EARLY — in before the move, and still there at the end
+
+Studied over **143 Smart Money wallets and 2,404 round trips** (Sep 2026), reading Hyperliquid fills
+directly so every position could be rebuilt and re-priced.
+
+The first number sets the bar for what counts as a move worth catching: the median entry has only
+**5.2%** available to it within 48 hours, and the 90th percentile is 18.3%. So **15%** marks the top
+15% of all opportunities.
+
+The second number is the interesting one. Of the trades where a 10%+ move did follow the entry, the
+**median trader captured 25.9% of it**. Most people who catch a pump sell a quarter of it and watch
+the rest run. Keeping half or more is top-quartile behaviour, which is why the capture bar is 50%.
+
+A wallet is EARLY when, over 30 days, it was early on **at least 4 moves of 15%+**, kept at least half
+of each, converted at least 40% of the big moves it was in, across **2+ coins and 3+ separate days**,
+and was profitable overall. **7 of 143 wallets (4.9%) qualify.**
+
+Horizon is not doing the work: 24h gives 6 wallets and 72h gives 5, and every wallet in the 72h set is
+in the 48h set.
+
+> The trade that prompted this feature does not qualify, and that is the filter working. One wallet
+> opened AVAX within 0.1% of a three-day low before a **51.8%** run — but it is their only such call in
+> 30 days. One brilliant entry is not a track record, and the rule asks for four.
+
+### PRINTER — too small for the whale floor, and printing anyway
+
+Position sizes between **$15K and $50K**, at least 8 closed trades, a win rate of 55%+, a typical
+return of 1%+ per closed trade, and profitable. 15 of the 143 wallets trade in that band; **4 clear
+the bar.**
+
+This one needed a change deeper than a rule. The size floor was asked of the **feed**, so a small
+trader's positions never arrived at all and no rule further down could have saved them. The scanner
+now asks for everything from the printer floor upward and applies the whale floor per trade — a
+sub-floor trade is only looked at when the wallet is already a known printer or early finder, which is a
+lookup in a map, not a Nansen call. The feed costs the same 5 credits at any floor.
+
+### What they actually add
+
+Both paths sit **after** the integrity gates — sample size, profitability, and both wash-trade guards
+apply to everyone, with no exemptions — and **before** the return and recent-week bars, which is the
+whole point: those are the rules that were turning these traders away. Among the 9 wallets that
+qualify under either path, the ones admitted *only* by a new path include a wallet with an **89% win
+rate over 6,531 trades**, rejected for a 1.58% return, and one with the best capture rate in the whole
+study (79%), rejected for 1.50%.
+
+Neither tag changes the grade. They describe a kind of edge the score cannot represent, and letting
+them move a number already built from win rate and return would count the same record twice.
+
+Classification runs inside the weekly roster and costs **no Nansen credits** — the entire 143-wallet
+study spent 5, all of them on the Smart Money feed that produced the candidate list. It reads
+Hyperliquid fills (one call per wallet, covering every trade they made) and candles (one series per
+coin, reused). A wallet with more fills than the API will page through is left unclassified rather
+than judged on a slice of its record.
+
+Turn either path off with the switches in **bell → Alert rules & channels**, or with `allowEarly` /
+`allowPrinter` in the config.
+
+## Why the Live Floor is not just the eight biggest trades
+
+Letting scalpers back into the pool had a consequence nobody asked for: **every card on the floor was
+a scalper.** Not a filter bug — arithmetic. The floor ranked strictly by size over a **6-hour** window,
+and a wallet that opens twenty positions in six hours gets twenty chances at the top eight while a
+wallet that opens one gets one.
+
+Three things were wrong, and each was measured before it was changed:
+
+1. **The window asked the wrong question.** Six hours finds whales who *opened* recently; the floor is
+   meant to show whales who are *in* a position. For a wallet closing 300 times a day those are the
+   same thing, and for one holding two days they are not — measured holds are p50 18h, p90 174h. At
+   48h only **5** slower whales were still holding; at 96h, **19**. Now 96h. `holding()` already drops
+   anyone who has closed, so nothing stale reaches the floor.
+2. **The candidate pool was cut by size**, which is itself a filter against slower traders — they trade
+   less often and often smaller, so they were removed before any diversity rule could see them. Part of
+   the pool is now reserved for wallets known not to be fast.
+3. **Nothing stopped one wallet taking several cards.** Now: one card per wallet, at most two per coin,
+   and at most half the floor from fast wallets. Order is shuffled on a five-minute seed, so the floor
+   rotates between visits without reshuffling under someone mid-read.
+
+Before: 8 of 8 scalpers, 6 distinct coins. After: **4 of 8 scalpers, 8 wallets, 7 coins** — and a
+commodity (`xyz:GOLD`) on the floor for the first time.
+
+> A note on counting, because it caused a real bug: the classifier counts **round trips**, while
+> Nansen's `closed_trade_count` counts every closing **fill**. A whale scaling out of one position in
+> twenty fills is 1 by the first measure and 20 by the second. Comparing them against a threshold
+> calibrated on the second flagged nobody as fast. The roster now hands the Nansen-derived pace to the
+> classifier rather than letting it invent a second definition.
 
 ## The roster and the journal
 
