@@ -16,7 +16,9 @@ Built for the Nansen Meridian Buildathon.
 
 ---
 
-![Training Table](docs/the-table.jpg)
+[![Follow or Fade — the Training Table](docs/the-table.jpg)](https://x.com/himerosventures/status/2102130395865043397)
+
+**▶ [Watch the 60-second demo](https://x.com/himerosventures/status/2102130395865043397)** — whale alert → read the card → follow or fade → cash out.
 
 ## Run it in under 5 minutes
 
@@ -32,6 +34,10 @@ npm start                   # then open http://localhost:3000
 ```
 
 **Windows:** download the repo (Code → Download ZIP), unzip it and double-click `start.bat`. On first run it asks for your key and opens the browser.
+
+```bash
+npm test                    # 18 checks, no key and no network needed
+```
 
 **Time to first hand:** about 5 seconds after `npm start` (tested on a fresh copy with Node 18 and Node 22). Open http://localhost:3000, pick a nickname, and the Training Table deals a live Smart Money trade.
 
@@ -49,7 +55,7 @@ The app opens on the **Training Table**.
 
 | Mode | What happens |
 |---|---|
-| **Training Table** (replay) | You're dealt a real Smart Money position open from the last 7 days (coin, side, size, entry). The wallet is hidden. You see the Nansen intel, the model's probability and the odds. Stake, pick **Follow** or **Fade**, and the hand is **judged on the whale's real exit**: the app follows the whale's own position until it's fully closed (size-weighted exit of every reduction), capped at 48h and marked to market if they're still holding. The reveal shows the price path up to the exit, how long the whale held, the wallet and your payout. **What the data said:** after every hand the coach names *the tell* (the Nansen signal that called it) and *the trap* (the one that misled), with how reliable each signal was this week across hundreds of resolved Smart Money trades. |
+| **Training Table** (replay) | You're dealt a real Smart Money position open from the last 7 days (coin, side, size, entry). The wallet is hidden. You see the Nansen intel, the model's probability and the odds. Stake, pick **Follow** or **Fade**, and the hand is **judged on the whale's real exit**: the app follows the whale's own position until it's fully closed (size-weighted exit of every reduction), capped at 72h and marked to market if they're still holding. The reveal shows the price path up to the exit, how long the whale held, the wallet and your payout. **What the data said:** after every hand the coach names *the tell* (the Nansen signal that called it) and *the trap* (the one that misled), with how reliable each signal was this week across hundreds of resolved Smart Money trades. |
 | **Trader Profile** | Every bet stores the Nansen signals you acted on. Only decisions that match how whales actually trade count: training hands, 4-hour and Ride the Whale bets (15-minute bets are just for fun). Seven named skills are each scored **0–100 on your edge over what the odds expected of you** — 50 means you read those hands exactly as well as the data did, and small samples are shrunk toward 50 so three lucky hands don't read as mastery: 🧠 Smart Money Detection, 🐋 Follow Accuracy, 🧨 Fade Accuracy, 👀 Crowd Reading, 🎯 Entry Timing, ⚡ Short-Term Trades, 📈 Long-Term Trades. Every score is computed from a field the bet actually stored; there is deliberately **no "Risk Management" score**, because the game measures nothing that would honestly support one. Below that: your strongest skill, your biggest leak, a recommended next drill, **10 tracked patterns** (following A/B-grade whales, fading crowded trades, siding with Smart Money flow, taking underdogs…) and coach advice. The level ladder — *Rookie → Apprentice → Whale Reader → Smart Money Hunter → Market Operator* — is earned **by beating the odds, never by playing more hands**: a volume ladder would reward clicking, which is the opposite of what this teaches. |
 | **Live Floor** | Smart Money opens from the last 6 hours whose whale **still holds the position** (checked on Hyperliquid every minute, with "trimmed X%" when they have cut size), with where Smart Money is positioned on that coin right now. **Ride the Whale** is the only lane: your bet ends **when that whale closes the position** (backstop 72h, `RIDE_MAX_HOURS`), tracked live from their Hyperliquid fills, and you can **cash out at fair value any time**. Fixed 15-minute and 4-hour tables were removed — a clock measures short-term price noise, not whether the whale was right. Cashing out early keeps being followed: once the whale is actually out, the game tells you what holding would have paid, so exit timing becomes something you can learn. Each whale shows a **7D and 30D track record** from Nansen (realized PnL, return, win rate, best and worst coin) and a **trust grade** (A+ to F). One click opens that market on **Nansen**, where the data came from. No link on this site is a referral link and nothing here earns a commission. |
 | **Your Table** (always on screen) | Only your open live bets, grouped by table, with countdown rings and a live meme face: a money-printing face when you are winning and a crying face when you are losing, getting more intense as the bet moves. Settled bets move to Recent hands. |
@@ -117,7 +123,7 @@ Hyperliquid public fills + candles ──► follow each whale's position to its
 - **No house edge:** the payout is the fair odds (1 ÷ probability). This is a learning game with play money, so nothing is skimmed on bets or on cashing out.
 - **One horizon, one price:** the model predicts whether following a whale wins *at the whale's exit*, and that is now the only bet on the floor, so the price needs no horizon adjustment. The `RIDE_MAX_HOURS` backstop is 72h because that is where the gain stops: measured over a 7-day window on 66 real Smart Money positions, a 24h cap let the whale decide 51% of bets, 48h decided 64%, 72h decided 73% — and 96h, 120h and 168h all decided the same 73%, the rest being multi-week holders.
 - **Live-only signals:** on the Live Floor two extra signals adjust the probability — how far the whale has already moved (your entry versus theirs) and how Smart Money's money is positioned on that coin right now (long dollars vs short dollars). Both are learned from settled live bets, and neither touches the Training Table odds, which stay strictly point-in-time.
-- **Self-calibrating odds:** each hour the app resolves a sample of this week's Smart Money opens (on the whale's real exit, max 48h) and refits the model, with an L2 pull toward a sensible prior so small samples stay stable. The sidebar shows how many trades the odds were trained on and what share of Smart Money opens were actually in profit when the whale exited.
+- **Self-calibrating odds:** each hour the app resolves a sample of this week's Smart Money opens (on the whale's real exit, max 72h) and refits the model, with an L2 pull toward a sensible prior so small samples stay stable. The sidebar shows how many trades the odds were trained on and what share of Smart Money opens were actually in profit when the whale exited.
 
 ### Nansen endpoints used
 
@@ -140,10 +146,10 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 |---|---|---|
 | `NANSEN_API_KEY` | – | Your key from https://app.nansen.ai/api |
 | `PORT` | 3000 | Web port |
-| `MAX_HOLD_HOURS` | 48 | Training hands are judged on the whale's real exit, capped at this many hours |
+| `MAX_HOLD_HOURS` | 72 | Training hands are judged on the whale's real exit, capped at this many hours |
 | `MIN_HOLD_MINUTES` | 0 | Drop training hands whose whale closed faster than this. **Off by default** — scalpers are in. Measured on 70 live Smart Money whales (Sep 2026), a 60-minute floor discarded three quarters of the cohort, including its most consistent members. Quality is judged on the wallet's record instead (see *Which whales qualify* below) |
 | `PUSH_BAND_PCT` | 0.2 | Whale results smaller than ±this % are a push (stake back) on training hands, Ride the Whale and the Insider Pick, and are left out of odds training |
-| `RIDE_MAX_HOURS` | 48 | Ride the Whale bets end when the whale closes, capped at this many hours |
+| `RIDE_MAX_HOURS` | 72 | Ride the Whale bets end when the whale closes, capped at this many hours |
 | `CALIBRATION_SAMPLE` | 60 | Trades resolved per hourly calibration run |
 | `DEMO` | 0 | `1` forces demo data |
 | `AGENT_DAILY_CREDITS` | `750` | Daily Nansen credits for the Research Desk (Nansen Agent). `0` turns it off |
