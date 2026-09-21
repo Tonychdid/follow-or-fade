@@ -167,9 +167,25 @@
 
   <!-- ============ HALL OF FAME ============ -->
   <section id="view-board" class="view">
-    <div class="floor-head"><div><h2>Hall of Fame</h2><p class="muted">The biggest bankrolls in the house.</p></div></div>
-    <div id="podium" class="podium"></div>
-    <div class="board-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th title="Bankroll minus every $10,000 the house has staked you, reloads included">Net profit</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+    <div class="floor-head"><div><h2>Hall of Fame</h2><p class="muted" id="boardSub">The biggest bankrolls in the house.</p></div></div>
+    <div class="board-tabs" role="tablist">
+      <button class="btab on" data-board="players" role="tab" aria-selected="true">Players</button>
+      <button class="btab" data-board="whales" role="tab" aria-selected="false">Whales</button>
+    </div>
+    <div id="boardPlayers">
+      <div id="podium" class="podium"></div>
+      <div class="board-wrap"><table class="board"><thead><tr><th>#</th><th>Player</th><th title="Bankroll minus every $10,000 the house has staked you, reloads included">Net profit</th><th>Bets</th><th>Win rate</th><th>Best streak</th><th>Whales slain</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+    </div>
+    <div id="boardWhales" hidden>
+      <div class="board-wrap"><table class="board"><thead><tr>
+        <th>#</th><th>Whale</th><th>Grade</th>
+        <th class="sortable on" data-wsort="roi" title="Realised return on closed positions over 30 days, from Nansen">30D return</th>
+        <th class="sortable" data-wsort="pnl" title="Realised profit over 30 days">30D profit</th>
+        <th class="sortable" data-wsort="win" title="Share of closed positions that were profitable">Win rate</th>
+        <th class="sortable" data-wsort="closed" title="How many positions they actually closed: the sample behind the numbers">Closes</th>
+        <th>Most traded</th></tr></thead><tbody id="whaleBody"></tbody></table></div>
+      <p class="muted whale-note" id="whaleNote"></p>
+    </div>
   </section>
 
   <!-- ============ PLANS ============ -->
