@@ -15,6 +15,7 @@ const alerts = await import('./lib/alerts.js');
 const excluded = await import('./lib/excluded.js');
 const agent = await import('./lib/agent.js');
 const roster = await import('./lib/roster.js');
+const bots = await import('./lib/bots.js');
 const store = await import('./lib/store.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
@@ -96,7 +97,7 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (no
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
-  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/alerts': 2 };
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -121,6 +122,9 @@ const routes = {
   'GET /api/leaderboard': async () => game.leaderboard(),
   // The whale board reads the roster snapshot already on disk - no Nansen call, no credits.
   'GET /api/whaleboard': async () => roster.publicBoard(),
+  // The house bots: their own route rather than a new shape for /api/leaderboard, so a browser
+  // still holding the old app.js keeps working instead of rendering an object as a table.
+  'GET /api/bots': async () => bots.rows(),
   'GET /api/live': async () => game.liveFeed(),
   'GET /api/live/one': async (_, q) => game.refreshLiveItem(q.get('key')),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
