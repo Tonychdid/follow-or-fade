@@ -1386,3 +1386,17 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
    for direction and money, and violet/orange for FOLLOW/FADE, so these take teal and magenta. */
 .spec-tag.early-tag{color:#a7f3e0;border-color:rgba(45,212,191,.75);background:rgba(20,184,166,.18);margin-left:5px}
 .spec-tag.printer-tag{color:#f5d0fe;border-color:rgba(232,121,249,.75);background:rgba(217,70,239,.18);margin-left:5px}
+
+/* Tag rows: the pill is wider than a grade chip, so give that column room and stop it wrapping
+   mid-word. Narrow phones stack the pill above its description rather than squeezing both. */
+.tag-table td:first-child{white-space:nowrap;vertical-align:top;padding-top:10px}
+.tag-table .spec-tag{font-size:11px}
+@media(max-width:420px){
+  .tag-table,.tag-table tbody,.tag-table tr,.tag-table td{display:block;width:auto}
+  .tag-table td:first-child{padding:0 0 4px}
+  .tag-table td:last-child{padding:0 0 12px}
+}
+
+/* The connective text between the grade table and the tag table. It is scaffolding, not content:
+   the two tables are what people read, so this sits a step below them. */
+#grDlg .gr-note{font-size:11.5px;line-height:1.45;margin:0 0 10px;opacity:.85}
