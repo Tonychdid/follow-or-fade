@@ -33,7 +33,12 @@ function autoFit() {
   // width-based fit and are never enlarged.
   const felt = document.querySelector('.felt');
   const feltH = felt ? felt.getBoundingClientRect().height : 0;
-  if (feltH <= 1) {
+  // The felt exists before it has a hand on it. During boot the training view is briefly active with
+  // an EMPTY felt (measured: 552px against a real ~990), and measuring THAT stored a nonsense basis
+  // that every other view then scaled against - the Live Floor came back 20% too big after a refresh
+  // and only a trip to the table fixed it. A felt without its betting row is not a table yet.
+  const tableReady = feltH > 1 && !$('round')?.hidden && !!$('btnFade');
+  if (!tableReady) {
     // Don't invent a separate scale for these views - that is what made the Live Floor arrive 16%
     // bigger than the rest of the app when opened straight from a Telegram alert, and why a refresh
     // (which lands on the Training Table) appeared to "fix" it. Reuse the height the felt needs, so
@@ -52,7 +57,8 @@ function autoFit() {
   de.style.setProperty('--fit', '1');
   const r = anchor.getBoundingClientRect();
   const needed = r.bottom + window.scrollY + BOTTOM_GAP;   // felt height incl. header, at scale 1
-  if (needed > 0) lastNeeded = needed;                    // shared with the scrolling views above
+  // Belt and braces: never let an implausibly short measurement become the shared basis.
+  if (needed >= 700) lastNeeded = needed;                 // shared with the scrolling views above
   const lay = document.querySelector('.layout');
   const natW = lay ? lay.getBoundingClientRect().width : 1500;
   if (!(needed > 0) || !(natW > 0)) { de.style.setProperty('--fit', prev || '1'); return; }

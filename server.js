@@ -238,8 +238,24 @@ async function handle(req, res) {
   }
   const ext = path.extname(file);
   if (limited(req, ext === '.woff2' ? 1 : 2)) return json(res, 429, { error: 'Too many requests' });
+  // Fonts are content-addressed in practice and never change, so cache them for a year. app.js and
+  // style.css DO change on every deploy, and a 5-minute cache meant a fix could be live on the server
+  // while the browser still ran the old file - "I deployed it and still see the bug". no-cache does
+  // not mean "don't cache": the browser keeps the file and revalidates, so an unchanged file still
+  // comes back as a 304 with no body. Costs one cheap request, removes a whole class of confusion.
+  const revalidate = ext === '.js' || ext === '.css' || ext === '.html';
+  // no-cache without a validator would re-download the whole file every load. An ETag from the file's
+  // size and mtime makes the revalidation a 304 with no body, so an unchanged deploy costs ~200 bytes.
+  const st = fs.statSync(file);
+  const etag = `W/"${st.size.toString(16)}-${st.mtimeMs.toString(36)}"`;
+  if (revalidate && req.headers['if-none-match'] === etag) {
+    res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache', ...SECURITY });
+    return res.end();
+  }
   res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': ext === '.woff2' ? 'public, max-age=31536000, immutable' : 'public, max-age=300', ...SECURITY });
+    ...(revalidate ? { ETag: etag } : {}),
+    'Cache-Control': ext === '.woff2' ? 'public, max-age=31536000, immutable'
+      : revalidate ? 'no-cache' : 'public, max-age=300', ...SECURITY });
   fs.createReadStream(file).on('error', () => { try { res.end(); } catch {} }).pipe(res);
 }
 
