@@ -5,14 +5,27 @@ const $ = (id) => document.getElementById(id);
 
 // Auto-fit: scale the desktop layout so the whole Training Table (card, tells, chips, FOLLOW/FADE) and
 // Your Table fit on screen without scrolling. 100% on big monitors, ~80% on 1080p, never below 70%.
-const DESIGN_W = 1500, DESIGN_H = 886;
+const DESIGN_W = 1500, MIN_FIT = 0.62;
+// This used to divide by a hard-coded DESIGN_H of 886. The real page is ~1325px tall, so the formula
+// returned 1.0 on a 1080p screen and nothing was ever scaled: FOLLOW/FADE sat below the fold with a
+// scrollbar beside them. A constant cannot work here anyway - a card's height moves with how many
+// dealer's tells the whale has - so measure the page instead. scrollHeight is already multiplied by
+// the current zoom, so dividing by it recovers the true unscaled height without a visible reset.
 function autoFit() {
+  const de = document.documentElement;
   const w = window.innerWidth, h = window.innerHeight;
-  const fit = w < 1100 ? 1 : Math.max(0.7, Math.min(1, (h - 8) / DESIGN_H, w / DESIGN_W));
-  document.documentElement.style.setProperty('--fit', fit.toFixed(3));
+  if (w < 1100) { de.style.setProperty('--fit', '1'); return; } // phone/tablet layout scrolls by design
+  const cur = parseFloat(getComputedStyle(de).getPropertyValue('--fit')) || 1;
+  const need = de.scrollHeight / cur;
+  if (!(need > 0)) return;
+  const fit = Math.max(MIN_FIT, Math.min(1, (h - 8) / need, w / DESIGN_W));
+  de.style.setProperty('--fit', fit.toFixed(3));
 }
-autoFit();
-window.addEventListener('resize', autoFit);
+// Two passes: the first changes the layout, the second settles on the height that produced.
+const refit = () => { autoFit(); requestAnimationFrame(autoFit); };
+refit();
+window.addEventListener('resize', refit);
+window.addEventListener('load', refit);
 // Host admin: open the site once with ?admin=YOUR_TOKEN to manage alert rules on the public version
 try {
   const u = new URL(location.href);

@@ -1,4 +1,9 @@
 :root{
+  /* Chrome draws an unstyled scrollbar in its LIGHT theme: a white track and grey thumb running the
+     full height of a near-black page. It read as a bright column down the right edge on video.
+     color-scheme also fixes native form controls and the overscroll gutter. */
+  color-scheme: dark;
+  scrollbar-width: thin; scrollbar-color: var(--gold-d) transparent;
   --ink:#070507; --read:#e9e1cf; --read2:#cbc1ab; --lacquer:#0e0a0c; --panel:#141015; --panel2:#1b1519;
   --gold:#d4af37; --gold-l:#f5d77a; --gold-d:#8a6d1d; --ivory:#f3ead7; --muted:#a79d89;
   --felt:#0d4a35; --felt-d:#062519;
@@ -1416,3 +1421,11 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 /* Training-card tag strip: the same .spec-tag pills the live floor and the ? dialog use. */
 #rTags{display:inline}
 #rTags .spec-tag{vertical-align:1px}
+
+/* Older Chrome ignores scrollbar-color; these are the fallback. Newer Chrome ignores THESE when the
+   standard properties above are set, so both can coexist. */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--gold-d);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--gold);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
