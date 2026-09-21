@@ -96,7 +96,7 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (no
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
-  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/alerts': 2 };
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/alerts': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -119,6 +119,8 @@ const routes = {
   'POST /api/alerts/telegram/repair': admin(async () => alerts.repairTelegram()),
   'GET /api/report': async (_, q) => game.skillReport(q.get('player')),
   'GET /api/leaderboard': async () => game.leaderboard(),
+  // The whale board reads the roster snapshot already on disk - no Nansen call, no credits.
+  'GET /api/whaleboard': async () => roster.publicBoard(),
   'GET /api/live': async () => game.liveFeed(),
   'GET /api/live/one': async (_, q) => game.refreshLiveItem(q.get('key')),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
