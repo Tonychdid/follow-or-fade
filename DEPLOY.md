@@ -25,6 +25,9 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `AGENT_DAILY_CREDITS` | `750` | optional: daily credits for Nansen Agent research (1 daily Insider Pick + ~4 company checks) |
 | `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
 | `DATA_DIR` | `/data` | where bankrolls, bets and the leaderboard are saved |
+| `TELEGRAM_PUBLIC` | `1` | optional: opens the whale alerts to everyone. Anyone who sends `/start` to your bot gets them, `/stop` ends it, and the site shows the bot link. Leave it unset to keep alerts private to your own chat |
+
+**Opening the alerts to everyone (`TELEGRAM_PUBLIC=1`).** Your own alert is always sent first, and the fan-out to subscribers runs in the background, so a long list never delays your copy or the next scan. Subscribers cost **no extra Nansen credits**: one scan serves everyone. Messages go out about 25 a second (Telegram's own limit), and a chat that blocks the bot is dropped from the list automatically. From your own Telegram chat you can send `/subs` to see who is subscribed, `/kick <id>` to remove and block someone, and `/unkick <id>` to let them back. Subscriber chat ids are stored in `alertsubs.json` in your `DATA_DIR` and are never exposed on the site.
 
 ## 4. Add a volume (so data survives redeploys)
 1. In the project canvas, right-click the service (or press **Ctrl+K**) → **Add Volume**.
