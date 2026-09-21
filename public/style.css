@@ -3,7 +3,7 @@
      full height of a near-black page. It read as a bright column down the right edge on video.
      color-scheme also fixes native form controls and the overscroll gutter. */
   color-scheme: dark;
-  scrollbar-width: thin; scrollbar-color: var(--gold-d) transparent;
+  scrollbar-width: thin; scrollbar-color: rgba(212,175,55,.28) transparent;
   --ink:#070507; --read:#e9e1cf; --read2:#cbc1ab; --lacquer:#0e0a0c; --panel:#141015; --panel2:#1b1519;
   --gold:#d4af37; --gold-l:#f5d77a; --gold-d:#8a6d1d; --ivory:#f3ead7; --muted:#a79d89;
   --felt:#0d4a35; --felt-d:#062519;
@@ -1426,6 +1426,6 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
    standard properties above are set, so both can coexist. */
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--gold-d);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
-::-webkit-scrollbar-thumb:hover{background:var(--gold);background-clip:padding-box}
+::-webkit-scrollbar-thumb{background:rgba(212,175,55,.28);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(212,175,55,.55);background-clip:padding-box}
 ::-webkit-scrollbar-corner{background:transparent}

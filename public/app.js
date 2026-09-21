@@ -5,23 +5,41 @@ const $ = (id) => document.getElementById(id);
 
 // Auto-fit: scale the desktop layout so the whole Training Table (card, tells, chips, FOLLOW/FADE) and
 // Your Table fit on screen without scrolling. 100% on big monitors, ~80% on 1080p, never below 70%.
-const DESIGN_W = 1500, MIN_FIT = 0.62;
-// This used to divide by a hard-coded DESIGN_H of 886. The real page is ~1325px tall, so the formula
-// returned 1.0 on a 1080p screen and nothing was ever scaled: FOLLOW/FADE sat below the fold with a
-// scrollbar beside them. A constant cannot work here anyway - a card's height moves with how many
-// dealer's tells the whale has - so measure the page instead. scrollHeight is already multiplied by
-// the current zoom, so dividing by it recovers the true unscaled height without a visible reset.
+const MIN_FIT = 0.62, MAX_FIT = 1.5, BOTTOM_GAP = 26, SIDE_GAP = 24;
+// Three versions of this were wrong before this one, in different ways.
+//   1. Divided by a hard-coded DESIGN_H of 886 when the page is ~1325px tall, so it returned 1.0 on a
+//      1080p screen and scaled nothing: FOLLOW/FADE sat below the fold.
+//   2. Measured the WHOLE document - which includes the legal footer and the full-height sidebar,
+//      neither of which needs to be on screen - so it shrank the table until the text was too small.
+//   3. Measured the right thing but iterated towards it, and a two-pass loop overshot.
+//
+// What has to be on screen is the felt: the card, the tells, the chips, the two buttons and the gold
+// frame closing under them. The sidebar's lower half, the stat strip and the footer are scrolled to
+// on purpose. So measure the felt ONCE at a known scale of 1, then solve for the scale directly -
+// no iteration, no overshoot. The result is allowed above 1: on a big monitor the table should grow
+// into the space rather than sit there at laptop size.
 function autoFit() {
   const de = document.documentElement;
   const w = window.innerWidth, h = window.innerHeight;
   if (w < 1100) { de.style.setProperty('--fit', '1'); return; } // phone/tablet layout scrolls by design
-  const cur = parseFloat(getComputedStyle(de).getPropertyValue('--fit')) || 1;
-  const need = de.scrollHeight / cur;
-  if (!(need > 0)) return;
-  const fit = Math.max(MIN_FIT, Math.min(1, (h - 8) / need, w / DESIGN_W));
+  const felt = document.querySelector('.felt');
+  const anchor = felt || document.getElementById('btnFade') || document.querySelector('.layout');
+  if (!anchor) return;
+  const prev = de.style.getPropertyValue('--fit');
+  // Measure at 1. Setting and reading in the same task forces a reflow but never a paint, so this is
+  // invisible - it is not the flash that a rAF-based reset would cause.
+  de.style.setProperty('--fit', '1');
+  const r = anchor.getBoundingClientRect();
+  const needed = r.bottom + window.scrollY + BOTTOM_GAP;   // felt height incl. header, at scale 1
+  const lay = document.querySelector('.layout');
+  const natW = lay ? lay.getBoundingClientRect().width : 1500;
+  if (!(needed > 0) || !(natW > 0)) { de.style.setProperty('--fit', prev || '1'); return; }
+  const fit = Math.max(MIN_FIT, Math.min(MAX_FIT, (h - 8) / needed, (w - SIDE_GAP * 2) / natW));
   de.style.setProperty('--fit', fit.toFixed(3));
 }
-// Two passes: the first changes the layout, the second settles on the height that produced.
+
+// One pass is enough now that the scale is solved rather than approached. The rAF catches fonts and
+// images that land after the first call and change the felt's height.
 const refit = () => { autoFit(); requestAnimationFrame(autoFit); };
 refit();
 window.addEventListener('resize', refit);
@@ -536,6 +554,9 @@ async function deal() {
   updatePotential();
   $('btnFollow').disabled = $('btnFade').disabled = false;
   $('dealing').hidden = true; $('round').hidden = false;
+  // The felt is empty until the hand is on it, so a fit measured before this point sizes the
+  // layout against nothing. Re-solve now that the card, the tells and the buttons are real.
+  refit();
   card.classList.remove('dealt'); void card.offsetWidth; card.classList.add('dealt');
   sfx.deal();
   // On a phone the page keeps the scroll position of the hand you just finished, which lands you on the
