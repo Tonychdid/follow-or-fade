@@ -440,6 +440,20 @@ the opening line through `parentId`.
 
 Test alerts are journaled too, flagged `test: true`. A flagged row is easier to explain than a gap.
 
+**Schema v2** adds the fields the tag work made necessary. The important one is **`admittedVia`** —
+`standard`, `specialist`, `early` or `printer` — which is *how the whale got in*, not merely which
+tags they wear. Those are different questions and only the first one answers "did the early-finder and
+printer paths earn their place": a whale can carry the EARLY tag and still have walked in on an
+ordinary A+ record, and averaging the two together hides whichever actually works.
+
+Also new: `holdHours` and `shareUnder1h` (the real measure of whether a whale holds — `tradesPerDay`
+is kept for continuity with v1 rows but is a fill count, wrong by an order of magnitude as a pace);
+`earlyVia` (`pattern` or `proven`, so one converted call on an exceptional record is not averaged in
+with nine); `earlyFinds`, `earlyCapture`; and `printerSize`, `printerWinRate`, `printerMedRet`.
+
+Verified end to end: 36 fields, none missing, `admittedVia` non-null on every row from the scan path,
+and an otherwise-rejected whale correctly recorded as admitted via `early` or `printer`.
+
 ## Research Desk (Nansen Agent)
 
 Hyperliquid lists stock perps (NVDA, INTC, SNDK…), and Smart Money whales trade them. The Research Desk adds Nansen Agent on top of the whale data:
