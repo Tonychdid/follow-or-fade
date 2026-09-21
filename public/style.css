@@ -1400,3 +1400,16 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 /* The connective text between the grade table and the tag table. It is scaffolding, not content:
    the two tables are what people read, so this sits a step below them. */
 #grDlg .gr-note{font-size:11.5px;line-height:1.45;margin:0 0 10px;opacity:.85}
+
+/* Per-whale-kind scores on the Trader Profile. One row per kind: the tag, a bar, the number. */
+.tagrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hair2)}
+.tagrow:last-child{border-bottom:0}
+.tagrow small{grid-column:1/-1;font-size:11.5px;color:var(--read2);margin-top:-4px}
+.tagrow.thin{grid-template-columns:auto 1fr;opacity:.62}
+.tagrow.thin small{grid-column:1/-1}
+.tagbar{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.tagbar i{display:block;height:100%;border-radius:99px}
+.tagbar i.pos{background:linear-gradient(90deg,#34d399,#10b981)}
+.tagbar i.neg{background:linear-gradient(90deg,#fb7185,#ef4444)}
+.spec-tag.plain-tag{color:var(--read);border-color:var(--hair);background:rgba(255,255,255,.06)}
+@media(max-width:420px){.tagrow{grid-template-columns:auto 1fr auto}}

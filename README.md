@@ -321,6 +321,46 @@ no longer writes Nansen's verdict over the measured one; it passes only the pace
 > before the scalper work and are alerting now; what changed is that they briefly wore a label that
 > did not describe them.
 
+## Making sure a short session shows every kind of whale
+
+A training table that deals eight A-grade untagged whales in a row teaches one thing eight times. Both
+the deck and the floor now spread deliberately across **profiles** — `combo`, `printer`, `early`,
+`specialist`, `scalper`, `weak`, `mid`, `elite` — where a whale takes the first bucket it matches, so
+a rare kind is never swallowed by a common one and `combo` (two tags at once, the rarest and most
+interesting card) outranks everything.
+
+Three places had to change, and the first two are the same trap in different clothes:
+
+1. **The deck takes one of each missing kind first**, then fills normally. Sorting the whole candidate
+   list by rarity was the first attempt and it over-corrected — the deck filled with combos and
+   printers and ran out of room before reaching plain A-grade whales, the most common real case.
+2. **The floor reserves pool slots for rare profiles.** Measured in one 96h window: 6 early, 2
+   scalpers, 2 combos and 1 printer against 84 untagged. A size-ranked cut removed every one of them,
+   and no spreading rule downstream can seat a card that never reached the pool.
+3. **Dealing rotates through kinds the player has not met**, tracked per player rather than per deck —
+   a varied deck teaches nothing if one player happens to draw four elites in a row. After a full lap
+   the tracker resets and a new rotation starts.
+
+Result: a player now meets **all seven available profiles in their first seven hands**, then settles
+into natural distribution. The floor went from 8 untagged elites to **6 distinct kinds across 8 cards**,
+including an EARLY+PRINTER combo and grades from A+ to D.
+
+> One quiet bug this surfaced: an unscored wallet was being reported as `elite`, because the profile
+> fell through to "not C-to-F, not B". In one window that labelled **84 of 103 wallets elite purely
+> for being unscored**, and filled the floor with a profile nobody had earned. No grade and no tags
+> now means no opinion.
+
+## Which whales you read best
+
+The Trader Profile scores the player separately against each kind of whale. Reading a whale who gets
+in before moves is not the same skill as reading one who never holds, and a player can be reliably
+good at one and reliably wrong about the other — until this existed there was no way to find that out.
+
+Tags are recorded **per hand at the moment of the decision**, not looked up later: a whale can gain or
+lose a tag next week, and the question is what was on the card when the call was made. Every row shows
+its sample size, and a row under four hands says how many more it needs rather than showing a win rate
+— a three-hand streak presented as a finding is worse than no finding.
+
 ## Why the Live Floor is not just the eight biggest trades
 
 Letting scalpers back into the pool had a consequence nobody asked for: **every card on the floor was

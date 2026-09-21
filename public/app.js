@@ -1550,11 +1550,39 @@ function renderReport(r) {
       <div class="report-card"><h4 class="pos-h">Your strengths</h4>${r.strengths.length ? r.strengths.map(pat).join('') : '<p class="muted">Keep playing: a pattern needs 3+ hands and a 60%+ win rate to show here.</p>'}</div>
       <div class="report-card"><h4 class="neg-h">Your leaks</h4>${r.leaks.length ? r.leaks.map(pat).join('') : '<p class="muted">No leaks found yet. Patterns with a 45% or lower win rate (3+ hands) show here.</p>'}</div>
     </div>
+    ${tagCard(r)}
     <div class="report-card"><h4>Every pattern we track</h4><div class="pat-grid">${r.patterns.map(pat).join('')}</div></div>
     <div class="report-card cta"><div><h4>Where this data comes from</h4><p>Every read you are scored on is built from Nansen's Smart Money data on Hyperliquid. What you do with the skill is yours to decide — we have no relationship with Nansen and earn nothing if you go there.</p></div>
       <div class="ref-actions"><a class="nansen-btn big" href="https://app.nansen.ai/token-god-mode?tokenAddress=BTC&chain=hyperliquid" target="_blank" rel="noopener">See this data on Nansen ↗</a></div></div>
     <p class="disclaimer">Play money only. Past results in a game do not guarantee real trading results. Not financial advice.</p>`;
 }
+/**
+ * How the player reads each KIND of whale. The grade patterns above answer "do you over-trust a good
+ * record"; this answers a question the grade cannot — reading a whale who gets in before moves is a
+ * different skill from reading one who never holds, and a player can be reliably good at one and
+ * reliably wrong about the other.
+ *
+ * Every row carries its sample size, and rows without enough hands say so instead of showing a win
+ * rate. A 3-hand streak presented as a finding is worse than no finding.
+ */
+function tagCard(r) {
+  if (!r.byTag || !r.byTag.length) return '';
+  const tagClass = { early: 'early-tag', printer: 'printer-tag', scalper: 'scalp-tag', specialist: '', combo: '', untagged: '', elite: '', weak: '' };
+  const row = (g) => {
+    const cls = tagClass[g.key] ? `spec-tag ${tagClass[g.key]}` : 'spec-tag plain-tag';
+    if (!g.enough) return `<div class="tagrow thin"><span class="${cls}">${esc(g.label)}</span><small>${g.n ? `${g.n} hand${g.n === 1 ? '' : 's'} so far — ${4 - g.n} more to be scored` : 'not seen yet'}</small></div>`;
+    const good = g.edge >= 0;
+    return `<div class="tagrow"><span class="${cls}">${esc(g.label)}</span>
+      <div class="tagbar"><i style="width:${Math.round(Math.max(2, Math.min(100, g.winRate * 100)))}%" class="${good ? 'pos' : 'neg'}"></i></div>
+      <b class="${good ? 'pos' : 'neg'}">${Math.round(g.winRate * 100)}%</b>
+      <small>${g.n} hands · ${g.edge >= 0 ? '+' : ''}${(g.edge * 100).toFixed(0)} pts vs the odds</small></div>`;
+  };
+  const rated = r.byTag.filter((g) => g.enough).length;
+  return `<div class="report-card"><h4>Which whales you read best</h4>
+    <p class="counts-note">${rated ? 'Win rate against each kind of whale, and how that compares with what the odds expected. Four hands minimum before a row is scored.' : 'Play a few more hands and this fills in: it scores you separately against each kind of whale.'}</p>
+    ${r.byTag.map(row).join('')}</div>`;
+}
+
 $('levelMini').onclick = () => document.querySelector('.tab[data-view="report"]').click();
 
 // ================================================= mobile: Your Table as a bottom sheet
