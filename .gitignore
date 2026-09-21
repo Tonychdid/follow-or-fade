@@ -1,0 +1,23 @@
+# Secrets. The Nansen key and, once the bot is connected, the Telegram bot token
+# live in these. Neither ever belongs in the repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime state: players, bankrolls, bets, alert config (holds the Telegram token),
+# the alert journal and the whale roster. Generated at run time, never committed.
+# NOTE: this is `data/*`, not `data/*.json` — the journals are .jsonl and the older
+# pattern would have committed every alert we ever sent.
+data/*
+!data/.gitkeep
+
+# Local operator notes, not part of the app
+HOW TO PUT THIS ONLINE.txt
+
+node_modules/
+npm-debug.log*
+*.corrupt-*
+.DS_Store
+Thumbs.db
