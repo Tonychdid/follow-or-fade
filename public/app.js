@@ -6,6 +6,8 @@ const $ = (id) => document.getElementById(id);
 // Auto-fit: scale the desktop layout so the whole Training Table (card, tells, chips, FOLLOW/FADE) and
 // Your Table fit on screen without scrolling. 100% on big monitors, ~80% on 1080p, never below 70%.
 const MIN_FIT = 0.62, MAX_FIT = 1.5, BOTTOM_GAP = 26, SIDE_GAP = 24;
+const FELT_FALLBACK = 980;   // measured unscaled height of the felt, incl. header and bottom gap
+let lastNeeded = 0;          // the real figure, once the table has been measured this session
 // Three versions of this were wrong before this one, in different ways.
 //   1. Divided by a hard-coded DESIGN_H of 886 when the page is ~1325px tall, so it returned 1.0 on a
 //      1080p screen and scaled nothing: FOLLOW/FADE sat below the fold.
@@ -32,9 +34,15 @@ function autoFit() {
   const felt = document.querySelector('.felt');
   const feltH = felt ? felt.getBoundingClientRect().height : 0;
   if (feltH <= 1) {
+    // Don't invent a separate scale for these views - that is what made the Live Floor arrive 16%
+    // bigger than the rest of the app when opened straight from a Telegram alert, and why a refresh
+    // (which lands on the Training Table) appeared to "fix" it. Reuse the height the felt needs, so
+    // every view is scaled on the same basis. FELT_FALLBACK is the measured unscaled height, used
+    // only until the table has been seen once in this session.
     const cur0 = parseFloat(getComputedStyle(de).getPropertyValue('--fit')) || 1;
     const nat = natW0 ? natW0 / cur0 : 1500;
-    de.style.setProperty('--fit', Math.max(MIN_FIT, Math.min(1, (w - SIDE_GAP * 2) / nat)).toFixed(3));
+    const basis = lastNeeded || FELT_FALLBACK;
+    de.style.setProperty('--fit', Math.max(MIN_FIT, Math.min(MAX_FIT, (h - 8) / basis, (w - SIDE_GAP * 2) / nat)).toFixed(3));
     return;
   }
   const anchor = felt;
@@ -44,6 +52,7 @@ function autoFit() {
   de.style.setProperty('--fit', '1');
   const r = anchor.getBoundingClientRect();
   const needed = r.bottom + window.scrollY + BOTTOM_GAP;   // felt height incl. header, at scale 1
+  if (needed > 0) lastNeeded = needed;                    // shared with the scrolling views above
   const lay = document.querySelector('.layout');
   const natW = lay ? lay.getBoundingClientRect().width : 1500;
   if (!(needed > 0) || !(natW > 0)) { de.style.setProperty('--fit', prev || '1'); return; }
@@ -1028,6 +1037,18 @@ $('chCopy').onclick = async () => {
 };
 
 // ================================================= tabs
+/** Reflect the open view in the address bar so a refresh (or a shared link) lands back on it. */
+function rememberView(view) {
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('trade');    // one-shot: never survives a reload
+    u.searchParams.delete('challenge');
+    if (!view || view === 'replay') u.searchParams.delete('view');
+    else u.searchParams.set('view', view);
+    history.replaceState(null, '', u.pathname + (u.search || '') );
+  } catch {}
+}
+
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   sfx.tick();
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.dataset.view === t.dataset.view));
@@ -1039,6 +1060,10 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   if (t.dataset.view === 'live') loadLive();
   if (t.dataset.view === 'replay' && !round) deal();
   if (t.dataset.view === 'report') refreshReport(true);
+  // Keep the open view in the URL. Boot already reads ?view=, but nothing ever wrote it back, so the
+  // address bar always said "the training table" and refreshing anywhere else threw you back to it.
+  // Also makes the tab you are on shareable. ?trade= stays stripped: it is a one-shot link.
+  rememberView(t.dataset.view);
 }));
 
 // ================================================= hall of fame
