@@ -724,7 +724,9 @@ function openDialog(d) {
 }
 
 document.addEventListener('click', (e) => {
-  const g = e.target.closest('#rGrade, .grade');
+  // .grade-chip draws a "?" affordance and cursor:pointer wherever it is used, so every chip has to
+  // open the explainer - not just #rGrade, which was the only one until the whale board existed.
+  const g = e.target.closest('#rGrade, .grade, .grade-chip');
   if (!g) return;
   // inside the whale-record summary the badge shares a row with the expand toggle: don't do both
   e.preventDefault(); e.stopPropagation();
@@ -1062,7 +1064,7 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
   if (t.classList.contains('bn') || t.dataset.view === 'plans') window.scrollTo({ top: 0 });
   $('betaStrip').classList.toggle('on-plans', t.dataset.view === 'plans');
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + t.dataset.view));
-  if (t.dataset.view === 'board') loadBoard();
+  if (t.dataset.view === 'board') { loadBoard(); if (boardTab === 'whales') loadWhaleBoard(); }
   if (t.dataset.view === 'live') loadLive();
   if (t.dataset.view === 'replay' && !round) deal();
   if (t.dataset.view === 'report') refreshReport(true);
@@ -1086,6 +1088,93 @@ async function loadBoard() {
   $('boardBody').innerHTML = rows.length ? rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}${r.busts ? ` <span class="muted" title="Reloaded ${r.busts}\u00d7 after going broke: each reload counts against the net">\u00b7 ${r.busts} reload${r.busts > 1 ? 's' : ''}</span>` : ''}</td><td class="${net(r) >= 0 ? 'pos' : 'neg'}">${net(r) >= 0 ? '+' : ''}${usd(net(r))}</td><td>${r.bets}</td><td>${Math.round(r.winRate * 100)}%</td><td>${r.bestStreak}</td><td>${r.whalesSlain}</td></tr>`).join('')
     : '<tr><td colspan="7" class="muted">No one has qualified yet \u2014 play three hands and the seat is yours.</td></tr>';
 }
+
+// ================================================= hall of fame: the whales
+// Two boards under one roof. The player board ranks the people betting; this one ranks the whales
+// they are betting ON, straight from the weekly roster snapshot. It costs no Nansen credits: every
+// number here was already paid for when the roster was assessed.
+let boardTab = 'players';
+let whaleData = null, whaleSort = 'roi';
+const W_SORT = {
+  roi: (a, b) => (b.d30?.roi ?? -Infinity) - (a.d30?.roi ?? -Infinity),
+  pnl: (a, b) => (b.d30?.pnl ?? -Infinity) - (a.d30?.pnl ?? -Infinity),
+  win: (a, b) => (b.d30?.winRate ?? -Infinity) - (a.d30?.winRate ?? -Infinity),
+  closed: (a, b) => (b.d30?.closed ?? -1) - (a.d30?.closed ?? -1),
+};
+const shortAddr = (a) => (a && a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a || '');
+// Nansen's own label when there is one, the address when there is not. "Smart Money whale" is the
+// placeholder the feed hands back for an unlabelled wallet, and printing it on every second row
+// makes the board look like one trader with many accounts.
+const whaleName = (w) => (w.trader && w.trader !== 'Smart Money whale' ? w.trader : shortAddr(w.address));
+
+async function loadWhaleBoard() {
+  if (whaleData) return renderWhaleBoard();
+  const d = await api('/api/whaleboard').catch((e) => {
+    $('whaleBody').innerHTML = `<tr><td colspan="8" class="err">${esc(e.message)}</td></tr>`;
+    return null;
+  });
+  if (!d) return;
+  whaleData = d;
+  renderWhaleBoard();
+}
+
+function renderWhaleBoard() {
+  const d = whaleData;
+  if (!d) return;
+  const rows = [...(d.whales || [])].sort(W_SORT[whaleSort] || W_SORT.roi);
+  $('whaleBody').innerHTML = rows.length ? rows.map((w, i) => {
+    const r = w.d30 || {};
+    // An unlabelled wallet already shows as its short address in the name cell; repeating it
+    // underneath made every second row read as the same address twice.
+    const named = !!(w.trader && w.trader !== 'Smart Money whale');
+    const cls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[w.grade] || 'gc';
+    const url = `https://app.nansen.ai/profiler?address=${encodeURIComponent(w.address)}&chain=hyperliquid`;
+    const roi = r.roi == null ? '—' : `<span class="${r.roi >= 0 ? 'pos' : 'neg'}">${pct(r.roi)}</span>`;
+    const pnl = r.pnl == null ? '—' : `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${compact(r.pnl)}</span>`;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td><a class="whale-name" href="${esc(url)}" target="_blank" rel="noopener">${esc(whaleName(w))}</a>
+        <div class="whale-addr">${named ? esc(shortAddr(w.address)) + ' ' : ''}${w.inPool ? '<span class="pool-tag" title="Clears the house rules, so this whale is dealt as a hand and can fire an alert">IN THE POOL</span>' : ''}</div></td>
+      <td><span class="grade-chip ${cls}">${esc(w.grade || '?')}</span>${whaleTags(w)}</td>
+      <td>${roi}</td><td>${pnl}</td>
+      <td>${r.winRate == null ? '—' : Math.round(r.winRate * 100) + '%'}</td>
+      <td>${r.closed ?? '—'}</td>
+      <td>${w.topCoin ? esc(w.topCoin) : '—'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" class="muted">${d.demo
+    ? 'The whale roster is not assessed in demo mode — add a Nansen key and it fills on the first sweep.'
+    : 'The first roster sweep has not finished yet. It runs shortly after launch and then on a schedule.'}</td></tr>`;
+
+  const when = d.finishedAt || d.at;
+  $('whaleNote').innerHTML = rows.length
+    ? `Ranked on <b>30-day return on closed positions</b>, from Nansen. <b>Closes</b> is the sample behind it — a big return on three positions is not the same as the same return on three hundred, so read the two together. Click a column to re-rank.<br>
+       <b>${d.counts.inPool}</b> of <b>${d.counts.seen}</b> whales seen clear the house rules and are dealt as hands; the rest are shown so you can see the rules doing their job.
+       ${when ? `Last assessed ${ago(when)}${d.everyDays ? `, every ${d.everyDays} day${d.everyDays === 1 ? '' : 's'}` : ''}.` : ''}`
+    : '';
+  document.querySelectorAll('[data-wsort]').forEach((th) => th.classList.toggle('on', th.dataset.wsort === whaleSort));
+}
+
+document.querySelectorAll('.btab').forEach((b) => b.addEventListener('click', () => {
+  sfx.tick();
+  boardTab = b.dataset.board;
+  document.querySelectorAll('.btab').forEach((x) => {
+    const on = x.dataset.board === boardTab;
+    x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on));
+  });
+  $('boardPlayers').hidden = boardTab !== 'players';
+  $('boardWhales').hidden = boardTab !== 'whales';
+  $('boardSub').textContent = boardTab === 'whales'
+    ? 'The Smart Money wallets behind every hand, on their real Nansen record.'
+    : 'The biggest bankrolls in the house.';
+  if (boardTab === 'whales') loadWhaleBoard();
+  refit();
+}));
+
+document.querySelectorAll('[data-wsort]').forEach((th) => th.addEventListener('click', () => {
+  whaleSort = th.dataset.wsort;
+  sfx.tick();
+  renderWhaleBoard();
+}));
 
 // ================================================= live floor
 // The Live Floor: prefetched in the background, entered through a short "welcome" curtain the first time.
