@@ -22,9 +22,22 @@ function autoFit() {
   const de = document.documentElement;
   const w = window.innerWidth, h = window.innerHeight;
   if (w < 1100) { de.style.setProperty('--fit', '1'); return; } // phone/tablet layout scrolls by design
+  const lay0 = document.querySelector('.layout');
+  const natW0 = lay0 ? lay0.getBoundingClientRect().width : 0;
+  // .felt is the TRAINING TABLE. It exists in the DOM on every view but is hidden on the Live Floor,
+  // Trader Profile and Hall of Fame, where it measures zero height - and a zero-height anchor made the
+  // solve below scale everything to MAX_FIT. That is the Live Floor arriving zoomed to 130%.
+  // Those views are scrolling lists with nothing that must fit above the fold, so they get the plain
+  // width-based fit and are never enlarged.
   const felt = document.querySelector('.felt');
-  const anchor = felt || document.getElementById('btnFade') || document.querySelector('.layout');
-  if (!anchor) return;
+  const feltH = felt ? felt.getBoundingClientRect().height : 0;
+  if (feltH <= 1) {
+    const cur0 = parseFloat(getComputedStyle(de).getPropertyValue('--fit')) || 1;
+    const nat = natW0 ? natW0 / cur0 : 1500;
+    de.style.setProperty('--fit', Math.max(MIN_FIT, Math.min(1, (w - SIDE_GAP * 2) / nat)).toFixed(3));
+    return;
+  }
+  const anchor = felt;
   const prev = de.style.getPropertyValue('--fit');
   // Measure at 1. Setting and reading in the same task forces a reflow but never a paint, so this is
   // invisible - it is not the flash that a rAF-based reset would cause.
@@ -1428,6 +1441,11 @@ async function goToTrade(key) {
   }
   if (!card) return toast("That whale has closed the position, so the card is gone. Here are the latest whales.");
   await sleep(350);
+  // The floor re-renders on its own timer, and it usually does so during exactly this pause. The
+  // element found above is then DETACHED: scrolling it does nothing and the spotlight class lands on
+  // a node that is no longer in the page, leaving `focusing` on the list with no card to exempt - so
+  // nothing glowed and nothing dimmed. Re-resolve by key after the wait.
+  card = find() || card;
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   focusCard(card);
   recheckCard(card).catch(() => {}); // straight from an alert: show what changed since it was sent
@@ -1448,6 +1466,11 @@ let focusArmedAt = 0;
 let focusKey = null;   // which card the spotlight belongs to, by data-key
 function focusCard(card) {
   const list = $('liveList');
+  // Belt and braces for the same hazard: always spotlight the card that is actually on screen now.
+  const key = card?.dataset?.key || null;
+  const live = key && list ? list.querySelector(`.lcard[data-key="${CSS.escape(key)}"]`) : null;
+  card = live || card;
+  if (!card || !card.isConnected) { clearFocus(); return; } // nothing to point at: don't dim the floor
   document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
   card.classList.add('spotlight');
   focusKey = card.dataset.key || null;
