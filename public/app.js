@@ -1075,7 +1075,27 @@ document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () 
 }));
 
 // ================================================= hall of fame
+/**
+ * The house bots, pinned above the rankings. They are fetched from their own route so a browser still
+ * holding the previous app.js keeps rendering the player board exactly as before.
+ */
+async function loadBots() {
+  const bots = await api('/api/bots').catch(() => null);
+  const strip = $('botStrip');
+  if (!strip) return;
+  if (!bots?.length) { strip.hidden = true; return; }
+  strip.hidden = false;
+  const stake = bots[0]?.stake || 500;
+  strip.innerHTML = `<div class="bot-head">The house bots <span>\u2014 they play every hand the table builds, ${usd(stake)} a hand, same odds, same real whale exits. Beat them.</span></div>
+    <div class="bot-cards">${bots.map((b) => `<div class="bot-card">
+      <div class="bot-top"><b>${esc(b.name)}</b><span class="bot-tag" title="A fixed strategy run by the house, not a player">BOT</span></div>
+      <span class="bot-net ${b.net >= 0 ? 'pos' : 'neg'}">${b.net >= 0 ? '+' : ''}${usd(b.net)}</span>
+      <div class="bot-sub">${Math.round((b.winRate || 0) * 100)}% win rate \u00b7 ${b.bets} hand${b.bets === 1 ? '' : 's'}${b.busts ? ` \u00b7 ${b.busts} reload${b.busts > 1 ? 's' : ''}` : ''}</div>
+      <p class="bot-blurb">${esc(b.blurb)}</p></div>`).join('')}</div>`;
+}
+
 async function loadBoard() {
+  loadBots();
   const rows = await api('/api/leaderboard').catch((e) => {
     $('boardBody').innerHTML = `<tr><td colspan="7" class="err">${esc(e.message)}</td></tr>`;
     return null;
@@ -1249,6 +1269,11 @@ function recordHtml(r) {
 function whaleTags(tr, a) {
   if (!tr) return '';
   const t = [];
+  // Admitted by the whale board rather than by the rules. It goes first because it is the reason
+  // this whale is in front of you at all when the other tags would have turned them away.
+  if (tr.leaderboard || a?.leaderboard) {
+    t.push(`<span class="spec-tag lb-tag" title="Top 30 on the whale board by 30-day return on closed positions, over a real sample of closed trades. Re-assessed with the weekly roster.">LEADERBOARD</span>`);
+  }
   if (tr.specialist) t.push(`<span class="spec-tag" title="Trades few coins, but has proven realised profit on this one">SPECIALIST</span>`);
   if (tr.early) {
     const e = tr.earlyStats;
