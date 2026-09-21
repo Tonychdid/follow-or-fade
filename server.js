@@ -19,6 +19,8 @@ const store = await import('./lib/store.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
+// Rate limiting defaults ON. A dropped variable must cost a limit nobody wanted, never remove one.
+const LIMITED = process.env.RATE_LIMIT !== '0';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // SHOW_PLANS=1 reveals the free-beta strip. Left unset, both stay hidden and the
@@ -55,16 +57,21 @@ const sha = (s) => crypto.createHash('sha256').update(String(s)).digest();
 // Fail CLOSED whenever an admin token exists: a missing PUBLIC=1 on a redeploy must never turn the
 // Telegram routes and the trader opt-out into open endpoints. Only a deployment with no token at all
 // (a local dev run) is trusted by default.
+// Fail CLOSED on the ABSENCE of the token, not on the absence of PUBLIC. The old form fell back to
+// `!PUBLIC`, so a deploy that lost BOTH variables (or set PUBLIC=true rather than PUBLIC=1) served an
+// open admin panel: anonymous opt-out of every whale, and a writable Telegram token. Local dev keeps
+// its convenience behind an explicit opt-in instead of behind a missing variable.
+const DEV_OPEN_ADMIN = process.env.DEV_OPEN_ADMIN === '1';
 const isAdmin = (req) => (ADMIN_TOKEN
   ? crypto.timingSafeEqual(sha(req.headers['x-admin-token'] || ''), sha(ADMIN_TOKEN))
-  : !PUBLIC);
+  : DEV_OPEN_ADMIN && !PUBLIC);
 const forbid = () => Promise.reject(Object.assign(new Error('Admin only'), { status: 403 }));
 const admin = (fn) => (b, q, req) => (isAdmin(req) ? fn(b, q, req) : forbid());
 
 // Simple per-IP rate limiting for the public site (token bucket per minute).
 const buckets = new Map();
 function limited(req, cost = 1, perMin = 240) {
-  if (!PUBLIC) return false;
+  if (!LIMITED) return false;
   // the proxy (Railway) appends the real client address last; anything earlier in X-Forwarded-For can be forged
   const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   // Only the LAST hop is written by the proxy; x-real-ip is not used at all because a client can send

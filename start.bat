@@ -17,6 +17,9 @@ if not exist .env (
 REM Give the server a few seconds to bind the port before the browser goes looking for it,
 REM otherwise the first thing you see is a connection error and you have to refresh.
 start "" /b cmd /c "timeout /t 4 /nobreak >nul & start "" http://localhost:3000"
+REM Local run on your own machine: keep the alert settings reachable without a token.
+REM A hosted deploy never sets this, so losing a variable there closes admin instead of opening it.
+set DEV_OPEN_ADMIN=1
 node server.js
 pause
 exit /b

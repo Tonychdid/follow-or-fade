@@ -144,7 +144,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `RIDE_MAX_HOURS` | 48 | Ride the Whale bets end when the whale closes, capped at this many hours |
 | `CALIBRATION_SAMPLE` | 60 | Trades resolved per hourly calibration run |
 | `DEMO` | 0 | `1` forces demo data |
-| `AGENT_DAILY_CREDITS` | `1600` | Daily Nansen credits for the Research Desk (Nansen Agent). `0` turns it off |
+| `AGENT_DAILY_CREDITS` | `750` | Daily Nansen credits for the Research Desk (Nansen Agent). `0` turns it off |
 | `DAILY_CREDIT_CAP` | none | Max Nansen credits per UTC day. Above it the app serves cached data and demo whales, and pauses odds training and alerts |
 | `PUBLIC` | 0 | `1` for a public deployment: per-IP rate limits, alert rules and Telegram become admin-only |
 | `ADMIN_TOKEN` | none | With `PUBLIC=1`, open `/?admin=TOKEN` once to manage alerts |
@@ -462,7 +462,7 @@ Hyperliquid lists stock perps (NVDA, INTC, SNDK…), and Smart Money whales trad
 - **Insider check** on every stock whale card: one tap shows what the company's insiders are doing and whether they point the same way as the whale.
 - **Telegram alerts**: when a whale opens a stock perp, the alert includes the insider summary.
 
-Answers are cached and shared by every player (12h per company, one screen per day), so the cost does not grow with traffic. `AGENT_DAILY_CREDITS` (default 1600) caps Agent spend separately from the game's `DAILY_CREDIT_CAP`, and always keeps room for the daily screen. All Agent output is labelled as AI research. Without an API key the desk shows sample research so the layout is still visible.
+Answers are cached and shared by every player (12h per company, one screen per day), so the cost does not grow with traffic. `AGENT_DAILY_CREDITS` (default 750) caps Agent spend separately from the game's `DAILY_CREDIT_CAP`, and always keeps room for the daily screen. All Agent output is labelled as AI research. Without an API key the desk shows sample research so the layout is still visible.
 
 ## Free beta and plans
 

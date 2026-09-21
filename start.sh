@@ -5,4 +5,5 @@ if [ ! -f .env ]; then
   read KEY
   printf "NANSEN_API_KEY=%s\nPORT=3000\nMAX_HOLD_HOURS=48\nCALIBRATION_SAMPLE=60\nDEMO=0\n" "$KEY" > .env
 fi
-node server.js
+# Local run: keep the alert settings reachable without a token (a hosted deploy never sets this).
+DEV_OPEN_ADMIN=1 node server.js

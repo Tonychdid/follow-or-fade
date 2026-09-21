@@ -81,7 +81,7 @@
           </div>
 
           <div class="dossier">
-            <div class="meta"><button id="rGrade" class="grade-chip" title="What does this grade mean?"></button> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
+            <div class="meta"><button id="rGrade" class="grade-chip" title="What does this grade mean?"></button><span id="rTags"></span> <span id="rWhen"></span> · <span id="rType"></span> order · judged on <b id="rHorizon">the whale's real exit</b></div>
             <div class="intel">
               <div class="stat"><small>Whale win rate · 30d before<button type="button" class="qmark" data-help="win" aria-label="What is this?">?</button></small><b id="iWin">–</b><span id="iClosed" class="sub"></span></div>
               <div class="stat"><small>Whale realized PnL · 30d<button type="button" class="qmark" data-help="pnl" aria-label="What is this?">?</button></small><b id="iPnl">–</b></div>
@@ -461,7 +461,7 @@
       <label>Minimum profit per closed trade<select id="cfgPpt"><option value="0">Any</option><option value="5">$5</option><option value="10">$10 (suggested)</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></label>
       <label class="switch"><input type="checkbox" id="cfgProfit"><span></span> Whale must be profitable over 30D</label>
       <label class="switch"><input type="checkbox" id="cfgProfit7"><span></span> Whale must also be profitable over the last 7D</label>
-      <label class="switch"><input type="checkbox" id="cfgEarly"><span></span> Let early finders through: in before big moves and holds for them, even if their % return is thin</label>
+      <label class="switch"><input type="checkbox" id="cfgEarly"><span></span> Let EARLY whales through: repeatedly in before big moves, even if their % return is thin</label>
       <label class="switch"><input type="checkbox" id="cfgPrinter"><span></span> Let printers through: $15K&ndash;$50K positions with a record better than most whales'</label>
       <label class="switch wide"><input type="checkbox" id="cfgMajority"><span></span> More than half the coins they traded must be profitable: keeps out whales carried by one lucky coin</label>
       <label class="switch wide"><input type="checkbox" id="cfgSpec"><span></span> Let proven specialists through: trading only a few coins is OK if the coin they're opening is one of their main coins (40%+ of their trades) with $25K+ realized profit and a 3%+ return over 30D, and no losing week on it</label>

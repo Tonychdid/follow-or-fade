@@ -559,7 +559,7 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 .ap-grid .switch.wide input{margin-top:2px;flex:none}
 
 /* ================= academy: lessons, skill report ================= */
-.grade-chip{display:inline-block;font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.08em;padding:2px 8px;border-radius:7px;color:#1a1204;vertical-align:1px}
+.grade-chip{display:inline-block;font-family:var(--display);font-weight:900;font-size:14px;letter-spacing:.04em;padding:3px 10px;border-radius:9px;color:#1a1204;vertical-align:-1px}
 .grade-chip.ga{background:linear-gradient(180deg,#fff0b8,var(--gold))}.grade-chip.gb{background:linear-gradient(180deg,#bbf7d0,#22c07e)}
 .grade-chip.gc{background:linear-gradient(180deg,#e5e7eb,#9ca3af)}.grade-chip.gd{background:linear-gradient(180deg,#fed7aa,#f97316)}.grade-chip.gf{background:linear-gradient(180deg,#fecdd3,#e0445a)}
 .lesson{margin:0 0 16px;border-radius:16px;border:1px solid rgba(245,215,122,.35);background:rgba(0,0,0,.35);padding:14px 16px}
@@ -916,7 +916,7 @@ html,body{overflow-x:hidden}
   .pv-demo .n1,.pv-demo .n2,.pv-demo.plus .n1,.pv-bet{animation:none;opacity:1;transform:none}
   .pv-bolt{animation:none;opacity:.9;transform:translateX(-50%)}
 }
-.grade-chip{cursor:pointer;border:0;font:inherit}
+.grade-chip{cursor:pointer;border:0;background-clip:padding-box}
 /* A bare "?" sitting inside the pill read as doubt about the grade itself - "Grade A?" - rather
    than as a button. Draw it as a small circled question mark, the same affordance the stat
    help buttons use, in the pill's own dark ink so it works on gold, green, grey, orange and red. */
@@ -1002,7 +1002,7 @@ html,body{overflow-x:hidden}
   .pv-demo .n1,.pv-demo .n2,.pv-demo.plus .n1,.pv-bet{animation:none;opacity:1;transform:none}
   .pv-bolt{animation:none;opacity:.9;transform:translateX(-50%)}
 }
-.grade-chip{cursor:pointer;border:0;font:inherit}
+.grade-chip{cursor:pointer;border:0;background-clip:padding-box}
 /* A bare "?" sitting inside the pill read as doubt about the grade itself - "Grade A?" - rather
    than as a button. Draw it as a small circled question mark, the same affordance the stat
    help buttons use, in the pill's own dark ink so it works on gold, green, grey, orange and red. */
@@ -1413,3 +1413,6 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 .tagbar i.neg{background:linear-gradient(90deg,#fb7185,#ef4444)}
 .spec-tag.plain-tag{color:var(--read);border-color:var(--hair);background:rgba(255,255,255,.06)}
 @media(max-width:420px){.tagrow{grid-template-columns:auto 1fr auto}}
+/* Training-card tag strip: the same .spec-tag pills the live floor and the ? dialog use. */
+#rTags{display:inline}
+#rTags .spec-tag{vertical-align:1px}
