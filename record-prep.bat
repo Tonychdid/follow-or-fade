@@ -15,7 +15,9 @@ if not exist .env (
   exit /b
 )
 echo  Starting the app in a separate window...
-start "Follow or Fade server" cmd /k "cd /d "%~dp0" && node server.js"
+REM Local recording run: keep the alert settings reachable without an admin token.
+REM A hosted deploy never sets this, so a dropped variable there closes admin instead of opening it.
+start "Follow or Fade server" cmd /k "cd /d "%~dp0" && set DEV_OPEN_ADMIN=1 && node server.js"
 node tools\warmup.mjs
 start "" http://localhost:3000
 echo.
