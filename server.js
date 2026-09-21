@@ -97,7 +97,7 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (no
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
-  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2 };
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2, 'POST /api/roster/run': 40 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -125,6 +125,10 @@ const routes = {
   // The house bots: their own route rather than a new shape for /api/leaderboard, so a browser
   // still holding the old app.js keeps working instead of rendering an object as a table.
   'GET /api/bots': async () => bots.rows(),
+  // Run the weekly whale assessment now instead of waiting for it to fall due. The comment in
+  // roster.js has always promised an admin button for this; there was never a route behind it, so
+  // a fresh rule or a new leaderboard cut-off could not be applied until the schedule came round.
+  'POST /api/roster/run': admin(async () => roster.assessPool({ force: true })),
   'GET /api/live': async () => game.liveFeed(),
   'GET /api/live/one': async (_, q) => game.refreshLiveItem(q.get('key')),
   'POST /api/live/bet': async (b) => game.placeLiveBet(b.player, b.key, b.choice, b.stake, b.minutes),
