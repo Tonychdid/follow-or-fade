@@ -197,7 +197,8 @@ would turn them away — the rules are a filter, the board is a verdict. They ar
 board ranks (30-day return on closes) but only among wallets with at least `LEADERBOARD_MIN_CLOSED`
 closed positions, so a lucky two-trade wallet cannot buy its way into everyone's Telegram. Their
 alerts carry a **LEADERBOARD** tag and a line saying how they got in. The list is recomputed on every
-sweep, so it adds and drops with the assessment rather than going stale.
+sweep, so it adds and drops with the assessment rather than going stale. To run the assessment now
+rather than waiting for it to fall due, POST to `/api/roster/run` with your admin token.
 
 With `TELEGRAM_PUBLIC=1`, anyone can send `/start` to the bot to get the whale alerts and `/stop` to end them. The operator's own copy is sent first and the fan-out runs in the background, so subscribers never delay it. From the operator's chat, `/subs` lists who is subscribed, `/kick <id>` removes and blocks someone, and `/unkick <id>` lets them back.
 
