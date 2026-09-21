@@ -700,6 +700,20 @@ dialog::backdrop{background:rgba(0,0,0,.75);backdrop-filter:blur(5px)}
 html,body{overflow-x:hidden}
 @supports (overflow:clip){html,body{overflow-x:clip}}
 .board-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px}
+/* Two boards under one roof: the players who bet, and the whales they bet on. */
+.board-tabs{display:flex;gap:8px;margin:0 0 14px}
+.btab{font-family:var(--display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  padding:8px 16px;border-radius:999px;border:1px solid var(--hair);background:rgba(14,10,12,.9);color:var(--gold-l);cursor:pointer}
+.btab:hover{border-color:rgba(212,175,55,.45)}
+.btab.on{background:linear-gradient(180deg,#fff0b8,var(--gold));border-color:transparent;color:#1a1204}
+.board th.sortable{cursor:pointer;user-select:none}
+.board th.sortable:hover{color:#fff}
+.board th.sortable.on::after{content:' \25BC';font-size:9px;opacity:.75}
+.whale-name{font-family:var(--body);font-weight:600}
+.whale-addr{font-size:11px;opacity:.55}
+.pool-tag{display:inline-block;font-family:var(--display);font-weight:900;font-size:10px;letter-spacing:.09em;
+  padding:2px 7px;border-radius:6px;background:rgba(34,192,126,.16);color:#6ee7b7;border:1px solid rgba(34,192,126,.35)}
+.whale-note{margin-top:12px;font-size:12.5px;line-height:1.55}
 
 @media (max-width:1099px){
   body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
