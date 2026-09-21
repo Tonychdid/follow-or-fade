@@ -2,6 +2,8 @@
 
 ### The Smart Money Academy, disguised as a casino.
 
+**▶ Play it now — [follow-or-fade-production.up.railway.app](https://follow-or-fade-production.up.railway.app)** · no signup, no wallet, play chips only.
+
 **Build measurable trading skill without risking capital.** Every hand is a real Hyperliquid trade opened by a Nansen Smart Money whale. You get $10,000 in play chips: follow the whale or fade it. **Nansen data sets the odds, the market settles the bet**, and after every hand the coach tells you which Nansen signal called it. Your **Trader Profile** scores seven named reading skills against what the odds expected of you, so "am I getting better at this?" has an answer. What you do with that skill — including trading for real on Nansen — is the next step, not the point.
 
 **Train → Practice live → Trade for real on Nansen**
