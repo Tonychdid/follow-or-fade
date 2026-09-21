@@ -1081,7 +1081,11 @@ function whaleTags(tr, a) {
   if (tr.specialist) t.push(`<span class="spec-tag" title="Trades few coins, but has proven realised profit on this one">SPECIALIST</span>`);
   if (tr.early) {
     const e = tr.earlyStats;
-    const tip = e ? `Got into ${e.goodFinds} of ${e.finds} big moves early and held for them (median ${Math.round((e.capture || 0) * 100)}% of the move captured, across ${e.coins} coins). Most traders keep about a quarter.` : 'Gets in before big moves and holds for them';
+    const tip = !e ? 'Gets in before big moves and holds for them'
+      : e.via === 'proven'
+        // Small sample, so say so plainly and let the record do the arguing.
+        ? `In before ${e.goodFinds === 1 ? 'a big move' : `${e.goodFinds} big moves`} and held for ${e.goodFinds === 1 ? 'it' : 'them'}, keeping ${Math.round((e.capture || 0) * 100)}% of the move. Only ${e.finds} chance${e.finds === 1 ? '' : 's'} in 30 days \u2014 a small sample \u2014 but their record is exceptional: ${((e.roi || 0) * 100).toFixed(1)}% return and a ${Math.round((e.winRate || 0) * 100)}% win rate over 30 days.`
+        : `Got into ${e.goodFinds} of ${e.finds} big moves early and held for them (median ${Math.round((e.capture || 0) * 100)}% of the move captured, across ${e.coins} coins). Most traders keep about a quarter.`;
     t.push(`<span class="spec-tag early-tag" title="${esc(tip)}">EARLY</span>`);
   }
   if (tr.printer) {
@@ -1089,7 +1093,15 @@ function whaleTags(tr, a) {
     const tip = f ? `Prints money on small size: about ${compact(f.medNotional)} a position, under the whale floor, with a ${Math.round((f.winRate || 0) * 100)}% win rate and ${((f.medRet || 0) * 100).toFixed(1)}% return on a typical trade over ${f.closed} closed trades.` : 'Prints money on size well under the whale floor';
     t.push(`<span class="spec-tag printer-tag" title="${esc(tip)}">PRINTER</span>`);
   }
-  if (tr.scalper) t.push(`<span class="spec-tag scalp-tag" title="About ${Math.round(tr.tradesPerDay || 0)} closed trades a day over 30D: this whale works the tape, so the position may not last long">SCALPER</span>`);
+  if (tr.scalper) {
+    // Quote the real holding time. The old tooltip quoted Nansen's closed-trade count as if it were a
+    // pace, and told people to expect a short hold from traders who hold for days.
+    const h = tr.holdHours, q = tr.shareUnder1h;
+    const tip = h != null
+      ? `Typically holds a position about ${h < 1 ? `${Math.round(h * 60)} minutes` : `${h.toFixed(1)} hours`}${q != null && q >= 0.3 ? `, and closes ${Math.round(q * 100)}% of them inside an hour` : ''}. This whale works the tape, so the position may not last long.`
+      : 'Works the tape rather than holding, so the position may not last long';
+    t.push(`<span class="spec-tag scalp-tag" title="${esc(tip)}">SCALPER</span>`);
+  }
   return t.length ? ' ' + t.join(' ') : '';
 }
 

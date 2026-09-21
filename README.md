@@ -162,11 +162,16 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `EARLY_HORIZON_HOURS` | `48` | Window after entry for both the move and the return. 24h and 72h select almost the same wallets |
 | `EARLY_MIN_FINDS` | `4` | Good early calls needed in 30 days — four, not one, is what separates skill from a lucky week |
 | `EARLY_MIN_CONVERT` / `EARLY_MIN_COINS` / `EARLY_MIN_DAYS` | `0.4` / `2` / `3` | Conversion rate, and spread across coins and days, so one hot streak on one coin cannot qualify |
+| `EARLY_FEW_MIN_FINDS` / `EARLY_FEW_MIN_CONVERT` | `1` / `0.5` | The second route: how few early calls are enough, and how many of their chances they must have converted |
+| `EARLY_PROVEN_MIN_SCORE` / `_ROI` / `_WIN` / `_CLOSED` | `75` / `0.05` / `0.65` / `50` | How good the 30-day record has to be for that second route to open |
+| `FAST_CLOSES_PER_DAY` | `3` | Closing fills a day above which the Live Floor treats a wallet as one that would crowd it. **Not** the same scale as `SCALPER_TRADES_PER_DAY`: fills are read aggregated by time, so this runs ~10x lower. Calibrated against Nansen's own flag on 70 wallets (74% agreement) |
+| `CLASS_WARM_PER_BUILD` | `10` | Wallets classified in the background per Live Floor build, so a fresh deployment fills its map in minutes instead of waiting for the weekly roster |
 | `PRINTER_MIN_USD` / `PRINTER_MAX_USD` | `15000` / `50000` | The size band for a printer. **Never set the minimum lower**: below $15K is noise |
 | `PRINTER_MIN_TRADES` / `PRINTER_MIN_WIN` / `PRINTER_MIN_RET` | `8` / `0.55` / `0.01` | Sample, win rate and typical return per closed trade a printer must beat |
 | `CLASS_WINDOW_DAYS` | `30` | History read from Hyperliquid when classifying a wallet |
 | `LIVE_LOOKBACK_HOURS` | `96` | How far back the Live Floor looks for whales **still in** a position. Was 6h, which silently asked a different question — who *opened* recently — and handed the floor to the fastest wallets |
 | `LIVE_FLOOR_SLOTS` / `LIVE_FLOOR_PER_COIN` | `8` / `2` | Cards on the floor, and the most from any one coin. One card per wallet is fixed |
+| `SCALPER_MAX_MEDIAN_HOURS` / `SCALPER_MIN_SHARE_UNDER_1H` | `4` / `0.5` | What makes a whale a SCALPER: a typical position closed inside four hours, or half of them inside one. Measured on real round trips |
 | `SCALPER_TRADES_PER_DAY` | `20` | A wallet averaging this many closed trades a day over 30D is labelled **SCALPER** on cards and alerts. The tag is descriptive, not a quality judgement — it warns you the position may not last long |
 | `MAX_PLAYERS` | 100000 | Cap on stored players; above it, visitors who never placed a bet are pruned first |
 | `MAX_EXCLUDED` | 5000 | Cap on the trader exclusion list |
@@ -232,6 +237,18 @@ and was profitable overall. **7 of 143 wallets (4.9%) qualify.**
 Horizon is not doing the work: 24h gives 6 wallets and 72h gives 5, and every wallet in the 72h set is
 in the 48h set.
 
+**A second route, for traders who have not had four chances.** A wallet with only one or two early
+calls still qualifies if it converted them **and** its 30-day record is exceptional: score 75+, a 5%+
+return and a 65%+ win rate over 50+ closed trades. Measured, this admits **14 more wallets, every one
+of them A+, returning 5–47% over 30 days** — and still turns away two excellent traders who were in
+front of nine and twelve big moves and held two. Being a great trader is not the same as being early,
+so both halves have to be true. Tooltips and Telegram say plainly when a tag rests on a small sample.
+
+> This is what reopened the AVAX case. `0x2175ce7c…` opened within 0.1% of a three-day low before a
+> **51.8%** run and kept 88% of it — one call in 30 days, but an **A+ record with a 47.2% return and an
+> 80% win rate over 241 trades.** It now carries the tag, on the strength of the record rather than the
+> pattern. A wallet with one lucky call and an ordinary record still does not.
+
 > The trade that prompted this feature does not qualify, and that is the filter working. One wallet
 > opened AVAX within 0.1% of a three-day low before a **51.8%** run — but it is their only such call in
 > 30 days. One brilliant entry is not a track record, and the rule asks for four.
@@ -269,6 +286,41 @@ than judged on a slice of its record.
 Turn either path off with the switches in **bell → Alert rules & channels**, or with `allowEarly` /
 `allowPrinter` in the config.
 
+## The SCALPER tag was wrong on 80 of 85 whales
+
+Worth writing down, because the mistake is easy to repeat.
+
+The tag was derived from Nansen's `closed_trade_count / 30`. That field counts every closing **fill**,
+not every position — so a trader who builds one position and scales out of it in sixty clips registers
+sixty "closed trades". Measured against real round trips rebuilt from Hyperliquid fills, of the **85
+wallets it tagged, 57 actually held longer than 12 hours and 42 longer than a day. Only 5 held under
+an hour.**
+
+Two the tag named:
+
+| Whale | Nansen "closed trades" | Real round trips | Median hold | Under 1h |
+|---|---|---|---|---|
+| Token Millionaire | 979 | **9** | **9.7h** | 11% |
+| Uses "RABBYWALLET" | 648 | **17** | **47.2h** | **0%** |
+
+Both were tagged SCALPER, with a tooltip reading *"expect a short hold"*, on traders who hold for
+days. That is not a cosmetic error — someone could cash a Ride the Whale bet early because of it.
+
+**The tag now measures holding time**, from real round trips: a typical position closed inside four
+hours, or half of them inside an hour. That takes it from 85 wallets to **13**, whose median holds run
+from **4 minutes to 3.2 hours** with 29–71% closed inside the hour. The tooltip quotes the actual
+figure instead of a rate.
+
+Two things stayed separate on purpose. **Crowding** — what stops a handful of wallets taking every
+card on the Live Floor — is about how often a wallet *opens*, not how long it holds, and still uses
+closing-fill frequency. A wallet can open constantly and hold each position for days. And the roster
+no longer writes Nansen's verdict over the measured one; it passes only the pace.
+
+> Nothing about this changed which whales get alerts. `MIN_HOLD_MINUTES` only ever gated training
+> hands and odds calibration — the alert path never referenced it. Whales like these were alerting
+> before the scalper work and are alerting now; what changed is that they briefly wore a label that
+> did not describe them.
+
 ## Why the Live Floor is not just the eight biggest trades
 
 Letting scalpers back into the pool had a consequence nobody asked for: **every card on the floor was
@@ -292,6 +344,17 @@ Three things were wrong, and each was measured before it was changed:
 
 Before: 8 of 8 scalpers, 6 distinct coins. After: **4 of 8 scalpers, 8 wallets, 7 coins** — and a
 commodity (`xyz:GOLD`) on the floor for the first time.
+
+**The first version of this shipped broken, in a way only a cold start revealed.** All of it depended
+on classifications the weekly roster writes, so on a fresh deployment — an empty volume — every rule
+was inert and the floor looked exactly as it had before. Worse, the fallback meant to cover that case
+counted opens from a list already de-duplicated to one row per wallet, so every count was 1 and the
+test could never fire. Two fixes: the count now comes from the raw feed, and the floor warms its own
+classifications in the background (free, Hyperliquid only, ten wallets per build, drawn from the whole
+feed rather than the size-ranked candidates — otherwise the slower traders it exists to surface are
+never scored and never reserved a slot). From a genuinely empty data directory the floor now reaches
+**5 of 8 scalpers, 8 wallets, 7 coins within about two minutes**, and tightens to 4 of 8 once the
+roster supplies Nansen's exact flag.
 
 > A note on counting, because it caused a real bug: the classifier counts **round trips**, while
 > Nansen's `closed_trade_count` counts every closing **fill**. A whale scaling out of one position in
