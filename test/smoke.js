@@ -8,12 +8,20 @@
  * Exits 0 if every check passes, 1 on the first failure (so CI can gate on it).
  */
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const PORT = 3000 + Math.floor(Math.random() * 900) + 60;
+// A random port with no check meant an occupied one reported "server did not start", which reads as
+// a broken app rather than a busy machine. Ask the OS for a free one instead.
+const freePort = async () => new Promise((resolve, reject) => {
+  const s = net.createServer();
+  s.on('error', reject);
+  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
+});
+const PORT = await freePort();
 const BASE = `http://127.0.0.1:${PORT}`;
 const DATA = mkdtempSync(path.join(tmpdir(), 'fof-smoke-'));
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -74,12 +82,30 @@ try {
   ok('hand has a real coin and side', !!round.coin && ['Long', 'Short'].includes(round.side));
   ok('odds are present on both sides', round.odds?.follow > 1 && round.odds?.fade > 1);
 
-  const bet = await (await get('/api/bet', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: BASE },
-    body: JSON.stringify({ player: player.id, roundId: round.roundId, choice: 'follow', stake: 500 }),
-  })).json();
-  ok('the bet resolves', ['win', 'loss', 'push'].includes(bet.result), JSON.stringify(bet).slice(0, 90));
-  ok('bankroll moves by the stake', bet.player && bet.player.bankroll !== player.bankroll);
+  // Play a short run rather than one hand. A payout bug only shows on a WINNING hand, so a
+  // single-bet test catches an overpay about half the time - it passed three times in a row against
+  // a build that paid every winner a whole extra stake. Five hands makes that a ~3% miss.
+  let resolved = 0, exact = 0, seen = [], bankroll = player.bankroll;
+  for (let i = 0; i < 5; i++) {
+    const r = i === 0 ? round : await (await get('/api/round?player=' + player.id)).json();
+    if (!r?.roundId) break;
+    const bet = await (await get('/api/bet', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: BASE },
+      body: JSON.stringify({ player: player.id, roundId: r.roundId, choice: i % 2 ? 'fade' : 'follow', stake: 500 }),
+    })).json();
+    if (!['win', 'loss', 'push'].includes(bet.result)) { seen.push(JSON.stringify(bet).slice(0, 80)); continue; }
+    resolved++;
+    // A push is not a no-op bug: inside the push band the stake comes back and the balance is
+    // identical. Check the exact arithmetic for each outcome instead of "the number changed".
+    const want = bet.result === 'win' ? bankroll + Math.round(bet.stake * (bet.price - 1))
+      : bet.result === 'loss' ? bankroll - bet.stake
+      : bankroll;
+    if (bet.player?.bankroll === want) exact++;
+    else seen.push(`${bet.result} at ${bet.price}: ${bankroll} -> ${bet.player?.bankroll}, expected ${want}`);
+    bankroll = bet.player?.bankroll ?? bankroll;
+  }
+  ok('five hands all resolve', resolved === 5, `${resolved}/5 resolved ${seen.join(' | ')}`);
+  ok('every payout matches the stated odds', exact === resolved && resolved > 0, seen.join(' | '));
 
   // --- invariants that must never drift.
   // These are product promises, not implementation details: the game takes no rake and the
