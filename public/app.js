@@ -1436,8 +1436,15 @@ async function goToTrade(key) {
 // Arriving from a Telegram alert or the bell, the floor can be twenty cards deep and the gold glow
 // alone is easy to lose — especially after a scroll lands you between two cards. Hold the rest of the
 // floor back for the same few seconds so there is exactly one card in focus.
-const FOCUS_MS = 4000;
+const FOCUS_MS = 6000;
+// Arriving from Telegram on a desktop, the browser window usually has to be CLICKED before it takes
+// focus, and that click lands on the page. The dismiss-on-first-touch rule below then cancelled the
+// spotlight before the player had looked at anything - the reported symptom was a Live Floor with no
+// glow and nothing dimmed. Ignore input for a moment after the spotlight lands so the click that
+// merely brought the window forward does not count as impatience.
+const FOCUS_GRACE_MS = 1500;
 let focusTimer = null;
+let focusArmedAt = 0;
 let focusKey = null;   // which card the spotlight belongs to, by data-key
 function focusCard(card) {
   const list = $('liveList');
@@ -1446,10 +1453,11 @@ function focusCard(card) {
   focusKey = card.dataset.key || null;
   if (list) list.classList.add('focusing');
   clearTimeout(focusTimer);
+  focusArmedAt = Date.now();
   focusTimer = setTimeout(clearFocus, FOCUS_MS);
 }
 function clearFocus() {
-  clearTimeout(focusTimer); focusTimer = null; focusKey = null;
+  clearTimeout(focusTimer); focusTimer = null; focusKey = null; focusArmedAt = 0;
   $('liveList')?.classList.remove('focusing');
   document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
 }
@@ -1463,9 +1471,12 @@ function restoreFocus() {
   if (card) card.classList.add('spotlight');
   else clearFocus();
 }
-// Don't make an impatient player wait out the countdown: the first touch anywhere clears it.
+// Don't make an impatient player wait out the countdown - but only once the spotlight has had a
+// moment on screen, so window-activation clicks and a stray scroll on arrival don't eat it.
 ['pointerdown', 'keydown', 'wheel'].forEach((ev) =>
-  window.addEventListener(ev, () => { if (focusTimer) clearFocus(); }, { passive: true }));
+  window.addEventListener(ev, () => {
+    if (focusTimer && Date.now() - focusArmedAt > FOCUS_GRACE_MS) clearFocus();
+  }, { passive: true }));
 
 function announceAlert(a, count) {
   if (a.kind) return announceExit(a, count);
