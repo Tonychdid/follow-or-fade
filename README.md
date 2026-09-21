@@ -161,6 +161,8 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ALERT_LOOKBACK_HOURS` | `6` | How far back each alert scan reads the Nansen feed (same 5-credit cost at any window) |
 | `ALERT_MAX_AGE_MIN` | `240` | How old a trade may be and still earn its first alert |
 | `ALERT_MAX_PER_SCAN` | `5` | Most alerts one scan may send, newest first (the rest wait for the next scan) |
+| `TELEGRAM_PUBLIC` | off | `1` opens the alerts to everyone: anyone who sends `/start` to your bot is subscribed, `/stop` unsubscribes, and the site shows the bot link. Costs **no extra Nansen credits** — one scan serves every subscriber |
+| `TELEGRAM_MAX_SUBS` | `5000` | Cap on Telegram subscribers |
 | `WHALE_COOLDOWN` | `10` | Hands that must pass before the same whale can be dealt to a player again |
 | `ROSTER_DAYS` | `7` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off. Costs ~267 Nansen credits per run (~38/day at weekly) |
 | `ROSTER_LOOKBACK_HOURS` | `168` | The window the re-assessment reads to decide who is "in the pool" |
@@ -185,6 +187,8 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `MAX_EXCLUDED` | 5000 | Cap on the trader exclusion list |
 | `ADMIN_TOKEN` | none | Required in public mode. **Set it and the admin routes fail closed**, even if `PUBLIC` is ever missing |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
+
+With `TELEGRAM_PUBLIC=1`, anyone can send `/start` to the bot to get the whale alerts and `/stop` to end them. The operator's own copy is sent first and the fan-out runs in the background, so subscribers never delay it. From the operator's chat, `/subs` lists who is subscribed, `/kick <id>` removes and blocks someone, and `/unkick <id>` lets them back.
 
 ## Which whales qualify
 
