@@ -21,7 +21,7 @@ Click the service → **Variables** tab → **New Variable**, and add each one:
 | `NANSEN_API_KEY` | your Nansen key | live Nansen data |
 | `PUBLIC` | `1` | turns on public-site protections |
 | `ADMIN_TOKEN` | a long random password you invent (e.g. 30+ letters and numbers) | lets only you change alert rules and Telegram |
-| `RIDE_MAX_HOURS` | `48` | optional: longest a Ride the Whale bet can stay open |
+| `RIDE_MAX_HOURS` | `72` | optional: longest a Ride the Whale bet can stay open |
 | `AGENT_DAILY_CREDITS` | `750` | optional: daily credits for Nansen Agent research (1 daily Insider Pick + ~4 company checks) |
 | `DAILY_CREDIT_CAP` | `5000` | max Nansen credits per day; above it the site uses cached data and demo whales until midnight UTC |
 | `DATA_DIR` | `/data` | where bankrolls, bets and the leaderboard are saved |
@@ -48,7 +48,7 @@ The Plans page and the "FREE BETA" strip are the only places the site offers any
 
 It fails closed: a redeploy that loses the variable hides the offer rather than exposing it, and with Plans off the Telegram channel link is withheld from the API entirely.
 
-To turn it on, set both:
+To turn it on, set both `SHOW_LEGAL=1` and:
 - `SHOW_PLANS=1` reveals the free-beta strip.
 
 ## Good to know
