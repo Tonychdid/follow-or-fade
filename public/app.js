@@ -1382,6 +1382,11 @@ function renderAlertCfg() {
   if (!alertCfg) return;
   $('apSettings').hidden = alertCfg.canAdmin === false;
   $('apPublicNote').hidden = alertCfg.canAdmin !== false;
+  // Telegram is open to everyone when the deployment says so: the bot's @username is then the one
+  // thing a visitor needs, and the server only sends it when TELEGRAM_PUBLIC is on.
+  const tgOpen = alertCfg.telegram?.public && alertCfg.telegram?.botLink;
+  $('apTgPublic').hidden = !tgOpen;
+  if (tgOpen) $('apTgPublic').innerHTML = `\u{1F514} <b>Get these alerts on Telegram, free.</b> Open <a href="${esc(alertCfg.telegram.botLink)}" target="_blank" rel="noopener">@${esc(alertCfg.telegram.botName || 'the bot')}</a> and press <b>Start</b>. Send <code>/stop</code> in the chat any time to stop them. Alerts are information, not advice.`;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
   $('cfgSize').value = String(alertCfg.minSizeUsd); $('cfgC7').value = String(alertCfg.minCoins7d ?? 3); $('cfgC30').value = String(alertCfg.minCoins30d ?? 5); $('cfgInt').value = String(alertCfg.intervalMin); $('cfgProfit').checked = alertCfg.requireProfit30d; $('cfgSpec').checked = alertCfg.allowSpecialists !== false;
   $('cfgClosed').value = String(alertCfg.minClosed ?? 20); $('cfgRoi').value = String(alertCfg.minRoi30d ?? 0.02);
@@ -1395,7 +1400,8 @@ function renderAlertCfg() {
   $('apPublicNotif').hidden = alertCfg.canAdmin !== false;
   $('notifState2').textContent = $('notifState').textContent; $('notifBtn2').hidden = perm !== 'default';
   const tgc = alertCfg.telegram;
-  $('tgState').textContent = tgc.connected ? `Connected to @${tgc.botName}` : tgc.hasToken ? 'Waiting for Start' : 'Off';
+  const subCount = tgc.subscribers == null ? '' : ` \u00b7 ${tgc.subscribers} subscriber${tgc.subscribers === 1 ? '' : 's'}`;
+  $('tgState').textContent = tgc.connected ? `Connected to @${tgc.botName}${subCount}` : tgc.hasToken ? 'Waiting for Start' : 'Off';
   $('tgConnect').hidden = tgc.hasToken; $('tgVerify').hidden = !(tgc.hasToken && !tgc.connected); $('tgOff').hidden = !tgc.hasToken;
   $('tgBotName').textContent = tgc.botName ? '@' + tgc.botName : 'your bot';
   $('tgPair').textContent = tgc.pairCode || '—';
