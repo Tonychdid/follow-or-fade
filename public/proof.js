@@ -121,18 +121,25 @@ const relTable = (rows) => `<table><thead><tr><th>Bucket</th><th>Predictions</th
 
 function brierBlock(b) {
   if (!b) return '<p class="dim">Not enough settled predictions to score yet.</p>';
-  const better = b.score < b.reference;
+  // Lead with the fair reference when there is one: the base rate the odds were trained on. The set's
+  // own win rate is only known after the fact, so beating it is not a bar any forecaster could clear
+  // on purpose. It is still shown, named for what it is.
+  const fair = b.priorReference != null;
+  const ref = fair ? b.priorReference : b.reference;
+  const better = b.score < ref;
+  const skill = ref > 0 ? 1 - b.score / ref : null;
   return `<div class="tiles">
     <div class="tile"><small>Brier score</small><b>${b.score.toFixed(4)}</b></div>
-    <div class="tile"><small>Always guess the base rate</small><b class="dim" style="color:var(--muted)">${b.reference.toFixed(4)}</b></div>
-    <div class="tile"><small>Verdict</small><b class="${better ? 'pos' : 'neg'}" style="color:${better ? 'var(--emerald)' : 'var(--ruby)'};font-size:15px">${
-      better ? 'beats the base rate' : 'loses to the base rate'}</b></div>
+    <div class="tile"><small>${fair ? `No Nansen features (always ${pct(b.prior)})` : 'Always guess the base rate'}</small><b class="dim" style="color:var(--muted)">${ref.toFixed(4)}</b></div>
+    <div class="tile"><small>Skill from the Nansen features</small><b style="color:${better ? 'var(--gold)' : 'var(--ruby)'};font-size:17px">${skill == null ? 'n/a' : sgn(skill)}</b></div>
     <div class="tile"><small>Scored on</small><b>${num(b.n)}<span class="u">hands</span></b></div>
   </div>
   <p class="note">Brier is the mean squared error of the probabilities, lower is better, zero is perfect.
-  On its own it means nothing, so it sits next to the score a model gets for ignoring every Nansen
-  feature and always predicting the base rate (${pct(b.baseRate)}). Beating that reference is the
-  only thing that shows the features are doing work.</p>`;
+  On its own it means nothing, so it sits next to the score of a forecast that ignores every Nansen
+  feature and always says ${fair ? `the win rate the odds were trained on (${pct(b.prior)})` : `the base rate (${pct(b.baseRate)})`}.
+  Skill is how much of that error the features remove${better ? '' : '; negative means they added error on this set'}.
+  ${fair ? `For completeness: guessing this set's own win rate (${pct(b.baseRate)}), a number nobody could know
+  until these hands had resolved, scores ${b.reference.toFixed(4)}.` : ''}</p>`;
 }
 
 function panel(tag, tagClass, title, blurb, data, kind) {
@@ -172,7 +179,7 @@ async function load() {
   // Until it holds enough assessed hands to carry a comparison, the headline shows the in-sample check
   // and says so, instead of quietly promoting whichever set happens to be bigger.
   const CL = F?.clean || null;
-  const CLEAN_MIN = 60;
+  const CLEAN_MIN = 150; // below this the held-out verdict would flip with every few hands
   const assessed = (x) => x?.populations?.assessed || 0;
   const cleanN = assessed(CL);
   const clean = cleanN >= CLEAN_MIN;
@@ -198,9 +205,11 @@ async function load() {
     const sig = test.significant, up = test.diff >= 0;
     // Only the held-out record can PROVE anything. The in-sample check can at most be consistent.
     const cls = !sig ? 'wait' : !up ? 'bad' : clean ? 'ok' : 'wait';
+    // Even the held-out record removes only the odds model's advantage, not the roster's look-ahead
+    // (section 05), so nothing on this page is ever labelled proven.
     const word = clean
-      ? (!sig ? 'not yet proven' : up ? 'proven' : 'refuted')
-      : (!sig ? 'not supported' : up ? 'supported in-sample' : 'against, in-sample');
+      ? (!sig ? 'not shown yet' : up ? 'holds on held-out hands' : 'reversed on held-out hands')
+      : (!sig ? 'not supported' : up ? 'in-sample only' : 'against, in-sample');
     return `<div class="claim ${cls}">
       <div class="ct">${title}</div><div class="cv">${word}</div>
       <div class="cd">${fmt(test.diff)} &middot; 95% interval ${fmt(test.lo)} to ${fmt(test.hi)} &middot; ${pstr(test.pAdj ?? test.p)}</div>
@@ -209,7 +218,7 @@ async function load() {
 
   h += `<div class="card hero">
     <div class="q">Is copying Smart Money better <i>through the filters</i> than copying all of it?</div>
-    ${cmp && d2 != null ? `<div class="big ${!cmp.significant ? 'neutral' : d2 >= 0 ? 'pos' : 'neg'}">${sgn(d2, 2)}</div>
+    ${cmp && d2 != null ? `<div class="big ${!clean || !cmp.significant ? 'neutral' : d2 >= 0 ? 'pos' : 'neg'}">${sgn(d2, 2)}</div>
     <div class="ci">return per hand, versus copying every whale &middot; 95% interval ${sgn(cmp.tests?.return?.vsAll?.lo ?? d2 - 1.96 * cmp.differenceSe, 2)} to ${sgn(cmp.tests?.return?.vsAll?.hi ?? d2 + 1.96 * cmp.differenceSe, 2)}</div>
     <div class="claims">
       ${claim('The filters pick whales that win more often', cmp.tests?.winRate?.vsAll, (x) => sgnPP(x, 1),
@@ -248,7 +257,7 @@ async function load() {
       <div class="tiles">
         <div class="tile"><small>Return difference</small><b style="color:${cmp.significant ? (d2 >= 0 ? 'var(--emerald)' : 'var(--ruby)') : 'var(--gold-l)'}">${sgn(d2, 2)}</b></div>
         <div class="tile"><small>Win-rate difference</small><b style="color:${cmp.tests?.winRate?.vsAll?.significant ? 'var(--emerald)' : 'var(--gold-l)'}">${
-          cmp.tests?.winRate?.vsAll ? sgnPP(cmp.tests.winRate.vsAll.diff, 1) : '\u2014'}</b></div>
+          cmp.tests?.winRate?.vsAll ? sgnPP(cmp.tests.winRate.vsAll.diff, 1) : 'n/a'}</b></div>
         <div class="tile"><small>Assessed hands</small><b>${num(cmp.assessed)}</b></div>
         <div class="tile"><small>Wallet never assessed</small><b>${num(cmp.unknown)}<span class="u">hands</span></b></div>
       </div>
@@ -363,14 +372,14 @@ async function load() {
     fortnight is a market regime, not a law, and a whisker that crosses zero means exactly what it says.</li>
     <li><b>The roster verdict is today's, applied to older trades.</b> Which population a hand lands in
     comes from the current weekly roster, and that roster was graded partly on the very outcomes being
-    scored here: a mild look-ahead that flatters the filtered side. It is the reason the lookback
+    scored here: a look-ahead that flatters the filtered side and may explain much of the gap. It is the reason the lookback
     is kept to two weeks rather than stretched for a bigger number: the further back it reaches, the
     more the comparison leans on a verdict that already knew the answer. The held-out record removes
     the odds model's advantage but not this one: the filters themselves were tuned by looking at
     results like these. The fully clean test is a roster frozen before the trades it judges.</li>
     <li><b>Four tests, one set of hands.</b> Win rate and return, each against two comparisons. Running
     four tests makes a lucky pass more likely, so every p-value on this page is Holm-adjusted before
-    anything is called supported or proven.</li>
+    any claim is called supported.</li>
     <li><b>Hands from one whale are not independent.</b> The filtered set averages under three hands per
     wallet, so every interval on this page is cluster-robust: hands are grouped by the wallet that made
     them before the error is computed, and where that produces a <i>narrower</i> bar than the naive
