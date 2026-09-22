@@ -73,7 +73,7 @@ What the numbers show today: the model's skill is modest (a few percent better B
 A whale is dealt, and can fire an alert, only if their Nansen record clears the house rules: realized profit over 30 days and 7 days, enough closed trades, profit spread across several coins, and a grade built from return, win rate and sample size. Two rules worth knowing:
 
 - **Specialists** with proven profit on the exact coin they are opening get through on that coin.
-- **Market-maker pattern.** Thousands of closes a month, or 95% wins over hundreds, is quoting both sides of the book, not calling direction. Those wallets are capped at grade C, below the alert bar.
+- **Market-maker pattern.** Winning 95% or more of hundreds of closes is quoting both sides of the book, not calling direction. Those wallets are capped at grade C, below the alert bar.
 
 Nansen labels are shown as the whale's name, except labels that are only a Hyperliquid referral code: this site never prints a referral code, so those wallets are named by address.
 
