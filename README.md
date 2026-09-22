@@ -187,7 +187,8 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ALERT_MAX_PER_SCAN` | `5` | Most alerts one scan may send, newest first (the rest wait for the next scan) |
 | `TELEGRAM_PUBLIC` | off | `1` opens the alerts to everyone: anyone who sends `/start` to your bot is subscribed, `/stop` unsubscribes, and the site shows the bot link. Costs **no extra Nansen credits** — one scan serves every subscriber |
 | `TELEGRAM_MAX_SUBS` | `5000` | Cap on Telegram subscribers |
-| `LEADERBOARD_ALERT_TOP` | `30` | How many of the whale board's top performers are admitted to the alert pool even when they miss a rule. `0` turns it off |
+| `LEADERBOARD_ALERT_TOP` | `50` | How many of the whale board's top performers are admitted to the alert pool even when they miss a rule. `0` turns it off |
+| `LEADERBOARD_MAX_7D_LOSS_PCT` | `0.25` | The one bar the board route does **not** waive: a top performer whose last 7 days cost more than this share of the month's profit is turned away anyway |
 | `LEADERBOARD_MIN_CLOSED` | `20` | Closed positions a wallet needs before the board can admit it. Stops a `+300%` on two trades from firing alerts |
 | `BOT_STAKE` | `500` | Chips the house bots stake on every hand |
 | `WHALE_COOLDOWN` | `10` | Hands that must pass before the same whale can be dealt to a player again |
@@ -216,8 +217,11 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ADMIN_TOKEN` | none | Required in public mode. **Set it and the admin routes fail closed**, even if `PUBLIC` is ever missing |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
 
-The **whale board's top 30** are admitted to the alert pool on every weekly sweep even if a house rule
-would turn them away — the rules are a filter, the board is a verdict. They are ranked the way the
+The **whale board's top 50** are admitted to the alert pool on every weekly sweep even if a house rule
+would turn them away — the rules are a filter, the board is a verdict. With one exception: the board
+ranks on thirty days, which is slow to notice a record coming apart, so a top performer whose last
+seven days cost more than `LEADERBOARD_MAX_7D_LOSS_PCT` of the month's profit is turned away anyway.
+A wallet that simply did not trade this week has no loss to weigh and passes. They are ranked the way the
 board ranks (30-day return on closes) but only among wallets with at least `LEADERBOARD_MIN_CLOSED`
 closed positions, so a lucky two-trade wallet cannot buy its way into everyone's Telegram. Their
 alerts carry a **LEADERBOARD** tag and a line saying how they got in. The list is recomputed on every
