@@ -178,6 +178,16 @@ try {
   ok('an entry that arrived whole gets no disclosure', !whole.includes('Position size'));
   ok('an alert with no tradeUsd at all gets no disclosure', !renderMessage(wh).includes('Position size'));
 
+  // The alert freezes a grade; the card grades the whale now. A whale that alerted at C and reads A
+  // on the card is one whale on two days, and the re-check has to say so instead of leaving two
+  // surfaces contradicting each other with nothing to explain it.
+  const { gradeDriftLine } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+  const drift = gradeDriftLine({ grade: 'C', score: 60 }, { grade: 'A', score: 75 });
+  ok('a grade that moved since the alert is explained', drift.includes('Grade now <b>A</b>') && drift.includes('was <b>C</b>'), drift);
+  ok('an unchanged grade adds nothing', gradeDriftLine({ grade: 'A' }, { grade: 'A' }) === '');
+  ok('a missing grade adds nothing', gradeDriftLine(null, { grade: 'A' }) === '' && gradeDriftLine({ grade: 'C' }, null) === '');
+  ok('a falling grade points down', gradeDriftLine({ grade: 'A' }, { grade: 'C' }).startsWith('\u2B07'));
+
   // Identical 30D and 7D columns mean the month's record was all earned in its last week. Found in
   // production on a wallet alerting at A+ 100/100 with "648 closes" under a 30D heading, which reads
   // as a month of track record and is one week's. It does NOT mean the wallet is new - that one has
