@@ -145,7 +145,7 @@ async function shareResult(byName) {
     try { await navigator.share({ text, url: link }); return; }
     catch (e) { if (e?.name === 'AbortError') return; }
   }
-  try { await navigator.clipboard.writeText(link); toast('Result link copied — paste it to them'); }
+  try { await navigator.clipboard.writeText(link); toast('Result link copied, paste it to them'); }
   catch { prompt('Copy this and send it back:', link); }
 }
 
@@ -167,7 +167,7 @@ async function handleResultLink() {
     $('rsBody').innerHTML = r.same
       ? `You both <b>${esc(mine)}</b> the ${esc(r.side.toLowerCase())} on <b>${esc(coin)}</b>.`
       : `You <b>${esc(mine)}</b>, ${esc(r.responder)} <b>${esc(theirs)}</b> the ${esc(r.side.toLowerCase())} on <b>${esc(coin)}</b>.`;
-    const verdict = r.senderWon === null ? 'Too close to call — the whale went nowhere.'
+    const verdict = r.senderWon === null ? 'Too close to call: the whale went nowhere.'
       : r.same ? (r.senderWon ? 'You were both right.' : 'You were both wrong.')
       : (r.senderWon ? `You read it better.` : `${r.responder} read it better.`);
     $('rsSub').textContent = `${verdict}${r.whaleRet != null ? ` The whale's real exit came out ${(r.whaleRet * 100).toFixed(2)}%.` : ''}`;
@@ -181,7 +181,7 @@ const whaleLine = (h) => {
   const size = h.valueUsd ? `<b>${compact(h.valueUsd)}</b> ` : '';
   return `${size}<b>${h.side === 'Short' ? 'SHORT' : 'LONG'}</b> on <b>${esc(String(h.coin).split(':').pop())}</b>`;
 };
-// A training hand is a real trade from THIS WEEK, already played out — say when it was opened rather
+// A training hand is a real trade from THIS WEEK, already played out, say when it was opened rather
 // than implying it is live right now. That belongs to the Live Floor, which is a different question.
 const whenLine = (h) => (h.openedAt ? ` <span class="wl-when">${esc(ago(h.openedAt))}</span>` : '');
 /** Fill the front door with the hand actually waiting: a friend's challenge, or the next hand in the deck. */
@@ -218,7 +218,7 @@ function armWelcome() {
   function fire() {
     // Fallback only. The real trigger is the intro's closing button ("Deal me in"), because that is
     // the moment the visitor expects the room to open up. Defer while the nickname dialog or an intro
-    // is on screen — otherwise the very first tap spends the flourish before anyone has arrived.
+    // is on screen, otherwise the very first tap spends the flourish before anyone has arrived.
     if (store.get('fof_welcomed') === '1' && !qp('welcome')) return;
     if (isMuted()) { arm(); return; }                     // muted: keep it owed, try again later
     if (introOpen || $('welcome')?.open) { arm(); return; } // their buttons do the honours
@@ -319,7 +319,7 @@ async function refreshStatus() {
   $('demoBadge').title = s.usage.capped ? "Today's Nansen credit budget for the public site is used up. Cached whale data and demo whales until midnight UTC." : 'No Nansen API key: sample whales on real Hyperliquid prices';
   $('uCalls').textContent = s.usage.calls.toLocaleString();
   $('uCredits').textContent = s.usage.credits.toLocaleString();
-  $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : '—';
+  $('uModel').textContent = s.model.n ? s.model.n.toLocaleString() : ', ';
   if (s.rideMaxHours) {
     rideCapHours = s.rideMaxHours;
     const sub = $('rideLaneSub');
@@ -349,7 +349,7 @@ async function pollBets() {
     const before = prevStatus.get(b.id);
     if (before === 'open' && b.status !== 'open' && b.status !== 'cashed') settledNow.push(b);
     // A cashed ride keeps being followed until the whale is actually out. When that lands, tell the
-    // player what their exit was worth against the whale's — that is the skill the floor now teaches.
+    // player what their exit was worth against the whale's: that is the skill the floor now teaches.
     if (b.status === 'cashed' && b.heldOutcome && !toldHeld.has(b.id)) { toldHeld.add(b.id); heldNow.push(b); }
     if (before !== 'cashed') prevStatus.set(b.id, b.status);
   }
@@ -454,7 +454,7 @@ function updateRow(row, b, now) {
   const btn = row.querySelector('.cashout');
   const ok = !b.pending && b.cashOut != null && left > 6000;
   btn.disabled = !ok || btn.dataset.busy === '1' || cashingOut.has(b.id);
-  btn.querySelector('b').textContent = ok ? usd(b.cashOut) : '—';
+  btn.querySelector('b').textContent = ok ? usd(b.cashOut) : ', ';
   btn.classList.toggle('up', ok && b.cashOut >= b.stake);
 }
 
@@ -510,8 +510,8 @@ function announceHeld(b) {
   const line = same
     ? `Your exit and the whale's came out the same: ${took >= 0 ? '+' : ''}${usd(took)}.`
     : held > took
-      ? `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b> — you left ${usd(held - took)} on the table.`
-      : `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b> — <b>getting out early saved you ${usd(took - held)}</b>.`;
+      ? `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b>, you left ${usd(held - took)} on the table.`
+      : `You took ${took >= 0 ? '+' : ''}${usd(took)}. Holding to their exit would have paid <b>${held >= 0 ? '+' : ''}${usd(held)}</b>, <b>getting out early saved you ${usd(took - held)}</b>.`;
   toast(`${when} ${line.replace(/<\/?b>/g, '')}`);
   const box = $('heldLesson');
   if (box) {
@@ -533,7 +533,7 @@ async function announceSettled(settledNow) {
       const dirMul = b.whaleSide === 'Long' ? 1 : -1;
       const mine = b.exit && b.entry ? (b.choice === 'follow' ? 1 : -1) * dirMul * (b.exit - b.entry) / b.entry : null;
       const both = mine != null && b.whaleTradeRet != null && !b.pick ? ` · you ${pct(mine, 2)} from your entry, whale ${pct(b.whaleTradeRet, 2)} from theirs` : '';
-      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap reached on ${b.coin} — the whale was still holding`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
+      const how = b.ride ? (b.whaleClosed ? `The whale exited ${b.coin} after ${hrs(b.whaleHeldMs)}` : `${Math.round((b.settleAt - b.placedAt) / 3600e3)}h cap reached on ${b.coin}: the whale was still holding`) : b.pick ? `Insider Pick (${b.pickDays || Math.round((b.settleAt - b.placedAt) / 864e5)}d) on ${b.coin}` : `${LANES[b.minutes] || 'Live bet'} on ${b.coin}`;
       if (b.status === 'won') { sfx.ding(); setTimeout(() => sfx.win(net > 2000), 200); coinRain(net > 2000 ? 90 : 45); toast(`${how}: you won +${usd(net)}${both}`); }
       else if (b.status === 'lost') { sfx.lose(); toast(`${how}: you lost ${usd(net)}${both}`); }
       else { sfx.push(); toast(b.band >= 0.001 || b.ride || b.pick ? `Too close to call on ${b.coin} (under ±${((b.band || 0.002) * 100).toFixed(1)}%): stake returned` : `Push on ${b.coin}: stake returned`); }
@@ -552,7 +552,7 @@ async function deal() {
   $('round').hidden = true; $('reveal').hidden = true; $('suspense').hidden = true; $('err').hidden = true; $('dealing').hidden = false;
   const ch = challengeId; challengeId = null; // a challenge is played once, then it's a normal table
   try { round = await api('/api/round?player=' + player.id + (ch ? '&challenge=' + encodeURIComponent(ch) : '')); }
-  catch (e) { $('dealing').hidden = true; return showErr(e.message + ' — '); }
+  catch (e) { $('dealing').hidden = true; return showErr(e.message + ', '); }
   const r = round;
   const card = $('playcard');
   card.className = 'playcard ' + r.side;
@@ -590,7 +590,7 @@ async function deal() {
   card.classList.remove('dealt'); void card.offsetWidth; card.classList.add('dealt');
   sfx.deal();
   // On a phone the page keeps the scroll position of the hand you just finished, which lands you on the
-  // FOLLOW/FADE buttons with the whale card off-screen above — you are asked to call a trade you cannot
+  // FOLLOW/FADE buttons with the whale card off-screen above, you are asked to call a trade you cannot
   // see. Bring the card itself into view. 'start' rather than 'center': the card is tall on a narrow
   // screen and centring it pushes its top out of the viewport.
   scrollCardIntoView();
@@ -610,8 +610,8 @@ function scrollCardIntoView() {
 }
 
 /**
- * Net dollars bought minus sold over 24h. The colour is the SIGN — green is net buying, red is net
- * selling — and never a verdict on the trade, because the same flow is bullish for a long and bearish
+ * Net dollars bought minus sold over 24h. The colour is the SIGN, green is net buying and red is net
+ * selling, never a verdict on the trade, because the same flow is bullish for a long and bearish
  * for a short. Whether it helps this particular whale is spelled out underneath instead of encoded in
  * a colour nobody can decode.
  */
@@ -665,7 +665,7 @@ async function bet(choice, btn) {
   sfx.bet(); sparkleAt(btn, 18);
   let res;
   try { res = await api('/api/bet', { player: player.id, roundId: round.roundId, choice, stake }); }
-  catch (e) { $('btnFollow').disabled = $('btnFade').disabled = false; return showErr(e.message + ' — '); }
+  catch (e) { $('btnFollow').disabled = $('btnFade').disabled = false; return showErr(e.message + ', '); }
   // suspense: spin the wheel before the reveal
   $('round').hidden = true; $('suspense').hidden = false; sfx.roll(1.2);
   setTimeout(() => scrollToResult('suspense'), 40);
@@ -771,8 +771,8 @@ function showReveal(res, choice) {
       const theyWon = res.result === 'push' ? null : (cb.choice === choice) === (res.result === 'win');
       vs.className = 'vs-line ' + (theyWon === null ? '' : same ? (theyWon ? 'both' : 'both neg') : (theyWon ? 'neg' : 'pos'));
       vs.innerHTML = same
-        ? `You and <b>${esc(cb.by)}</b> both ${choice === 'fade' ? 'faded' : 'followed'} this whale${theyWon === null ? '.' : theyWon ? ' — and you were both right.' : ' — and you were both wrong.'}`
-        : `<b>${esc(cb.by)}</b> ${cb.choice === 'fade' ? 'faded' : 'followed'}, you ${choice === 'fade' ? 'faded' : 'followed'}${theyWon === null ? '.' : theyWon ? ` — ${esc(cb.by)} read it better.` : ' — you read it better.'}`;
+        ? `You and <b>${esc(cb.by)}</b> both ${choice === 'fade' ? 'faded' : 'followed'} this whale${theyWon === null ? '.' : theyWon ? ', and you were both right.' : ', and you were both wrong.'}`
+        : `<b>${esc(cb.by)}</b> ${cb.choice === 'fade' ? 'faded' : 'followed'}, you ${choice === 'fade' ? 'faded' : 'followed'}${theyWon === null ? '.' : theyWon ? `, ${esc(cb.by)} read it better.` : ', you read it better.'}`;
       // Send it straight back instead of making them screenshot the screen.
       if (replyId) {
         const b = document.createElement('button');
@@ -868,7 +868,7 @@ $('btnShare').onclick = async () => {
 // Every link that opens a real trading venue goes through one confirmation first. It is a disclosure,
 // not guidance: it states that the game is educational, that we are not involved in what happens on a
 // third-party venue, and that the risk and the responsibility are entirely the player's. It must never
-// tell anyone HOW to trade — naming a leverage or a margin mode would be advice, which this product
+// tell anyone HOW to trade, naming a leverage or a margin mode would be advice, which this product
 // does not give.
 const TRADE_HOST = 'https://app.nansen.ai/token-god-mode';
 const gateTrade = (e) => {
@@ -1036,7 +1036,7 @@ $('chNative').onclick = async () => {
       ? { text: shareText, files: [new File([shareBlob], 'challenge.png', { type: 'image/png' })] }
       : { text: shareText, url: shareLink });
   } catch (e) {
-    if (e?.name !== 'AbortError') toast('Sharing was blocked — use the buttons or copy the link.');
+    if (e?.name !== 'AbortError') toast('Sharing was blocked, use the buttons or copy the link.');
   }
 };
 $('chCopy').onclick = async () => {
@@ -1151,25 +1151,25 @@ function renderWhaleBoard() {
     const named = !!(w.trader && w.trader !== 'Smart Money whale');
     const cls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[w.grade] || 'gc';
     const url = `https://app.nansen.ai/profiler?address=${encodeURIComponent(w.address)}&chain=hyperliquid`;
-    const roi = r.roi == null ? '—' : `<span class="${r.roi >= 0 ? 'pos' : 'neg'}">${pct(r.roi)}</span>`;
-    const pnl = r.pnl == null ? '—' : `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${compact(r.pnl)}</span>`;
+    const roi = r.roi == null ? ', ' : `<span class="${r.roi >= 0 ? 'pos' : 'neg'}">${pct(r.roi)}</span>`;
+    const pnl = r.pnl == null ? ', ' : `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${compact(r.pnl)}</span>`;
     return `<tr>
       <td>${i + 1}</td>
       <td><a class="whale-name" href="${esc(url)}" target="_blank" rel="noopener">${esc(whaleName(w))}</a>
         <div class="whale-addr">${named ? esc(shortAddr(w.address)) + ' ' : ''}${w.inPool ? '<span class="pool-tag" title="Clears the house rules, so this whale is dealt as a hand and can fire an alert">IN THE POOL</span>' : ''}</div></td>
       <td><span class="grade-chip ${cls}">${esc(w.grade || '?')}</span>${whaleTags(w)}</td>
       <td>${roi}</td><td>${pnl}</td>
-      <td>${r.winRate == null ? '—' : Math.round(r.winRate * 100) + '%'}</td>
-      <td>${r.closed ?? '—'}</td>
-      <td>${w.topCoin ? esc(w.topCoin) : '—'}</td>
+      <td>${r.winRate == null ? ', ' : Math.round(r.winRate * 100) + '%'}</td>
+      <td>${r.closed ?? ', '}</td>
+      <td>${w.topCoin ? esc(w.topCoin) : ', '}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="8" class="muted">${d.demo
-    ? 'The whale roster is not assessed in demo mode — add a Nansen key and it fills on the first sweep.'
+    ? 'The whale roster is not assessed in demo mode, add a Nansen key and it fills on the first sweep.'
     : 'The first roster sweep has not finished yet. It runs shortly after launch and then on a schedule.'}</td></tr>`;
 
   const when = d.finishedAt || d.at;
   $('whaleNote').innerHTML = rows.length
-    ? `Ranked on <b>30-day return on closed positions</b>, from Nansen. <b>Closes</b> is the sample behind it — a big return on three positions is not the same as the same return on three hundred, so read the two together. Click a column to re-rank.<br>
+    ? `Ranked on <b>30-day return on closed positions</b>, from Nansen. <b>Closes</b> is the sample behind it: a big return on three positions is not the same as the same return on three hundred, so read the two together. Click a column to re-rank.<br>
        <b>${d.counts.inPool}</b> of <b>${d.counts.seen}</b> whales seen clear the house rules and are dealt as hands; the rest are shown so you can see the rules doing their job.
        ${when ? `Last assessed ${ago(when)}${d.everyDays ? `, every ${d.everyDays} day${d.everyDays === 1 ? '' : 's'}` : ''}.` : ''}`
     : '';
@@ -1265,7 +1265,7 @@ function recordHtml(r) {
 
 /**
  * The tags that sit beside a whale's grade. One helper, because these appear on the live card, in the
- * dossier, on the alert popup, in the alert list and on the training table — and a tag that shows in
+ * dossier, on the alert popup, in the alert list and on the training table, and a tag that shows in
  * one place and not another reads as a bug.
  */
 function whaleTags(tr, a) {
@@ -1335,7 +1335,7 @@ function liveCard(t) {
     </div>
     <div class="probbar"><div class="pf" style="width:${(t.pFollow * 100).toFixed(1)}%"></div><div class="needle" style="left:calc(${(t.pFollow * 100).toFixed(1)}% - 1px)"></div></div>
     <div class="problabels"><span>Follow wins <b>${Math.round(t.pFollow * 100)}%</b></span><span>Fade wins <b>${Math.round((1 - t.pFollow) * 100)}%</b></span></div>
-    <div class="ride-note"><b>Ride the Whale</b> — this bet ends when the whale closes their position, or at the ${rideCapHours}-hour mark if they are still holding. <b>Cash out any time</b> at the current price.</div>
+    <div class="ride-note"><b>Ride the Whale</b>: this bet ends when the whale closes their position, or at the ${rideCapHours}-hour mark if they are still holding. <b>Cash out any time</b> at the current price.</div>
     <div class="lstake"><input type="number" min="1" value="500" aria-label="Stake"><button class="minichip" data-add="100">100</button><button class="minichip g" data-add="500">500</button><button class="minichip r" data-add="1000">1K</button><button class="minichip k" data-add="all">ALL</button></div>
     <div class="actions"><button class="bet follow" data-choice="follow"><span>FOLLOW</span><small>x${hzOdds(t, 'ride').follow.toFixed(2)}</small></button>
     <button class="bet fade" data-choice="fade"><span>FADE</span><small>x${hzOdds(t, 'ride').fade.toFixed(2)}</small></button></div>
@@ -1534,7 +1534,7 @@ function renderAlertCfg() {
   $('tgState').textContent = tgc.connected ? `Connected to @${tgc.botName}${subCount}` : tgc.hasToken ? 'Waiting for Start' : 'Off';
   $('tgConnect').hidden = tgc.hasToken; $('tgVerify').hidden = !(tgc.hasToken && !tgc.connected); $('tgOff').hidden = !tgc.hasToken;
   $('tgBotName').textContent = tgc.botName ? '@' + tgc.botName : 'your bot';
-  $('tgPair').textContent = tgc.pairCode || '—';
+  $('tgPair').textContent = tgc.pairCode || ', ';
   // One-click pairing: Telegram sends "/start <code>" for them, so there is nothing to type or mistype.
   const link = $('tgPairLink');
   link.href = tgc.pairLink || '#';
@@ -1632,7 +1632,7 @@ async function goToTrade(key) {
 }
 
 // Arriving from a Telegram alert or the bell, the floor can be twenty cards deep and the gold glow
-// alone is easy to lose — especially after a scroll lands you between two cards. Hold the rest of the
+// alone is easy to lose, especially after a scroll lands you between two cards. Hold the rest of the
 // floor back for the same few seconds so there is exactly one card in focus.
 const FOCUS_MS = 6000;
 // Arriving from Telegram on a desktop, the browser window usually has to be CLICKED before it takes
@@ -1665,7 +1665,7 @@ function clearFocus() {
   document.querySelectorAll('.lcard.spotlight').forEach((c) => c.classList.remove('spotlight'));
 }
 /** renderLive() replaces the whole list, which throws away the spotlighted element while `focusing`
- *  stays on the container — every card then matches the dim rule and the card you were sent to is
+ *  stays on the container: every card then matches the dim rule and the card you were sent to is
  *  blurred along with the rest. Re-attach the spotlight after a re-render, or drop the focus if that
  *  card is no longer on the floor. */
 function restoreFocus() {
@@ -1753,7 +1753,7 @@ function profileCard(r) {
   const cls = (v) => (v == null ? '' : v >= 65 ? 'pos' : v <= 40 ? 'neg' : '');
   const row = (x) => `<div class="sk${x.ready ? '' : ' locked'}">
       <div class="sk-top"><span class="sk-i" aria-hidden="true">${x.icon}</span><span class="sk-l">${esc(x.label)}</span>
-        <b class="${cls(x.score)}">${x.ready ? x.score + '<i>/100</i>' : '—'}</b></div>
+        <b class="${cls(x.score)}">${x.ready ? x.score + '<i>/100</i>' : ', '}</b></div>
       <div class="sk-bar"><span class="mid" aria-hidden="true"></span><i style="width:${x.ready ? x.score : 0}%"></i></div>
       <small>${x.ready ? `${x.n} hand${x.n === 1 ? '' : 's'} · you won ${Math.round(x.winRate * 100)}%, the odds expected ${Math.round(x.expected * 100)}%` : `${x.n}/${pr.minScored} hands · ${esc(x.blurb)}`}</small>
     </div>`;
@@ -1765,8 +1765,8 @@ function profileCard(r) {
     </div>
     <div class="sk-grid">${pr.scores.map(row).join('')}</div>
     <div class="pf-notes">
-      ${pr.best ? `<p><b class="pos-h">Your strongest skill</b> ${esc(pr.best.label)} — ${pr.best.score}/100 over ${pr.best.n} hand${pr.best.n === 1 ? '' : 's'}.</p>` : ''}
-      ${pr.worst && pr.worst.score < 50 ? `<p><b class="neg-h">Your biggest leak</b> ${esc(pr.worst.label)} — ${pr.worst.score}/100 over ${pr.worst.n} hand${pr.worst.n === 1 ? '' : 's'}.</p>` : ''}
+      ${pr.best ? `<p><b class="pos-h">Your strongest skill</b> ${esc(pr.best.label)}, ${pr.best.score}/100 over ${pr.best.n} hand${pr.best.n === 1 ? '' : 's'}.</p>` : ''}
+      ${pr.worst && pr.worst.score < 50 ? `<p><b class="neg-h">Your biggest leak</b> ${esc(pr.worst.label)}, ${pr.worst.score}/100 over ${pr.worst.n} hand${pr.worst.n === 1 ? '' : 's'}.</p>` : ''}
       ${pr.training ? `<p><b>Recommended training</b> ${esc(pr.training)}</p>` : ''}
     </div>
   </div>`;
@@ -1785,7 +1785,7 @@ function renderReport(r) {
   }
   body.innerHTML = `
     <div class="report-card">
-      <p class="counts-note">Counts training hands, Ride the Whale bets and Insider Picks — all judged on a real exit, never a timer.</p>
+      <p class="counts-note">Counts training hands, Ride the Whale bets and Insider Picks, all judged on a real exit, never a timer.</p>
       <div class="level-row"><div class="level-badge l${r.level.index}">${r.level.index + 1}</div><div><small>Your level</small><h3>${esc(r.level.name)}</h3><p>${r.level.next ? 'Next: ' + esc(r.level.next) : 'You beat the odds consistently. Take the reads you are best at to real trades on Nansen.'}</p></div></div>
       <div class="ladder">${ladder}</div>
       <div class="kpis">
@@ -1804,13 +1804,13 @@ function renderReport(r) {
     </div>
     ${tagCard(r)}
     <div class="report-card"><h4>Every pattern we track</h4><div class="pat-grid">${r.patterns.map(pat).join('')}</div></div>
-    <div class="report-card cta"><div><h4>Where this data comes from</h4><p>Every read you are scored on is built from Nansen's Smart Money data on Hyperliquid. What you do with the skill is yours to decide — we have no relationship with Nansen and earn nothing if you go there.</p></div>
+    <div class="report-card cta"><div><h4>Where this data comes from</h4><p>Every read you are scored on is built from Nansen's Smart Money data on Hyperliquid. What you do with the skill is yours to decide, we have no relationship with Nansen and earn nothing if you go there.</p></div>
       <div class="ref-actions"><a class="nansen-btn big" href="https://app.nansen.ai/token-god-mode?tokenAddress=BTC&chain=hyperliquid" target="_blank" rel="noopener">See this data on Nansen ↗</a></div></div>
     <p class="disclaimer">Play money only. Past results in a game do not guarantee real trading results. Not financial advice.</p>`;
 }
 /**
  * How the player reads each KIND of whale. The grade patterns above answer "do you over-trust a good
- * record"; this answers a question the grade cannot — reading a whale who gets in before moves is a
+ * record"; this answers a question the grade cannot, reading a whale who gets in before moves is a
  * different skill from reading one who never holds, and a player can be reliably good at one and
  * reliably wrong about the other.
  *
@@ -1822,7 +1822,7 @@ function tagCard(r) {
   const tagClass = { early: 'early-tag', printer: 'printer-tag', scalper: 'scalp-tag', specialist: '', combo: '', untagged: '', elite: '', weak: '' };
   const row = (g) => {
     const cls = tagClass[g.key] ? `spec-tag ${tagClass[g.key]}` : 'spec-tag plain-tag';
-    if (!g.enough) return `<div class="tagrow thin"><span class="${cls}">${esc(g.label)}</span><small>${g.n ? `${g.n} hand${g.n === 1 ? '' : 's'} so far — ${4 - g.n} more to be scored` : 'not seen yet'}</small></div>`;
+    if (!g.enough) return `<div class="tagrow thin"><span class="${cls}">${esc(g.label)}</span><small>${g.n ? `${g.n} hand${g.n === 1 ? '' : 's'} so far, ${4 - g.n} more to be scored` : 'not seen yet'}</small></div>`;
     const good = g.edge >= 0;
     return `<div class="tagrow"><span class="${cls}">${esc(g.label)}</span>
       <div class="tagbar"><i style="width:${Math.round(Math.max(2, Math.min(100, g.winRate * 100)))}%" class="${good ? 'pos' : 'neg'}"></i></div>
@@ -1866,7 +1866,7 @@ $('mobPremium')?.addEventListener('click', goPremium);
 // if the status call never lands, no offer is shown, which is the state the published mentions légales
 // describe. Anyone who deep-links to #plans while it is off is put back on the Training Table.
 // The Premium page makes no commercial offer at all: everything on it is free, unfinished and
-// invite-only, and it says so before anything else. So the page itself is always available — people
+// invite-only, and it says so before anything else. So the page itself is always available, people
 // could not otherwise discover that Telegram alerts exist. SHOW_PLANS still gates the beta strip,
 // which does imply a future paid tier.
 function paintPlans(on) {
@@ -2032,12 +2032,12 @@ const INTROS = {
   live: { kicker: 'Live Floor', q: 'Follow or fade real positions, open right now', go: 'Take me to the floor',
     steps: ['Whales who opened in the last 6 hours and <b>still hold the position</b>, graded A+ to F by their Nansen track record.',
       'You enter at <b>today\'s price</b>, like copying the trade for real. Each card shows how far the whale is already up or down.',
-      '<b>Ride the Whale</b>: your bet ends when the whale closes their position, not on a timer. <b>Cash out any time</b> — and knowing when to get out is the skill.',
+      '<b>Ride the Whale</b>: your bet ends when the whale closes their position, not on a timer. <b>Cash out any time</b>, and knowing when to get out is the skill.',
       'Plus the <b>Insider Pick</b>: a stock where company insiders are buying, held 1 week to 6 months.'],
     how: 'Entry: <b>today\'s price</b> · Judged on: <b>the whale\'s real exit</b>' },
   report: { kicker: 'Trader Profile', q: 'How well do you actually read Smart Money?', go: 'Show my profile',
     steps: ['Every Training hand, Ride the Whale bet and Insider Pick is analysed.',
-      'Seven named skills, each scored 0–100 against <b>what the odds expected of you</b> — 50 means you read those hands as well as the data did.',
+      'Seven named skills, each scored 0–100 against <b>what the odds expected of you</b>, 50 means you read those hands as well as the data did.',
       'Levels are earned by beating the odds, never by playing more hands: <b>Rookie</b> → <b>Market Operator</b>.'],
     how: 'Play money only. Build the skill here, then decide what to do with it.' },
 };
@@ -2111,7 +2111,7 @@ function closeIntro() {
   sfx.chip();
 }
 // The arrival flourish belongs on the button that actually starts the game, not on whatever the
-// visitor happened to touch first — and it must be fired from inside the click, or a phone drops it.
+// visitor happened to touch first, and it must be fired from inside the click, or a phone drops it.
 $('introGo').onclick = () => {
   const finishing = !introState || introState.i === introState.pages.length - 1;
   if (finishing && store.get('fof_welcomed') !== '1' && !isMuted()) {
@@ -2154,12 +2154,12 @@ async function recheckCard(card) {
     if (base) {
       if (base.entry != null) {
         // `move` is the trade's P&L since the baseline, already flipped for the side. It said
-        // "in the whale's favour" whatever the sign — which was flatly wrong on a losing move, and on a
+        // "in the whale's favour" whatever the sign: which was flatly wrong on a losing move, and on a
         // short it hid the fact that the price had gone the other way. Say both, and name the baseline.
         const raw = (t.mid - base.entry) / base.entry;
         const move = (t.side === 'Long' ? 1 : -1) * raw;
         const side = t.side.toLowerCase();
-        lines.push(`${esc(t.coin)} is <b>${raw >= 0 ? 'up' : 'down'} ${Math.abs(raw * 100).toFixed(2)}%</b> since ${esc(base.label)} — `
+        lines.push(`${esc(t.coin)} is <b>${raw >= 0 ? 'up' : 'down'} ${Math.abs(raw * 100).toFixed(2)}%</b> since ${esc(base.label)}, `
           + `<span class="${move >= 0 ? 'pos' : 'neg'}">${Math.abs(move * 100).toFixed(2)}% ${move >= 0 ? `in this ${side}'s favour` : `against this ${side}`}</span>`);
       }
       if (base.pFollow != null) {
