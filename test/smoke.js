@@ -234,6 +234,21 @@ try {
   // ---- the hands are not independent draws, and the error bars have to know it ----
   // Where every hand really does come from its own wallet, the cluster-robust error must reduce to
   // the textbook one EXACTLY. If it does not, the clustering arithmetic is simply wrong.
+  // ---- the pager must not stop after one page ----
+  // This one cost a day: `is_last_page !== false` ended the loop after page one whenever the
+  // response had no pagination block, and because the feed is ordered newest-first and pool()
+  // discards anything younger than MAX_HOLD, the training pool silently stayed small. Every
+  // response shape the API can return is pinned here so it cannot happen again.
+  const { wantsNextPage } = await import(path.join(ROOT, 'lib', 'nansen.js'));
+  ok('a full page with no pagination block asks for the next one',
+     wantsNextPage({ data: [] }, 500, 500) === true);
+  ok('a short page ends the paging', wantsNextPage({ data: [] }, 137, 500) === false);
+  ok('the API saying last page ends the paging',
+     wantsNextPage({ pagination: { is_last_page: true } }, 500, 500) === false);
+  ok('the API saying NOT last page keeps going',
+     wantsNextPage({ pagination: { is_last_page: false } }, 500, 500) === true);
+  ok('an empty page ends the paging', wantsNextPage({}, 0, 500) === false);
+
   const solo = proof.meanStats([1, -1, 0.3, -1, 0.5, -1, 0.25, -1, 2, -1], Array.from({ length: 10 }, (_, i) => 'w' + i));
   ok('with one hand per wallet the clustered error equals the textbook one',
      Math.abs(solo.seCluster - solo.seIid) < 1e-12, `${solo.seCluster} vs ${solo.seIid}`);
