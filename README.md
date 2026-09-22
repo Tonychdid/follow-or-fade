@@ -12,7 +12,7 @@
 > 2. **[Play one hand](https://follow-or-fade-production.up.railway.app)** — a real Smart Money trade,
 >    priced by Nansen data, settled on the whale's real exit. Takes about twenty seconds.
 > 3. **Run it yourself:** `git clone` then `node server.js` — **no install, no build, no API key.**
->    Zero dependencies. It is dealing hands in about six seconds. `npm test` is 38 checks, offline.
+>    Zero dependencies. It is dealing hands in about six seconds. `npm test` runs about 60 checks, offline.
 >
 > Every number this README claims is served live and can be checked without asking us:
 > [`/api/proof`](https://follow-or-fade-production.up.railway.app/api/proof) ·
@@ -54,12 +54,16 @@ Read alongside the win rate, because the odds already price in how good a wallet
 whales should *not* move the return, so a gap that survives anyway is the filters catching something
 the odds are not.
 
-**Are the odds honest?** Two kinds of evidence, never mixed. A **forward record** — every price
-quoted, written down before the outcome was known, unfakeable by construction. And **10-fold
-cross-validation** on the training pool, fitted on nine tenths and asked about the tenth, with folds
-assigned by position so anyone re-running it gets the same answer. Both carry a reliability table and
-a Brier score next to the score a model gets for ignoring every feature and guessing the base rate —
-because a Brier score without that reference means nothing.
+**Are the odds honest?** Three kinds of evidence, never mixed. **Dealt hands**: every price the
+table quoted, logged when the hand was dealt. These are replays of trades that have already closed,
+so this is a record of what the table said, not a forecast. **Held out**: the clean subset of those,
+drawn from a fixed 1-in-5 holdout that the odds model is never allowed to train on, so each price came
+from a model that had never seen the trade. This is the only record that can prove anything, and it
+takes over the page's headline once it holds 60 assessed hands. And **10-fold cross-validation** on
+the training pool, with folds assigned by position so anyone re-running it gets the same answer. Each
+carries a reliability table and a Brier score next to the score for just guessing the base rate,
+because a Brier score without that reference means nothing. Four tests run on the same hands, so every
+p-value is Holm-adjusted, and nothing on the in-sample set is ever labelled proven.
 
 An in-sample curve — scoring the training set with the model fitted on it — is **deliberately not
 offered, at any size, under any label**. It is the easiest beautiful chart in this field to produce
@@ -78,9 +82,10 @@ BOT. *Always Follow* is the benchmark this whole product is judged against: if b
 Money beats the people learning to read it, the leaderboard says so in public, and nobody gets to tune
 it. No other number on the site can embarrass the site. That one can.
 
-**Measured on the live deployment, 22 September 2026:** 20,068 Nansen API calls · 27,170 credits ·
-356 resolved trades in the calibration sample · 503 bets placed by real players. The buildathon asks
-for 1,000 calls.
+**Live counts, never stale:** [`/api/usage`](https://follow-or-fade-production.up.railway.app/api/usage)
+shows every Nansen call and credit since launch (over 25,000 calls by 22 September; the buildathon asks
+for 1,000), and [`/api/status`](https://follow-or-fade-production.up.railway.app/api/status) shows the
+calibration sample and the live feed size.
 
 ---
 
@@ -104,7 +109,7 @@ npm start                   # then open http://localhost:3000
 **Windows:** download the repo (Code → Download ZIP), unzip it and double-click `start.bat`. On first run it asks for your key and opens the browser.
 
 ```bash
-npm test                    # 38 checks, no key and no network needed
+npm test                    # about 60 checks, no key and no network needed
 ```
 
 **Time to first hand:** about 5 seconds after `npm start` (tested on a fresh copy with Node 18 and Node 22). Open http://localhost:3000, pick a nickname, and the Training Table deals a live Smart Money trade.
