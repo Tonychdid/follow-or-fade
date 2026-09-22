@@ -2,13 +2,13 @@
 // scripts only from 'self' - and weakening the policy for one page would be a worse trade than
 // a second file.
 const $ = (id) => document.getElementById(id);
-const pct = (x, d = 1) => (x == null ? '&mdash;' : (x * 100).toFixed(d) + '%');
-const sgn = (x, d = 1) => (x == null ? '&mdash;' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%');
+const pct = (x, d = 1) => (x == null ? ', ' : (x * 100).toFixed(d) + '%');
+const sgn = (x, d = 1) => (x == null ? ', ' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%');
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const num = (n) => (n == null ? '&mdash;' : Number(n).toLocaleString('en-US'));
+const num = (n) => (n == null ? ', ' : Number(n).toLocaleString('en-US'));
 // A gap between two rates is measured in percentage POINTS, not percent: same scaling as sgn(),
 // different unit. Scaling again here is how +2.7pp becomes a nonsensical +267.2%pp.
-const sgnPP = (x, d = 1) => (x == null ? '&mdash;' : sgn(x, d).replace('%', 'pp'));
+const sgnPP = (x, d = 1) => (x == null ? ', ' : sgn(x, d).replace('%', 'pp'));
 
 const tip = $('tip');
 function bindTip(el, html) {
@@ -70,7 +70,7 @@ function bindReliability(el, rows) {
     bindTip(h, `<b>${(r.lo * 100).toFixed(0)}&ndash;${(r.hi * 100).toFixed(0)}% bucket</b><br>` +
       `said &nbsp;&nbsp;${pct(r.predicted)}<br>actual ${pct(r.actual)} &plusmn;${(ci * 100).toFixed(1)}<br>` +
       `over ${r.n} prediction${r.n === 1 ? '' : 's'}<br>` +
-      (Math.abs(miss) > ci ? `<span style="color:var(--ruby)">off by ${(miss * 100).toFixed(1)} points &mdash; beyond the interval</span>`
+      (Math.abs(miss) > ci ? `<span style="color:var(--ruby)">off by ${(miss * 100).toFixed(1)} points, beyond the interval</span>`
                            : `<span style="color:var(--muted)">gap is inside the interval</span>`));
   });
 }
@@ -84,7 +84,7 @@ function roiBars(items, opts = {}) {
   const x = (v) => L + ((v + cap) / (2 * cap)) * (W - L - R);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.alt || 'Return per hand')}">`;
   s += `<line class="zeroline" x1="${x(0)}" y1="${T - 6}" x2="${x(0)}" y2="${T + items.length * rowH - 6}"/>`;
-  s += `<text class="ax" x="${x(0)}" y="${T - 12}" text-anchor="middle">0% &mdash; fair odds</text>`;
+  s += `<text class="ax" x="${x(0)}" y="${T - 12}" text-anchor="middle">0%, fair odds</text>`;
   items.forEach((it, i) => {
     const v = it.v, y = T + i * rowH + 14;
     // Emerald above zero, ruby below - and every bar also carries its signed number and a row label,
@@ -129,7 +129,7 @@ function brierBlock(b) {
       better ? 'beats the base rate' : 'loses to the base rate'}</b></div>
     <div class="tile"><small>Scored on</small><b>${num(b.n)}<span class="u">hands</span></b></div>
   </div>
-  <p class="note">Brier is the mean squared error of the probabilities &mdash; lower is better, zero is perfect.
+  <p class="note">Brier is the mean squared error of the probabilities, lower is better, zero is perfect.
   On its own it means nothing, so it sits next to the score a model gets for ignoring every Nansen
   feature and always predicting the base rate (${pct(b.baseRate)}). Beating that reference is the
   only thing that shows the features are doing work.</p>`;
@@ -208,7 +208,7 @@ async function load() {
       ${claim('The filters beat the price those whales are quoted at', cmp.tests?.return?.vsAll, (x) => sgn(x, 2),
         'The hard one. The odds already price in how good a wallet is, so a better whale is quoted shorter and simply picking better whales should not move the return. Clearing this bar means the house rules see something the pricing does not.')}
     </div>
-    <p class="exp">Measured on ${headLabel}. Both intervals are cluster-robust &mdash; hands are grouped by
+    <p class="exp">Measured on ${headLabel}. Both intervals are cluster-robust, hands are grouped by
     the wallet that made them, so one busy whale cannot pass itself off as many independent votes.</p>`
     : `<div class="big neutral">not yet</div>
     <p class="exp">Not enough assessed hands to compare the two populations honestly. The record below is filling.</p>`}
@@ -218,7 +218,7 @@ async function load() {
   h += `<h2><span class="n">01</span>Blind copying vs copying through the filters</h2>
   <p class="lede">The same hands, the same odds, the same settlement on the whale's real exit. The only
   thing that differs is which wallets were allowed through: <b>every Smart Money whale</b> Nansen
-  surfaced in the perp feed, against <b>only the ones that clear the house rules</b> &mdash; grade, win
+  surfaced in the perp feed, against <b>only the ones that clear the house rules</b>, grade, win
   rate, sample size, coins traded, profitable over both windows, plus the specialist, early, printer
   and whale-board routes. If the filtered set does not beat the raw set, the filters are decoration
   and this page should say so.</p>`;
@@ -249,7 +249,7 @@ async function load() {
         const cell = (t, fmt) => t && t.se != null
           ? `<td class="${t.significant ? (t.diff >= 0 ? 'y' : 'n') : ''}">${fmt(t.diff)}<span class="pp">${
               t.significant ? pstr(t.p) : 'not yet &middot; ' + pstr(t.p)}</span></td>`
-          : '<td class="dim">&mdash;</td>';
+          : '<td class="dim">, </td>';
         const pc = (x) => sgnPP(x, 1), rr = (x) => sgn(x, 2);
         return `<table class="ptab"><thead><tr><th></th>
             <th>vs copying every whale</th><th>vs the whales it rejected</th></tr></thead><tbody>
@@ -259,18 +259,18 @@ async function load() {
       })()}
       <p class="note">The rejected row is shown because it is the other half of the argument: filters that
       help must leave something worse behind. Hands from a wallet the weekly roster has never assessed
-      count in the raw population and in neither of the other two &mdash; folding them into either would
+      count in the raw population and in neither of the other two, folding them into either would
       flatter whichever side they landed on.</p>
       <p class="note"><b>Read the two numbers separately.</b> The win rate is the plain question: how
       often does backing this population pay off. The return is a harder test, because the odds already
-      price in how good the wallet is &mdash; a whale with a strong record is quoted at a shorter price,
+      price in how good the wallet is: a whale with a strong record is quoted at a shorter price,
       so simply picking better whales should <i>not</i> move the return. A gap that survives anyway means
       the house rules are catching something the odds are not, which is the only version of this claim
       worth making.</p>
       <details><summary>Show as a table</summary><table>
         <thead><tr><th>Population</th><th>Hands</th><th>Wallets</th><th>Won</th><th>Return / hand</th><th>95% interval</th></tr></thead><tbody>
         ${[['Every Smart Money whale', cmp.all], ['Through the filters', cmp.filtered], ['Rejected by the filters', cmp.rejected]]
-          .filter(([, c]) => c && c.n).map(([nm, c]) => `<tr><td>${nm}</td><td>${num(c.n)}</td><td>${c.wallets ? num(c.wallets) : '&mdash;'}</td><td>${pct(c.winRate, 0)}</td>
+          .filter(([, c]) => c && c.n).map(([nm, c]) => `<tr><td>${nm}</td><td>${num(c.n)}</td><td>${c.wallets ? num(c.wallets) : ', '}</td><td>${pct(c.winRate, 0)}</td>
           <td class="${c.follow.roi >= 0 ? 'pos' : 'neg'}">${sgn(c.follow.roi, 2)}</td>
           <td class="dim">${sgn(c.follow.roi - 1.96 * c.follow.se, 1)} to ${sgn(c.follow.roi + 1.96 * c.follow.se, 1)}</td></tr>`).join('')}
         </tbody></table></details>
@@ -283,8 +283,7 @@ async function load() {
   h += `<h2><span class="n">02</span>The falsification test</h2>
   <p class="lede">Three strategies play every hand this app deals, at a flat stake, priced by the same
   odds and settled on the same real whale exits. Nobody gets to tune them. If backing every whale
-  quietly out-earns every human on the board, the honest read is that the teaching is not working
-  &mdash; and the board says so without being asked.</p>
+  quietly out-earns every human on the board, the honest read is that the teaching is not working, and the board says so without being asked.</p>
   <div class="card">
     <figure id="stratFig">${roiBars([
       { label: 'Always Follow', v: head.strategies?.follow, sub: head.strategies?.follow?.n ? `${num(head.strategies.follow.n)} hands \u00b7 won ${pct(head.strategies.follow.winRate, 0)}` : '' },
@@ -314,9 +313,9 @@ async function load() {
 
   const pf = panel('Forward record', 'fwd', 'Every price quoted, before the outcome was known',
     F.n ? `Written down at the moment each hand was built and never edited since.
-       ${num(F.n)} predictions, ${num(F.scored)} of them settled${F.pushes ? ` (${num(F.pushes)} pushed &mdash; the whale barely moved, so there was no winner)` : ''}${F.since ? `, starting ${esc(F.since.slice(0, 10))}` : ''}.
+       ${num(F.n)} predictions, ${num(F.scored)} of them settled${F.pushes ? ` (${num(F.pushes)} pushed: the whale barely moved, so there was no winner)` : ''}${F.since ? `, starting ${esc(F.since.slice(0, 10))}` : ''}.
        Unfakeable by construction, and the only thing that can finally settle the argument.`
-      : `The journal starts empty and fills as hands are dealt &mdash; it has nothing in it yet.
+      : `The journal starts empty and fills as hands are dealt: it has nothing in it yet.
          Until it does, the cross-validated panel below is the honest answer.`, F, 'F');
   h += pf.html;
 
@@ -354,7 +353,7 @@ async function load() {
     fortnight is a market regime, not a law, and a whisker that crosses zero means exactly what it says.</li>
     <li><b>The roster verdict is today's, applied to older trades.</b> Which population a hand lands in
     comes from the current weekly roster, and that roster was graded partly on the very outcomes being
-    scored here &mdash; a mild look-ahead that flatters the filtered side. It is the reason the lookback
+    scored here: a mild look-ahead that flatters the filtered side. It is the reason the lookback
     is kept to two weeks rather than stretched for a bigger number: the further back it reaches, the
     more the comparison leans on a verdict that already knew the answer. The clean version of this test
     is the forward record, which has no such problem and is the one that will settle it.</li>
