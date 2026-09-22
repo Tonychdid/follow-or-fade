@@ -202,7 +202,7 @@ async function handle(req, res) {
   const key = `${req.method} ${url.pathname}`;
   const route = routes[key];
   if (route) {
-    if (limited(req, COST[key] || 1)) return json(res, 429, { error: 'Easy, high roller. Too many requests, try again in a moment.' });
+    if (limited(req, COST[key] || 1)) return json(res, 429, { error: 'Too many requests, try again in a moment.' });
     try { json(res, 200, await route(req.method === 'POST' ? await readBody(req) : {}, url.searchParams, req)); }
     catch (e) {
       if (e.status !== 403) console.error('[api]', url.pathname, e.message);
