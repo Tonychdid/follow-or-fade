@@ -228,6 +228,13 @@ alerts carry a **LEADERBOARD** tag and a line saying how they got in. The list i
 sweep, so it adds and drops with the assessment rather than going stale. To run the assessment now
 rather than waiting for it to fall due, POST to `/api/roster/run` with your admin token.
 
+Every Telegram message is a dashboard: the grade and tags on top, then the trade, then the whale's
+30-day record beside their last 7 days in an aligned table, then the odds. It is sent as Telegram
+HTML, and every string that came from Nansen — wallet labels, coin symbols, the Agent's prose — is
+escaped on the way in. If Telegram ever refuses the formatting anyway, the same message is resent
+immediately as plain text: losing the alignment is cosmetic, losing an exit alert on a position
+somebody may be holding is not.
+
 With `TELEGRAM_PUBLIC=1`, anyone can send `/start` to the bot to get the whale alerts and `/stop` to end them. The operator's own copy is sent first and the fan-out runs in the background, so subscribers never delay it. From the operator's chat, `/subs` lists who is subscribed, `/kick <id>` removes and blocks someone, and `/unkick <id>` lets them back.
 
 ## Which whales qualify
@@ -518,12 +525,13 @@ Answers are cached and shared by every player (12h per company, one screen per d
 
 ## Free beta and plans
 
-The whole game is free during the beta (training, live bets, Trader Profile, in-app whale alerts). Telegram delivery and custom alert rules are the Premium side and stay admin-only on the public site while they are in private testing. The **Plans** page shows where the Academy is heading and links to a Telegram announcement channel (no email is collected and no payment is taken):
+The whole game is free during the beta — training, live bets, Trader Profile, in-app whale alerts, and **Telegram whale alerts, which are now open to everyone**: anyone can send `/start` to the bot and get them, at no extra Nansen cost, because one scan serves every subscriber. **Setting your own alert rules** is what stays admin-only on the public site while it is in private testing (or run your own copy and set them yourself). The **Plans** page shows where the Academy is heading and links to a Telegram announcement channel (no email is collected and no payment is taken):
 
 | Plan | What it unlocks |
 |---|---|
 | Basic (free) | Training Table, dealer's tells, Live Floor bets on all three tables, cash out, whale track records and trust grades, Trader Profile, challenge links, Hall of Fame, Trade on Nansen |
-| Premium (paid, price announced at launch) | Everything in Basic plus real-time Telegram whale alerts, add / trim / exit position updates, graded-whale filters, the Insider Pick of the Day and Nansen Agent insider research |
+| Basic (free) also includes | Real-time Telegram whale alerts with add / trim / exit position updates — free to everyone while `TELEGRAM_PUBLIC=1` |
+| Premium (paid, price announced at launch) | Everything above plus your own alert rules and graded-whale filters, the Insider Pick of the Day and Nansen Agent insider research |
 
 The alert scanner runs once for everyone, so Premium alerts cost the same in Nansen credits whether 10 or 1,000 people receive them.
 
