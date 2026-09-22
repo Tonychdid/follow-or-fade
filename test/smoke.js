@@ -167,6 +167,17 @@ try {
     .split('\n').map((l) => l.length)), 0);
   ok('the stats grid fits a phone', widest > 0 && widest <= 32, `widest line is ${widest} characters`);
 
+  // Nansen hands back ONE FILL at a time, so a whale that split an entry across 145 orders arrives
+  // looking like a fraction of itself. A live ZRO alert said $25.4K against a $142K buy. The headline
+  // now carries the position, and says so rather than silently printing the larger number.
+  const split = renderMessage({ ...wh, valueUsd: 386000, tradeUsd: 25421 });
+  ok('a split entry says the headline is the position', split.includes('Position size'),
+     'the disclosure has to travel with the corrected number');
+  ok('the fill Nansen reported is still shown', /\$25\.4K/.test(split), 'the smaller figure is disclosed, not hidden');
+  const whole = renderMessage({ ...wh, valueUsd: 386000, tradeUsd: 380000 });
+  ok('an entry that arrived whole gets no disclosure', !whole.includes('Position size'));
+  ok('an alert with no tradeUsd at all gets no disclosure', !renderMessage(wh).includes('Position size'));
+
   // Identical 30D and 7D columns mean the month's record was all earned in its last week. Found in
   // production on a wallet alerting at A+ 100/100 with "648 closes" under a 30D heading, which reads
   // as a month of track record and is one week's. It does NOT mean the wallet is new - that one has
