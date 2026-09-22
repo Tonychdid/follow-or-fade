@@ -1532,3 +1532,5 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
   .nr-list .nr-what{grid-column:1/-1;order:3;font-size:12px}
   .nr-how{display:none}
 }
+.whale-link{color:inherit;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.whale-link:hover{color:var(--gold-l)}
