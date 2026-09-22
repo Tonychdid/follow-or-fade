@@ -18,6 +18,9 @@ const roster = await import('./lib/roster.js');
 const bots = await import('./lib/bots.js');
 const store = await import('./lib/store.js');
 const proof = await import('./lib/proof.js');
+const scorecard = await import('./lib/scorecard.js');
+const og = await import('./lib/ogimage.js');
+scorecard.setWatchLookup(alerts.watchFor);
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
@@ -98,7 +101,8 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (no
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
-  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2, 'POST /api/roster/run': 40, 'GET /api/proof': 3, 'GET /api/proof/raw': 3, 'GET /api/usage': 2 };
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2, 'POST /api/roster/run': 40, 'GET /api/proof': 3, 'GET /api/proof/raw': 3, 'GET /api/usage': 2,
+  'GET /api/scorecard': 3, 'GET /api/whale': 3 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -162,7 +166,138 @@ const routes = {
   'GET /api/research/pick': async (_, q) => game.pickView(q.get('player')),
   'POST /api/research/pick/bet': async (b) => game.placePickBet(b.player, b.choice, b.stake, b.days),
   'GET /api/live/bets': async (_, q) => game.liveBetsFor(q.get('player')),
+  // The alert scorecard: every alert ever sent, scored from the price a follower could have had.
+  // Public for the same reason the proof desk is: these were sent before the outcome, so they are
+  // the one record nobody can have fitted after the fact. Reads the journal on disk, no credits.
+  'GET /api/scorecard': async () => scorecard.scorecard(),
+  // One whale, for its share page: the roster record, any open position on the floor, its alerts.
+  'GET /api/whale': async (_, q) => whaleView(q.get('address')),
 };
+
+const ADDR = /^0x[0-9a-fA-F]{40}$/;
+/** Everything public about one Smart Money wallet. No Nansen call: the roster, the floor cache and the journal. */
+async function whaleView(address) {
+  if (!ADDR.test(address || '')) throw Object.assign(new Error('Not a wallet address'), { status: 400 });
+  const a = address.toLowerCase();
+  if (excluded.isExcluded(address)) throw Object.assign(new Error('We have not seen this wallet yet'), { status: 404 });
+  const board = roster.publicBoard().whales.find((w) => String(w.address).toLowerCase() === a) || null;
+  const liveAll = await Promise.resolve(game.liveFeed()).catch(() => []);
+  const live = (Array.isArray(liveAll) ? liveAll : []).filter((t) => String(t.address || '').toLowerCase() === a);
+  const sc = await scorecard.forWallet(address);
+  if (!board && !live.length && !sc.alerts.length) throw Object.assign(new Error('We have not seen this wallet yet'), { status: 404 });
+  const trust = live[0]?.record?.trust || (board ? { grade: board.grade, score: board.score } : null) || (sc.alerts[0] ? { grade: sc.alerts[0].grade, score: sc.alerts[0].score } : null);
+  return {
+    address, trader: nansen.whaleName(board?.trader || live[0]?.trader || sc.alerts[0]?.trader, address),
+    grade: trust?.grade ?? null, score: trust?.score ?? null, label: trust?.label ?? null, marketMaker: !!trust?.marketMaker,
+    inPool: !!board?.inPool, topCoin: board?.topCoin ?? null,
+    tags: { specialist: !!board?.specialist, early: !!board?.early, printer: !!board?.printer, scalper: !!board?.scalper, leaderboard: !!board?.leaderboard },
+    d30: board?.d30 || live[0]?.record?.d30 || null, d7: board?.d7 || live[0]?.record?.d7 || null,
+    live: live.map((t) => ({ key: t.key, coin: t.coin, side: t.side, valueUsd: t.valueUsd, entryPrice: t.entryPrice, mid: t.mid,
+      moveSinceEntry: t.moveSinceEntry, openedAt: t.openedAt, pFollow: t.pFollow })),
+    scorecard: sc,
+    nansenUrl: `https://app.nansen.ai/profiler?address=${encodeURIComponent(address)}&chain=hyperliquid`,
+  };
+}
+
+// ---------- share pages and their images
+// X and Telegram unfurl a link from the og: tags in the HTML, and they do not run JavaScript, so a
+// page meant to be shared has to carry its own title, description and image in the markup.
+const attr = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const pageCache = new Map();
+function renderPage(file, vars) {
+  let html = pageCache.get(file);
+  if (!html) { html = fs.readFileSync(path.join(ROOT, 'public', file), 'utf8'); pageCache.set(file, html); }
+  return html.replace(/\{\{(\w+)\}\}/g, (_, k) => (k === 'PUBLIC_URL' ? PUBLIC_URL : attr(vars[k])));
+}
+const pctS = (x, d = 1) => (x == null ? 'n/a' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`);
+const usdS = (x) => (x == null ? '' : '$' + Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(x));
+function whaleLines(w) {
+  const r = w.d30 || {};
+  const bits = [w.grade && w.grade !== '?' ? `GRADE ${w.grade}` : null, r.roi != null ? `30D ${pctS(r.roi)}` : null, r.winRate != null ? `${Math.round(r.winRate * 100)}% WINS` : null].filter(Boolean);
+  const s = w.scorecard?.summary || {};
+  const now = w.live?.[0];
+  return { bits: bits.join(' · '), now: now ? `NOW ${now.side === 'Short' ? 'SHORT' : 'LONG'} ${String(now.coin).replace(/^\w+:/, '')} ${usdS(now.valueUsd)}` : null,
+    alerts: s.closed ? `${s.wins} OF ${s.closed} ALERTS WON FROM THE ALERT PRICE` : null };
+}
+function whaleDesc(w) {
+  const r = w.d30 || {}, s = w.scorecard?.summary || {}, now = w.live?.[0];
+  return [
+    w.grade && w.grade !== '?' ? `Grade ${w.grade}` : null,
+    r.roi != null ? `${pctS(r.roi)} over 30 days` : null,
+    r.winRate != null && r.closed ? `${Math.round(r.winRate * 100)}% of ${r.closed} closes won` : null,
+    now ? `Now ${now.side === 'Short' ? 'short' : 'long'} ${String(now.coin).replace(/^\w+:/, '')} ${usdS(now.valueUsd)}` : null,
+    s.closed ? `${s.wins} of ${s.closed} alerts won from the alert price` : null,
+  ].filter(Boolean).join(' · ') + '. Real Nansen Smart Money data. Would you follow or fade?';
+}
+const ogCache = new Map();
+async function ogImage(key, make) {
+  const hit = ogCache.get(key);
+  if (hit && Date.now() - hit.t < 10 * 60e3) return hit.buf;
+  const buf = og.card(await make());
+  ogCache.set(key, { t: Date.now(), buf });
+  if (ogCache.size > 300) ogCache.delete(ogCache.keys().next().value);
+  return buf;
+}
+async function servePage(req, res, url) {
+  const p = url.pathname;
+  const png = (buf) => { res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=600', ...SECURITY }); res.end(buf); };
+  const html = (body) => { res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY }); res.end(body); };
+  let m;
+  if ((m = p.match(/^\/w\/(0x[0-9a-fA-F]{40})\/?$/))) {
+    if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
+    const w = await whaleView(m[1]).catch(() => null);
+    const l = w ? whaleLines(w) : {};
+    const title = w ? `${w.trader}${w.grade && w.grade !== '?' ? ` · Grade ${w.grade}` : ''} · Follow or Fade` : 'A Smart Money whale · Follow or Fade';
+    const desc = w ? whaleDesc(w) : 'A Nansen Smart Money wallet on Hyperliquid. Would you follow or fade?';
+    return html(renderPage('whale.html', { TITLE: title, DESC: desc, IMG: `${PUBLIC_URL}/og/w/${m[1]}.png`, URL: `${PUBLIC_URL}/w/${m[1]}`, ADDRESS: m[1] }));
+  }
+  if ((m = p.match(/^\/og\/w\/(0x[0-9a-fA-F]{40})\.png$/))) {
+    if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
+    return png(await ogImage('w:' + m[1].toLowerCase(), async () => {
+      const w = await whaleView(m[1]).catch(() => null);
+      if (!w) return { kicker: 'SMART MONEY WHALE ON HYPERLIQUID', lines: [{ text: 'FOLLOW OR FADE?', scale: 12, color: og.COLORS.goldL }] };
+      const l = whaleLines(w);
+      return { kicker: 'SMART MONEY WHALE ON HYPERLIQUID · NANSEN DATA', lines: [
+        { text: w.trader, scale: 8, color: og.COLORS.ivory },
+        ...(l.bits ? [{ text: l.bits, scale: 5, color: og.COLORS.goldL }] : []),
+        ...(l.now ? [{ text: l.now, scale: 5, color: w.live[0].side === 'Short' ? og.COLORS.ruby : og.COLORS.emerald }] : []),
+        ...(l.alerts ? [{ text: l.alerts, scale: 4, color: og.COLORS.muted }] : []),
+        { text: 'FOLLOW OR FADE?', scale: 8, color: og.COLORS.goldL, gap: 0 },
+      ] };
+    }));
+  }
+  if (p === '/og/scorecard.png') {
+    if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
+    return png(await ogImage('scorecard', async () => {
+      const s = (await scorecard.scorecard()).summary;
+      return { kicker: 'ALERT SCORECARD · EVERY WHALE ALERT, SENT BEFORE THE OUTCOME', lines: s.closed ? [
+        { text: `${Math.round(s.winRate * 100)}% OF ${s.closed} ALERTS WON`, scale: 10, color: og.COLORS.goldL },
+        { text: `${pctS(s.avgRet, 2)} AVERAGE PER ALERT AT 1X`, scale: 6, color: s.avgRet >= 0 ? og.COLORS.emerald : og.COLORS.ruby },
+        { text: 'IN AT THE PRICE WHEN THE ALERT WENT OUT, OUT AT THE WHALE\'S EXIT', scale: 3, color: og.COLORS.muted },
+      ] : [{ text: 'EVERY ALERT, SCORED IN PUBLIC', scale: 8, color: og.COLORS.goldL }] };
+    }));
+  }
+  if (p === '/og/proof.png') {
+    if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
+    return png(await ogImage('proof', async () => {
+      const d = proof.report(game.resolvedSamples(), bots.rows());
+      const dealt = d.forward?.n || 0, cv = d.crossValidated?.n || 0, held = d.forward?.clean?.populations?.assessed || 0;
+      return { kicker: 'THE PROOF DESK', lines: [
+        { text: 'EVERY PRICE WE QUOTED, SCORED', scale: 7, color: og.COLORS.goldL },
+        { text: `${dealt} DEALT HANDS · ${cv} TRADES CROSS-VALIDATED`, scale: 4, color: og.COLORS.ivory },
+        { text: `HELD OUT RECORD ${held} OF 150 HANDS`, scale: 4, color: og.COLORS.muted },
+        { text: 'THE RAW RECORD IS PUBLIC', scale: 4, color: og.COLORS.muted, gap: 0 },
+      ] };
+    }));
+  }
+  if (p === '/scorecard' || p === '/scorecard.html') {
+    return html(renderPage('scorecard.html', {}));
+  }
+  if (p === '/proof' || p === '/proof.html') {
+    return html(renderPage('proof.html', {}));
+  }
+  return false;
+}
 
 // index.html gets absolute social-preview URLs when PUBLIC_URL is set (X needs absolute image links)
 let indexHtml = null;
@@ -241,6 +376,10 @@ async function handle(req, res) {
     if (!fs.existsSync(jp)) { res.writeHead(200, { 'Content-Type': 'application/x-ndjson', ...SECURITY }); return res.end(''); }
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Content-Disposition': 'attachment; filename="alertjournal.jsonl"', ...SECURITY });
     return fs.createReadStream(jp).on('error', () => { try { res.end(); } catch {} }).pipe(res);
+  }
+  if (req.method === 'GET' && (url.pathname.startsWith('/w/') || url.pathname.startsWith('/og/') || /^\/(scorecard|proof)(\.html)?$/.test(url.pathname))) {
+    const done = await servePage(req, res, url);
+    if (done !== false) return;
   }
   if (url.pathname === '/' || url.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache', ...SECURITY });
