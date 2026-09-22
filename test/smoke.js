@@ -121,6 +121,52 @@ try {
   ok('odds match the stated probability', fair,
      `follow ${round.odds.follow} @ p=${round.pFollow.toFixed(3)}`);
 
+  // --- the Telegram message
+  // Every whale message is Telegram HTML, and Telegram answers a malformed one with 400 instead of
+  // delivering it. A wallet label is a Nansen string we do not control, so the escaping is what
+  // stands between one odd label and a lost alert. Render the real builder, not a copy of it.
+  process.env.DATA_DIR = DATA;
+  const { renderMessage } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+  const wh = {
+    id: 't', t: Date.now(), key: 'k', coin: 'BTC', side: 'Long', valueUsd: 2.43e6, entryPrice: 111240,
+        // A deliberately nasty label. <script> is not on Telegram's allow-list and the <u> is never
+    // closed, so if the escaping stops working the well-formedness check fails on its own - it does
+    // not depend on the ampersand also being caught, which an earlier version of this test did.
+    openedAt: new Date(Date.now() - 7.2e6).toISOString(), trader: '<script>x</script> & <u>evil', address: '0x' + 'a'.repeat(40),
+    record: { d30: { pnl: 1.24e6, roi: 0.42, winRate: 0.68, closed: 94, wins: 64, coins: 7 },
+      d7: { pnl: 8.8e4, roi: 0.06, winRate: 0.71, closed: 14, wins: 10, coins: 3 }, trust: { grade: 'A', score: 88 } },
+    read: { pFollow: 0.63, moveSinceEntry: 0.004 }, leaderboard: true, early: true,
+  };
+  const shapes = [renderMessage(wh), renderMessage({ ...wh, record: { ...wh.record, d7: null } }),
+    renderMessage({ ...wh, kind: 'add', addedSz: 12.4, sizeNow: 34.8, multiple: 3.2, avgEntry: 111240, markPx: 112400, upnl: 8.8e4, whaleRet: 0.0104 }),
+    renderMessage({ ...wh, kind: 'trim', trimPct: 0.4, remainingPct: 0.6, heldMs: 7.2e6, markPx: 112400, whaleRet: 0.0104 }),
+    renderMessage({ ...wh, kind: 'exit', heldMs: 7.2e6, exitPx: 112400, whaleRet: 0.0104 })];
+  // Telegram's whole allow-list, so a tag typed by mistake is caught here and not in production.
+  const OK_TAGS = ['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'code', 'pre', 'a', 'blockquote', 'tg-spoiler'];
+  const balanced = (t) => {
+    const stack = [];
+    for (const m of t.matchAll(/<(\/?)([a-z-]+)(?:\s[^>]*)?>/g)) {
+      if (!OK_TAGS.includes(m[2])) return `tag Telegram does not accept: <${m[2]}>`;
+      if (m[1]) { if (stack.pop() !== m[2]) return `</${m[2]}> closes nothing`; } else stack.push(m[2]);
+    }
+    return stack.length ? `never closed: <${stack.join('>, <')}>` : '';
+  };
+  const bad = shapes.map(balanced).filter(Boolean);
+  ok('every message shape is well-formed Telegram HTML', !bad.length, bad.join(' | '));
+  // Two ways to catch a missed escape. First: the hostile label must never appear verbatim - stripping
+  // tags before looking would also strip the ones the label smuggled in, so check the raw text.
+  // Second: with the tags we did mean to send removed, nothing should be left holding a < or a bare &.
+  const raw = shapes.filter((t) => /<script>|<u>/.test(t));
+  const leftovers = shapes.map((t) => t.replace(/<\/?[a-z-]+(?:\s[^>]*)?>/g, ''))
+    .map((t) => (/[<>]/.test(t) ? t.match(/.{0,20}[<>].{0,20}/)[0] : /&(?!amp;|lt;|gt;|quot;|#)/.test(t) ? 'bare &' : '')).filter(Boolean);
+  ok('a wallet label containing HTML is escaped', !raw.length && !leftovers.length,
+     [...(raw.length ? [`${raw.length} message(s) carry the label's own tags through`] : []), ...leftovers].join(' | '));
+  // The grid only reads as a dashboard if it fits a phone: 32 monospace columns is the budget.
+  const widest = Math.max(...shapes.flatMap((t) => (t.match(/<pre>[\s\S]*?<\/pre>/g) || []).join('\n')
+    .replace(/<\/?pre>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .split('\n').map((l) => l.length)), 0);
+  ok('the stats grid fits a phone', widest > 0 && widest <= 32, `widest line is ${widest} characters`);
+
   // --- security
   ok('admin is closed without a token', (await get('/api/usage')).status === 403);
   ok('path traversal is refused', (await get('/../../etc/passwd')).status === 404);
