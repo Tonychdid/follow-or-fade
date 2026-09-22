@@ -1282,7 +1282,10 @@ function whaleTags(tr, a) {
         // Small sample, so say so plainly and let the record do the arguing.
         ? `In before ${e.goodFinds === 1 ? 'a big move' : `${e.goodFinds} big moves`} and held for ${e.goodFinds === 1 ? 'it' : 'them'}, keeping ${Math.round((e.capture || 0) * 100)}% of the move. Only ${e.finds} chance${e.finds === 1 ? '' : 's'} in 30 days \u2014 a small sample \u2014 but their record is exceptional: ${((e.roi || 0) * 100).toFixed(1)}% return and a ${Math.round((e.winRate || 0) * 100)}% win rate over 30 days.`
         : `Got into ${e.goodFinds} of ${e.finds} big moves early and held for them (median ${Math.round((e.capture || 0) * 100)}% of the move captured, across ${e.coins} coins). Most traders keep about a quarter.`;
-    t.push(`<span class="spec-tag early-tag" title="${esc(tip)}">EARLY</span>`);
+    // Recency is now load-bearing: the tag waives the grade and return rules, so it only holds while
+    // the pattern is current. Say when it last happened rather than leaving the reader to assume.
+    const when = e?.lastFind ? ` Last early call ${ago(new Date(e.lastFind).toISOString())}.` : '';
+    t.push(`<span class="spec-tag early-tag" title="${esc(tip + when)}">EARLY</span>`);
   }
   if (tr.printer) {
     const f = tr.printerStats;
