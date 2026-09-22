@@ -229,6 +229,23 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 .hs b{display:block;font-family:var(--mono);font-size:26px;color:var(--gold-l)}
 .hs span{color:var(--muted);font-size:13px}
 
+/* The one pointer to the proof desk that a phone can reach. The header link is hidden below
+   1099px and the welcome card is shown once, before signup - so without this a returning mobile
+   visitor has no route to the evidence at all. Full width rather than a fourth grid cell: the
+   strip reflows to two columns on a phone and a fourth tile would sit there as an orphan. */
+.proof-cta{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 16px;
+  margin-top:14px;padding:14px 18px;border:1px solid var(--hair2);border-radius:16px;
+  background:linear-gradient(180deg,rgba(27,21,25,.9),rgba(14,10,12,.9));
+  text-decoration:none;transition:border-color .2s,background .2s}
+.proof-cta:hover{border-color:var(--hair);background:linear-gradient(180deg,rgba(36,28,32,.95),rgba(18,13,16,.95))}
+.proof-cta .pc-k{font-family:var(--display);letter-spacing:.12em;font-size:11px;color:var(--gold-l);text-transform:uppercase;white-space:nowrap}
+.proof-cta .pc-t{color:var(--read2);font-size:13px;line-height:1.5}
+.proof-cta .pc-go{font-family:var(--display);letter-spacing:.06em;font-size:12px;color:var(--gold-l);white-space:nowrap}
+@media (max-width:760px){
+  .proof-cta{grid-template-columns:1fr;gap:7px;padding:13px 15px}
+  .proof-cta .pc-t{font-size:12.5px}
+}
+
 /* ---------- rail ---------- */
 .rail{position:sticky;top:96px;align-self:start;max-height:calc(100vh - 116px);overflow:auto;border-radius:22px;padding:18px;
   background:linear-gradient(180deg,rgba(27,21,25,.96),rgba(12,9,11,.96));border:1px solid var(--hair);box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(245,215,122,.12);scrollbar-width:thin;scrollbar-color:var(--gold-d) transparent}
