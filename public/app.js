@@ -1312,12 +1312,16 @@ function liveCard(t) {
   if (liveItems.size > 200) for (const k of [...liveItems.keys()].slice(0, liveItems.size - 200)) liveItems.delete(k);
   const k = esc(t.key), tr = t.record?.trust || { grade: '?', label: 'No track record' };
   const gradeCls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[tr.grade] || 'gc';
+  // The alert froze its grade when it went out; this card grades the whale now. When the two differ,
+  // say both, so a C on Telegram and an A here read as one whale on two days, not a contradiction.
+  const ag = t.alertGrade && t.alertGrade.grade !== tr.grade ? t.alertGrade : null;
+  const drift = ag ? `<div class="grade-drift">Grade now <b>${esc(tr.grade)}</b>, was <b>${esc(ag.grade)}</b> when the alert went out at ${esc(new Date(ag.at).toISOString().slice(11, 16))} UTC. The last 7 days have moved since.</div>` : '';
   return `<div class="lcard${t.alert ? ' alerted' : ''}" data-key="${k}">${t.alert ? '<div class="ribbon">WHALE ALERT</div>' : ''}
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="row-right"><button class="lc-refresh" data-refresh="${k}" title="Re-check this whale: price, odds, tells and whether they are still in">↻ Re-check</button><div class="size">${compact(t.valueUsd)}</div></div></div>
     <div class="lc-changed" hidden></div>
     <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
-    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span><span class="lcs-text"><b>${esc(tr.label)}${whaleTags(tr)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
+    <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span>${ag ? `<span class="was-grade" title="Grade when the alert went out">was ${esc(ag.grade)}</span>` : ''}<span class="lcs-text"><b>${esc(tr.label)}${whaleTags(tr)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
     <div class="lc-more">
     <div class="dossier-box">
@@ -1326,6 +1330,7 @@ function liveCard(t) {
         <div class="dossier-title"><b>Whale track record${whaleTags(tr)}</b><span>${esc(tr.label)}${tr.score != null ? ` · trust ${tr.score}/100` : ''}</span></div>
         <div class="rec-tabs" role="tablist"><button class="on" data-win="d7">7D</button><button data-win="d30">30D</button></div>
       </div>
+      ${drift}
       <div class="rec-body" data-panel="d7">${recordHtml(t.record?.d7)}</div>
       <div class="rec-body" data-panel="d30" hidden>${recordHtml(t.record?.d30)}</div>
     </div>
