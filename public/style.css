@@ -76,6 +76,14 @@ a{color:var(--gold-l)}
 .tg-short{display:none}
 @keyframes tgPulse{0%{box-shadow:0 0 0 0 rgba(34,192,126,.55)}70%{box-shadow:0 0 0 13px rgba(34,192,126,0)}100%{box-shadow:0 0 0 0 rgba(34,192,126,0)}}
 @media (prefers-reduced-motion:reduce){.tg-pill{animation:none}}
+/* The proof desk lives outside the app shell, so it is a plain link rather than a tab. Quiet on
+   purpose: it is for the visitor who wants evidence, not a call to action competing with the game. */
+.proof-link{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--muted);
+  text-decoration:none;padding:7px 12px;border:1px solid var(--hair2);border-radius:999px;white-space:nowrap}
+.proof-link:hover{color:var(--gold-l);border-color:var(--hair)}
+.wl-proof{margin:14px 0 0;font-size:13px;color:var(--muted);text-align:center}
+.wl-proof a{color:var(--gold-l);text-decoration:none;border-bottom:1px solid var(--hair);white-space:nowrap}
+.wl-proof a:hover{border-color:var(--gold)}
 .bank{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 8px;border:1px solid var(--hair);border-radius:999px;background:rgba(0,0,0,.35)}
 .bank small{display:block;font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;line-height:1}
 .bank b{font-family:var(--mono);font-size:21px;color:var(--gold-l);transition:color .3s;text-shadow:0 0 12px rgba(245,215,122,.25)}
@@ -755,6 +763,7 @@ html,body{overflow-x:hidden}
   .icon-btn{width:34px;height:34px}
   .bank{padding:4px 10px 4px 6px}.bank small{font-size:9px}.bank b{font-size:17px}
   .tg-pill{padding:6px 11px;font-size:10.5px;gap:6px}.tg-long{display:none}.tg-short{display:inline}
+  .proof-link{display:none}   /* the header is four items wide already; the welcome card carries it on a phone */
   .chipstack{width:24px;height:24px}.chipstack i{width:24px;height:8px}.chipstack i:nth-child(2){bottom:5px}.chipstack i:nth-child(3){bottom:10px}
   #demoBadge{display:none}
 
