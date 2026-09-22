@@ -167,8 +167,100 @@ try {
     .split('\n').map((l) => l.length)), 0);
   ok('the stats grid fits a phone', widest > 0 && widest <= 32, `widest line is ${widest} characters`);
 
+  // --- the proof desk
+  // This page is the product's whole credibility claim, so its arithmetic is checked against cases
+  // whose answer is known by construction rather than against whatever it happened to print today.
+  // Seed a roster before the proof desk first reads one: the store memoises, so the file has to be
+  // on disk before the import or the lookup caches an empty list and the next three checks pass
+  // against nothing.
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(path.join(DATA, 'roster.json'), JSON.stringify({ at: new Date().toISOString(), whales: [
+    { address: '0xPASSED', qualifies: 'standard' }, { address: '0xREJECTED', qualifies: null }] }));
+  process.env.DATA_DIR = DATA;
+  const proof = await import(path.join(ROOT, 'lib', 'proof.js'));
+  // The three-way answer is the whole basis of the comparison. A wallet the roster has never seen
+  // must come back unknown, not quietly counted as having passed.
+  ok('a qualifying wallet reads as passing', proof.qualifies('0xpassed') === true);
+  ok('an assessed but rejected wallet reads as failing', proof.qualifies('0xREJECTED') === false);
+  ok('an unassessed wallet reads as unknown, not as passing',
+     proof.qualifies('0xNEVERSEEN') === null, String(proof.qualifies('0xNEVERSEEN')));
+  const rows = (n, p, truth, pool) => Array.from({ length: n }, (_, i) =>
+    ({ p, won: i / n < truth, push: false, pool, addr: '0x' + (i % 7) }));
+  // One won hand at even odds pays 1.00 per unit staked; the loser on the other side loses its stake.
+  const one = proof.strategies([{ p: 0.5, won: true, push: false }]);
+  ok('a won hand at 50% pays exactly its odds', one.follow.roi === 1 && one.fade.roi === -1,
+     `follow ${one.follow.roi}, fade ${one.fade.roi}`);
+  // Truncation to two decimals is deliberate (see odds.js), so 1/0.8 prices at 1.25, not 1.2500001.
+  const trunc = proof.strategies([{ p: 0.8, won: true, push: false }]);
+  ok('odds are truncated, never rounded up', trunc.follow.roi === 0.25, String(trunc.follow.roi));
+  // A push has no winner. It must be counted and then excluded from every accuracy figure.
+  ok('pushes are counted but never scored',
+     proof.brier([{ p: 0.5, won: true, push: false }, { p: 0.5, won: false, push: true }]).n === 1);
+  // A model that is right exactly as often as it claims must beat always-guessing the base rate.
+  // Built bucket by bucket so each claimed probability gets exactly that share of winners - drawing
+  // them from one counter makes the claim and the outcome correlate and tests nothing.
+  const honest = [];
+  for (const p of [0.2, 0.35, 0.5, 0.65, 0.8]) {
+    const n = 200, wins = Math.round(n * p);
+    for (let i = 0; i < n; i++) honest.push({ p, won: i < wins, push: false });
+  }
+  const hb = proof.brier(honest);
+  ok('a calibrated model beats the base-rate reference', hb.score < hb.reference,
+     `${hb.score.toFixed(4)} vs ${hb.reference.toFixed(4)}`);
+  // The reliability table must SEE a model that lies. Claim 70%, win 40%, and the gap has to show.
+  const liar = Array.from({ length: 400 }, (_, i) => ({ p: 0.7, won: i % 10 < 4, push: false }));
+  const band = proof.reliability(liar).find((b) => b.n > 0);
+  ok('the reliability table catches an overconfident model',
+     band && Math.abs(band.actual - band.predicted) > 0.25, band ? `said ${band.predicted} actual ${band.actual}` : 'no band');
+  // The two populations must not leak into each other, and an unassessed wallet joins neither.
+  const mixed = [{ p: 0.6, won: true, push: false, pool: true, addr: 'a' },
+                 { p: 0.6, won: false, push: false, pool: false, addr: 'b' },
+                 { p: 0.6, won: true, push: false, pool: null, addr: 'c' }];
+  const P = proof.populations(mixed);
+  ok('filtered and rejected populations stay separate',
+     P.all.n === 3 && P.filtered.n === 1 && P.rejected.n === 1 && P.unknown === 1,
+     `all ${P.all.n}, filtered ${P.filtered.n}, rejected ${P.rejected.n}, unknown ${P.unknown}`);
+  // And the comparison must have the right sign when one population really is better.
+  const better = [...rows(300, 0.6, 0.85, true), ...rows(300, 0.6, 0.45, false)];
+  const B = proof.populations(better);
+  ok('a genuinely better filtered set shows a positive difference',
+     B.difference > 0 && B.significant, `difference ${(B.difference * 100).toFixed(1)}%, significant ${B.significant}`);
+  // The dangerous direction: two populations that are actually the same must NOT be called apart.
+  // Claiming the filters work when they do not is the one failure this whole page exists to prevent.
+  const same = [...rows(300, 0.6, 0.70, true), ...rows(300, 0.6, 0.73, false)];
+  const S = proof.populations(same);
+  ok('a difference smaller than the noise is not called a difference', !S.significant,
+     `difference ${(S.difference * 100).toFixed(2)}%, se ${(S.differenceSe * 100).toFixed(2)}%, significant ${S.significant}`);
+  // Cross-validation must never score a sample with a model that saw it.
+  const cvSamples = Array.from({ length: 200 }, (_, i) => ({
+    at: i, address: '0x' + (i % 9),
+    f: { walletEdge: ((i % 7) - 3) / 20, smFlow: ((i % 5) - 2) / 2, crowdFlow: 0, funding: 0, size: 0 },
+    win: i % 3 !== 0 }));
+  const cv = proof.crossValidate(cvSamples, 10);
+  ok('cross-validation predicts every sample exactly once',
+     cv.rows.length === cvSamples.length, `${cv.rows.length} of ${cvSamples.length}`);
+  // And it must really hold each fold out. Two rows with byte-identical features, placed in
+  // different folds, are scored by two different models and so cannot get the same number. If the
+  // folds ever stop being held out, every model becomes the same model and these collapse to equal
+  // - which is exactly the in-sample curve this page refuses to show.
+  const twin = { walletEdge: 0.11, smFlow: 0.42, crowdFlow: -0.17, funding: 0.8, size: 0.35 };
+  const twins = cvSamples.map((x, i) => (i === 0 || i === 1 ? { ...x, f: { ...twin } } : x));
+  const tv = proof.crossValidate(twins, 10);
+  // Folds are emitted in order, 20 rows each, so the twin in fold 0 is row 0 and the twin in fold 1
+  // is row 20 - the same inputs scored by two models that were trained on different data.
+  ok('cross-validation really holds each fold out', tv.rows[0].p !== tv.rows[20].p,
+     `fold 0 said ${tv.rows[0].p}, fold 1 said ${tv.rows[20].p}`);
+  // The proof routes are public — a claim nobody can fetch is not evidence.
+  const pr = await get('/api/proof');
+  ok('the proof desk is public', pr.status === 200);
+  const pj = await pr.json();
+  ok('the proof desk reports both kinds of evidence',
+     !!pj.forward && !!pj.crossValidated && !!pj.forward.populations, JSON.stringify(Object.keys(pj)));
+  ok('the raw prediction record is downloadable', (await get('/api/proof/raw')).status === 200);
+  ok('the Nansen call ledger is public', (await get('/api/usage')).status === 200);
+
   // --- security
-  ok('admin is closed without a token', (await get('/api/usage')).status === 403);
+  ok('load-test rigs are kept off the public board', !(await (await get('/api/leaderboard')).json()).some((p) => /^(lag|perf|smoke)/i.test(p.name || '')));
   ok('path traversal is refused', (await get('/../../etc/passwd')).status === 404);
   ok('unknown routes 404', (await get('/definitely-not-a-route')).status === 404);
 } catch (e) {
