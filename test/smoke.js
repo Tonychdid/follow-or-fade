@@ -167,20 +167,22 @@ try {
     .split('\n').map((l) => l.length)), 0);
   ok('the stats grid fits a phone', widest > 0 && widest <= 32, `widest line is ${widest} characters`);
 
-  // A wallet whose 30D and 7D columns are identical has no month of history - the whole record
-  // happened this week. The numbers are right and the impression a reader takes is wrong, so the
-  // message has to say it. Found in production: a four-day-old wallet alerting at A+ 100/100 with
-  // "648 closes" under a 30D heading, which reads as a month of track record and is not.
+  // Identical 30D and 7D columns mean the month's record was all earned in its last week. Found in
+  // production on a wallet alerting at A+ 100/100 with "648 closes" under a 30D heading, which reads
+  // as a month of track record and is one week's. It does NOT mean the wallet is new - that one has
+  // 397 days of history and simply sat out the middle of the window - so the wording is checked here
+  // too, not just the trigger.
   const newWallet = { d30: { pnl: 124191, roi: 0.09, winRate: 0.70, closed: 648, coins: 7 },
                       d7:  { pnl: 124191, roi: 0.09, winRate: 0.70, closed: 648, coins: 7 },
                       trust: { grade: 'A+', score: 100 } };
   const mNew = renderMessage({ ...wh, record: newWallet });
-  ok('a wallet with no 30-day history is called out as new', mNew.includes('New wallet.'));
-  ok('the normal two-window wallet is not called new', !renderMessage(wh).includes('New wallet.'));
-  ok('a wallet with nothing closed in 7D is not called new',
-     !renderMessage({ ...wh, record: { ...wh.record, d7: null } }).includes('New wallet.'));
+  ok('a wallet whose month is all one week says so', mNew.includes('One week, not a month.'));
+  ok('the disclosure does not call the wallet new', !/new wallet/i.test(mNew), 'a dormant year-old wallet is not a new one');
+  ok('a normal two-window wallet gets no disclosure', !renderMessage(wh).includes('One week, not a month.'));
+  ok('a wallet with nothing closed in 7D gets no disclosure',
+     !renderMessage({ ...wh, record: { ...wh.record, d7: null } }).includes('One week, not a month.'));
   // The disclosure travels as Telegram HTML like everything else, so it must survive the same checks.
-  ok('the new-wallet disclosure is well-formed Telegram HTML', !balanced(mNew) || balanced(mNew) === '',
+  ok('the one-week disclosure is well-formed Telegram HTML', !balanced(mNew) || balanced(mNew) === '',
      String(balanced(mNew) || 'ok'));
 
   // --- the proof desk
