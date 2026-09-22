@@ -87,7 +87,7 @@ export const sfx = {
   enter() { noise(0, 0.6, { freq: 600, q: 0.5, gain: 0.25, type: 'lowpass' }); [262, 330, 392, 523].forEach((f, i) => tone(f, 0.15 + i * 0.12, 0.9, { type: 'triangle', gain: 0.1 })); tone(1047, 0.7, 1, { type: 'sine', gain: 0.06 }); },
   /**
    * The one-time arrival flourish: a red-carpet welcome, played once ever, never again.
-   * Built from the same oscillators as everything else — no audio file, no licensing, no download.
+   * Built from the same oscillators as everything else: no audio file, no licensing, no download.
    * A slow swell underneath, a rising major arpeggio over it, a held chord, and a shimmer of chips.
    */
   async welcome() {
