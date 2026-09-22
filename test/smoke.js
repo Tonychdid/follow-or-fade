@@ -288,6 +288,19 @@ try {
      wantsNextPage({ pagination: { is_last_page: false } }, 500, 500) === true);
   ok('an empty page ends the paging', wantsNextPage({}, 0, 500) === false);
 
+  // ---- the holdout is what makes the clean record clean ----
+  const keys = Array.from({ length: 5000 }, (_, i) => `h${i}:0xabc${i}:BTC:2026-09-${(i % 28) + 1}`);
+  const share = keys.filter(proof.isHoldout).length / keys.length;
+  ok('about one trade in five is held out of training', share > 0.17 && share < 0.23, share.toFixed(3));
+  ok('the holdout is deterministic', keys.every((k) => proof.isHoldout(k) === proof.isHoldout(k)));
+  // Four tests on one set of hands: a result that clears 5% on its own must not survive as
+  // "significant" once the family is accounted for.
+  const edge = [...rows(260, 0.6, 0.76, true), ...rows(260, 0.6, 0.68, false)];
+  const E = proof.populations(edge);
+  const fam = [E.tests.winRate.vsAll, E.tests.winRate.vsRejected, E.tests.return.vsAll, E.tests.return.vsRejected].filter(Boolean);
+  ok('an adjusted p is never smaller than the raw one', fam.every((x) => x.pAdj >= x.pRaw - 1e-12));
+  ok('significance is judged on the adjusted p', fam.every((x) => x.significant === (x.pAdj < 0.05)));
+
   const solo = proof.meanStats([1, -1, 0.3, -1, 0.5, -1, 0.25, -1, 2, -1], Array.from({ length: 10 }, (_, i) => 'w' + i));
   ok('with one hand per wallet the clustered error equals the textbook one',
      Math.abs(solo.seCluster - solo.seIid) < 1e-12, `${solo.seCluster} vs ${solo.seIid}`);
