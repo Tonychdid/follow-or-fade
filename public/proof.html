@@ -40,6 +40,21 @@ h2 .n{color:var(--gold-d);margin-right:9px}
 .big.pos{color:var(--emerald)} .big.neg{color:var(--ruby)} .big.neutral{color:var(--gold-l)}
 .hero .ci{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:10px}
 .hero .exp{color:var(--read);margin-top:15px;font-size:14.5px;max-width:52ch;margin-left:auto;margin-right:auto}
+table.ptab{width:100%;border-collapse:collapse;margin-top:6px;font-size:13.5px}
+table.ptab th{font-weight:600;color:var(--muted);text-align:right;padding:8px 10px;border-bottom:1px solid var(--hair2);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+table.ptab thead th{text-align:center}
+table.ptab tbody th{text-align:left;color:var(--read);text-transform:none;letter-spacing:0;font-size:13.5px}
+table.ptab td{text-align:center;padding:10px;font-family:var(--mono);font-weight:700;color:var(--gold-l);border-bottom:1px solid var(--hair2)}
+table.ptab td.y{color:var(--emerald)} table.ptab td.n{color:var(--ruby)} table.ptab td.dim{color:var(--muted)}
+table.ptab td .pp{display:block;font-size:10.5px;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:.02em}
+.claims{display:grid;gap:10px;margin:20px auto 0;max-width:640px;text-align:left}
+.claim{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:baseline;background:rgba(0,0,0,.28);border:1px solid var(--hair2);border-left-width:3px;border-radius:11px;padding:12px 15px}
+.claim.ok{border-left-color:var(--emerald)} .claim.wait{border-left-color:var(--gold-l)} .claim.bad{border-left-color:var(--ruby)}
+.claim .ct{font-size:14px;color:var(--read);font-weight:600}
+.claim .cv{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;white-space:nowrap}
+.claim.ok .cv{color:var(--emerald)} .claim.wait .cv{color:var(--gold-l)} .claim.bad .cv{color:var(--ruby)}
+.claim .cd{grid-column:1/-1;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.claim .cn{grid-column:1/-1;font-size:13px;color:var(--muted);line-height:1.5}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
 .tile{background:rgba(0,0,0,.3);border:1px solid var(--hair2);border-radius:11px;padding:13px 15px}
 .tile small{display:block;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
