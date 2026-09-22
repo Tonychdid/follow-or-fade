@@ -1507,3 +1507,28 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
 .grade-drift{margin:8px 0 2px;padding:8px 11px;border:1px solid var(--hair2);border-left:3px solid var(--gold-l);border-radius:9px;font-size:12.5px;line-height:1.5;color:var(--read2);background:rgba(0,0,0,.25)}
 .grade-drift b{color:var(--gold-l)}
 .was-grade{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--hair2);border-radius:999px;padding:2px 7px;margin:0 6px 0 -2px;white-space:nowrap;align-self:center}
+
+/* ---------- the call rail: the Nansen requests behind a hand ---------- */
+.nrail{margin:8px 0 2px;border:1px solid var(--hair2);border-radius:10px;background:rgba(0,0,0,.18);font-size:12.5px;color:var(--read2)}
+.nrail summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:7px 11px;min-height:32px}
+.nrail summary::-webkit-details-marker{display:none}
+.nrail summary b{color:var(--gold-l);font-weight:700}
+.nrail .nr-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald)}
+.nrail .nr-open{margin-left:auto;color:var(--gold-l);font-size:11.5px;letter-spacing:.04em}
+.nrail[open] .nr-open{visibility:hidden}
+.nr-list{list-style:none;margin:0;padding:2px 11px 6px;display:grid;gap:5px}
+.nr-list li{display:grid;grid-template-columns:minmax(150px,auto) 1fr auto auto;gap:10px;align-items:baseline}
+.nr-list code{font-family:var(--mono);font-size:11.5px;color:var(--ivory,#f3ead7)}
+.nr-list .nr-what{color:var(--read2)}
+.nr-list b{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.nr-list .pos{color:var(--emerald)} .nr-list .neg{color:#f06377} .nr-list .dim{color:var(--read2);font-weight:500}
+.nr-how{font-family:var(--mono);font-size:10.5px;color:var(--read2);white-space:nowrap;text-align:right}
+.nr-how.fresh{color:var(--emerald)}
+.nr-exit{border-top:1px dashed var(--hair2);padding-top:5px}
+.nr-note{margin:0;padding:0 11px 9px;font-size:11.5px;line-height:1.45}
+.nr-note a{color:var(--gold-l)}
+@media (max-width:640px){
+  .nr-list li{grid-template-columns:1fr auto;row-gap:1px}
+  .nr-list .nr-what{grid-column:1/-1;order:3;font-size:12px}
+  .nr-how{display:none}
+}
