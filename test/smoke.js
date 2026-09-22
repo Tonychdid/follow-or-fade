@@ -84,6 +84,19 @@ try {
   // The call rail: a hand says which Nansen data priced it, and how far each feature moved the price.
   ok('a hand carries its Nansen call rail', Array.isArray(round.nansen?.why) && round.nansen.why.length === 5
     && round.nansen.why.every((w) => Number.isFinite(w.pp)), JSON.stringify(round.nansen?.why || null).slice(0, 120));
+  {
+    const sc = await (await get('/api/scorecard')).json();
+    ok('the alert scorecard is public', sc && sc.summary && Array.isArray(sc.alerts) && typeof sc.method === 'string');
+    const img = await get('/og/scorecard.png');
+    const buf = Buffer.from(await img.arrayBuffer());
+    ok('share images are real PNGs', img.status === 200 && buf.slice(1, 4).toString() === 'PNG' && buf.length > 2000);
+    const addr = '0x' + 'ab'.repeat(20);
+    const page = await (await get('/w/' + addr)).text();
+    ok('a whale page carries its own share image', page.includes(`/og/w/${addr}.png`) && page.includes('twitter:card') && !page.includes('{{'));
+    ok('a bad wallet address is refused', (await get('/api/whale?address=nope')).status === 400);
+    const proofPage = await (await get('/proof.html')).text();
+    ok('the proof desk has a share image', proofPage.includes('/og/proof.png') && !proofPage.includes('{{'));
+  }
   ok('the rail names no wallet address', !JSON.stringify(round.nansen || {}).match(/0x[0-9a-f]{6,}/i));
 
   // Play a short run rather than one hand. A payout bug only shows on a WINNING hand, so a
