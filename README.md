@@ -4,6 +4,21 @@
 
 **▶ Play it now — [follow-or-fade-production.up.railway.app](https://follow-or-fade-production.up.railway.app)** · no signup, no wallet, play chips only.
 
+> ### Judging this? Start here — sixty seconds, in this order
+>
+> 1. **[The Proof Desk](https://follow-or-fade-production.up.railway.app/proof.html)** — every price
+>    this app quoted against what actually happened, and the one number the whole thing is for:
+>    does copying Smart Money *through these filters* beat copying all of it. No signup.
+> 2. **[Play one hand](https://follow-or-fade-production.up.railway.app)** — a real Smart Money trade,
+>    priced by Nansen data, settled on the whale's real exit. Takes about twenty seconds.
+> 3. **Run it yourself:** `git clone` then `node server.js` — **no install, no build, no API key.**
+>    Zero dependencies. It is dealing hands in about six seconds. `npm test` is 38 checks, offline.
+>
+> Every number this README claims is served live and can be checked without asking us:
+> [`/api/proof`](https://follow-or-fade-production.up.railway.app/api/proof) ·
+> [`/api/proof/raw`](https://follow-or-fade-production.up.railway.app/api/proof/raw) ·
+> [`/api/usage`](https://follow-or-fade-production.up.railway.app/api/usage)
+
 **Build measurable trading skill without risking capital.** Every hand is a real Hyperliquid trade opened by a Nansen Smart Money whale. You get $10,000 in play chips: follow the whale or fade it. **Nansen data sets the odds, the market settles the bet**, and after every hand the coach tells you which Nansen signal called it. Your **Trader Profile** scores seven named reading skills against what the odds expected of you, so "am I getting better at this?" has an answer. What you do with that skill — including trading for real on Nansen — is the next step, not the point.
 
 **Train → Practice live → Trade for real on Nansen**
@@ -24,6 +39,36 @@ is **refitted every hour against trades that have since resolved** — 356 real 
 the live sample right now — so the price you bet against is a probability the data argued for, not a
 weight somebody chose. The market settles it: a hand is judged on the whale's own exit, size-weighted
 across every closing fill, read from Hyperliquid.
+
+### The Proof Desk: the claims, measured
+
+Two claims are worth making about this app, and neither is worth anything asserted. So
+**[/proof.html](https://follow-or-fade-production.up.railway.app/proof.html)** measures both, in
+public, and publishes the raw record so anyone who doubts it can recompute every figure.
+
+**Does filtering Smart Money beat copying all of it?** The same hands, the same odds, the same
+settlement — split by whether the whale cleared the house rules. Every Smart Money whale Nansen
+surfaced, against only the ones that passed, against the ones that were rejected. If the filtered
+set does not beat the raw set, the filters are decoration, and the page says so in its headline.
+Read alongside the win rate, because the odds already price in how good a wallet is: picking better
+whales should *not* move the return, so a gap that survives anyway is the filters catching something
+the odds are not.
+
+**Are the odds honest?** Two kinds of evidence, never mixed. A **forward record** — every price
+quoted, written down before the outcome was known, unfakeable by construction. And **10-fold
+cross-validation** on the training pool, fitted on nine tenths and asked about the tenth, with folds
+assigned by position so anyone re-running it gets the same answer. Both carry a reliability table and
+a Brier score next to the score a model gets for ignoring every feature and guessing the base rate —
+because a Brier score without that reference means nothing.
+
+An in-sample curve — scoring the training set with the model fitted on it — is **deliberately not
+offered, at any size, under any label**. It is the easiest beautiful chart in this field to produce
+and it proves nothing.
+
+`npm test` checks this arithmetic against cases whose answer is known by construction: that a won
+hand pays exactly its stated odds, that pushes are counted but never scored, that the reliability
+table catches an overconfident model, that two populations which are actually the same are *not*
+reported as different, and that cross-validation really holds each fold out.
 
 ### The app publishes whether any of this works
 
@@ -59,7 +104,7 @@ npm start                   # then open http://localhost:3000
 **Windows:** download the repo (Code → Download ZIP), unzip it and double-click `start.bat`. On first run it asks for your key and opens the browser.
 
 ```bash
-npm test                    # 18 checks, no key and no network needed
+npm test                    # 38 checks, no key and no network needed
 ```
 
 **Time to first hand:** about 5 seconds after `npm start` (tested on a fresh copy with Node 18 and Node 22). Open http://localhost:3000, pick a nickname, and the Training Table deals a live Smart Money trade.
