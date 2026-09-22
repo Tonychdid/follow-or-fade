@@ -280,7 +280,12 @@ async function handle(req, res) {
 }
 
 // Background jobs: calibrate odds on this week's Smart Money outcomes, settle live bets, scan for whale alerts.
-const calibrate = () => game.calibrate().then((m) => m.n && console.log(`  Odds calibrated on ${m.n} resolved Smart Money trades`)).catch((e) => console.error('[calibrate]', e.message));
+const calibrate = () => game.calibrate().then((m) => {
+  if (m.n) console.log(`  Odds calibrated on ${m.n} resolved Smart Money trades`);
+  // Rebuild the cross-validated proof off the request path: it is seconds of CPU on a
+  // single-threaded server, and a visitor should never be the one who pays for it.
+  try { proof.warm(game.resolvedSamples()); } catch {}
+}).catch((e) => console.error('[calibrate]', e.message));
 setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
