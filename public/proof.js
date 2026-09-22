@@ -6,6 +6,9 @@ const pct = (x, d = 1) => (x == null ? '&mdash;' : (x * 100).toFixed(d) + '%');
 const sgn = (x, d = 1) => (x == null ? '&mdash;' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%');
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const num = (n) => (n == null ? '&mdash;' : Number(n).toLocaleString('en-US'));
+// A gap between two rates is measured in percentage POINTS, not percent: same scaling as sgn(),
+// different unit. Scaling again here is how +2.7pp becomes a nonsensical +267.2%pp.
+const sgnPP = (x, d = 1) => (x == null ? '&mdash;' : sgn(x, d).replace('%', 'pp'));
 
 const tip = $('tip');
 function bindTip(el, html) {
@@ -180,20 +183,33 @@ async function load() {
   const cmp = POP.all && POP.filtered && POP.filtered.n ? POP : null;
   const d2 = cmp ? cmp.difference : null;
 
-  // ---------- hero: the difference the filters make, which is the whole question
+  // ---------- hero: two claims, scored separately, because only one of them is hard
+  // The win rate asks whether the filters pick whales that win more often. The return asks whether
+  // they beat the PRICE those whales are quoted at, which is a much higher bar and can fail while
+  // the first one passes. Collapsing both into one verdict throws away a result that is already in.
+  const pstr = (p) => (p == null ? '' : p < 0.001 ? 'p &lt; 0.001' : `p = ${p.toFixed(3)}`);
+  const claim = (title, test, fmt, note) => {
+    if (!test || test.se == null) return '';
+    const cls = !test.significant ? 'wait' : test.diff >= 0 ? 'ok' : 'bad';
+    const word = !test.significant ? 'not yet proven' : test.diff >= 0 ? 'proven' : 'refuted';
+    return `<div class="claim ${cls}">
+      <div class="ct">${title}</div><div class="cv">${word}</div>
+      <div class="cd">${fmt(test.diff)} &middot; 95% interval ${fmt(test.lo)} to ${fmt(test.hi)} &middot; ${pstr(test.p)}</div>
+      <div class="cn">${note}</div></div>`;
+  };
+
   h += `<div class="card hero">
     <div class="q">Is copying Smart Money better <i>through the filters</i> than copying all of it?</div>
     ${cmp && d2 != null ? `<div class="big ${!cmp.significant ? 'neutral' : d2 >= 0 ? 'pos' : 'neg'}">${sgn(d2, 2)}</div>
-    <div class="ci">per hand, versus copying every whale &middot; 95% interval ${sgn(d2 - 1.96 * cmp.differenceSe, 2)} to ${sgn(d2 + 1.96 * cmp.differenceSe, 2)}</div>
-    <p class="exp">${cmp.significant
-      ? (d2 >= 0
-        ? `Copying only the whales that clear the house rules returned ${sgn(d2, 2)} more per hand than
-           copying everything Nansen surfaced, and the gap is wider than the sample noise. Measured on ${headLabel}.`
-        : `Copying only the whales that clear the house rules returned ${sgn(d2, 2)} <b>less</b> per hand than
-           copying everything Nansen surfaced. The filters are costing money on this sample, and that is
-           what this page is for. Measured on ${headLabel}.`)
-      : `The two are not yet distinguishable on this sample &mdash; the interval spans zero, so the honest
-         answer is that the filters have not been shown to help or hurt. Measured on ${headLabel}.`}</p>`
+    <div class="ci">return per hand, versus copying every whale &middot; 95% interval ${sgn(cmp.tests?.return?.vsAll?.lo ?? d2 - 1.96 * cmp.differenceSe, 2)} to ${sgn(cmp.tests?.return?.vsAll?.hi ?? d2 + 1.96 * cmp.differenceSe, 2)}</div>
+    <div class="claims">
+      ${claim('The filters pick whales that win more often', cmp.tests?.winRate?.vsAll, (x) => sgnPP(x, 1),
+        'The plain question, and the easier one: does backing this population pay off more often than backing everything.')}
+      ${claim('The filters beat the price those whales are quoted at', cmp.tests?.return?.vsAll, (x) => sgn(x, 2),
+        'The hard one. The odds already price in how good a wallet is, so a better whale is quoted shorter and simply picking better whales should not move the return. Clearing this bar means the house rules see something the pricing does not.')}
+    </div>
+    <p class="exp">Measured on ${headLabel}. Both intervals are cluster-robust &mdash; hands are grouped by
+    the wallet that made them, so one busy whale cannot pass itself off as many independent votes.</p>`
     : `<div class="big neutral">not yet</div>
     <p class="exp">Not enough assessed hands to compare the two populations honestly. The record below is filling.</p>`}
   </div>`;
@@ -220,12 +236,27 @@ async function load() {
       <figure id="cmpFig">${roiBars(bars, { alt: 'Return per hand for all Smart Money versus only the filtered whales' })}
         <figcaption>Return per unit staked, backing the whale every time. A whisker crossing the zero line means that row is not yet distinguishable from fair odds.</figcaption></figure>
       <div class="tiles">
-        <div class="tile"><small>Difference</small><b style="color:${cmp.significant ? (d2 >= 0 ? 'var(--emerald)' : 'var(--ruby)') : 'var(--gold-l)'}">${sgn(d2, 2)}</b></div>
-        <div class="tile"><small>Verdict</small><b style="font-size:14px;color:${cmp.significant ? 'var(--gold-l)' : 'var(--muted)'}">${
-          cmp.significant ? (d2 >= 0 ? 'filters add value' : 'filters subtract value') : 'too close to call'}</b></div>
+        <div class="tile"><small>Return difference</small><b style="color:${cmp.significant ? (d2 >= 0 ? 'var(--emerald)' : 'var(--ruby)') : 'var(--gold-l)'}">${sgn(d2, 2)}</b></div>
+        <div class="tile"><small>Win-rate difference</small><b style="color:${cmp.tests?.winRate?.vsAll?.significant ? 'var(--emerald)' : 'var(--gold-l)'}">${
+          cmp.tests?.winRate?.vsAll ? sgnPP(cmp.tests.winRate.vsAll.diff, 1) : '\u2014'}</b></div>
         <div class="tile"><small>Assessed hands</small><b>${num(cmp.assessed)}</b></div>
         <div class="tile"><small>Wallet never assessed</small><b>${num(cmp.unknown)}<span class="u">hands</span></b></div>
       </div>
+      ${(() => {
+        // Both claims against both comparisons. "Versus every whale" is the question a player asks;
+        // "versus the rejected" is the cleaner statistic, because those two groups share no wallets.
+        const T = cmp.tests; if (!T) return '';
+        const cell = (t, fmt) => t && t.se != null
+          ? `<td class="${t.significant ? (t.diff >= 0 ? 'y' : 'n') : ''}">${fmt(t.diff)}<span class="pp">${
+              t.significant ? pstr(t.p) : 'not yet &middot; ' + pstr(t.p)}</span></td>`
+          : '<td class="dim">&mdash;</td>';
+        const pc = (x) => sgnPP(x, 1), rr = (x) => sgn(x, 2);
+        return `<table class="ptab"><thead><tr><th></th>
+            <th>vs copying every whale</th><th>vs the whales it rejected</th></tr></thead><tbody>
+          <tr><th>Win rate</th>${cell(T.winRate.vsAll, pc)}${cell(T.winRate.vsRejected, pc)}</tr>
+          <tr><th>Return per hand</th>${cell(T.return.vsAll, rr)}${cell(T.return.vsRejected, rr)}</tr>
+        </tbody></table>`;
+      })()}
       <p class="note">The rejected row is shown because it is the other half of the argument: filters that
       help must leave something worse behind. Hands from a wallet the weekly roster has never assessed
       count in the raw population and in neither of the other two &mdash; folding them into either would
@@ -319,8 +350,18 @@ async function load() {
   <div class="card limits"><ul>
     <li><b>These are play chips.</b> No fee, no slippage, no funding cost and no market impact. Real
     copying pays all four, and every one of them takes a bite out of the numbers above.</li>
-    <li><b>The sample is small and recent.</b> The training pool holds about 30 days. A month is a
-    market regime, not a law, and a whisker that crosses zero means exactly what it says.</li>
+    <li><b>The sample is small and recent.</b> The training pool reaches back about two weeks. A
+    fortnight is a market regime, not a law, and a whisker that crosses zero means exactly what it says.</li>
+    <li><b>The roster verdict is today's, applied to older trades.</b> Which population a hand lands in
+    comes from the current weekly roster, and that roster was graded partly on the very outcomes being
+    scored here &mdash; a mild look-ahead that flatters the filtered side. It is the reason the lookback
+    is kept to two weeks rather than stretched for a bigger number: the further back it reaches, the
+    more the comparison leans on a verdict that already knew the answer. The clean version of this test
+    is the forward record, which has no such problem and is the one that will settle it.</li>
+    <li><b>Hands from one whale are not independent.</b> The filtered set averages under three hands per
+    wallet, so every interval on this page is cluster-robust: hands are grouped by the wallet that made
+    them before the error is computed, and where that produces a <i>narrower</i> bar than the naive
+    calculation the naive one is kept instead. A busy whale gets one vote, not ten.</li>
     <li><b>Every hand is selected.</b> Trades reach this deck through the Nansen Smart Money screener
     and a set of house filters. The rates here are conditional on that selection, not on all trading.</li>
     <li><b>A hand settles on the whale's own exit.</b> That is the bet being priced. It is not a
@@ -329,7 +370,9 @@ async function load() {
     here is a signal, and anything done outside it is the reader's own decision.</li>
   </ul></div>`;
 
-  h += `<footer>Recomputed from the raw record every time this page loads.
+  h += `<footer>The forward record is recomputed on every load; the cross-validated half is rebuilt
+    when the odds recalibrate, because ten fits over the whole pool is real work and a visitor
+    should not be the one who waits for it.
     Generated ${esc((d.generatedAt || '').replace('T', ' ').slice(0, 16))} UTC${
     d.model?.n ? ` &middot; odds model last refit on ${num(d.model.n)} resolved trades` : ''}.
     <a href="/">Back to the table</a></footer>`;
