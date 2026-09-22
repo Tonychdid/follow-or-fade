@@ -78,10 +78,12 @@ try {
   if (u.searchParams.get('admin')) { localStorage.setItem('fof_admin', u.searchParams.get('admin')); u.searchParams.delete('admin'); history.replaceState(null, '', u.pathname + u.search); }
 } catch {}
 const adminToken = () => { try { return localStorage.getItem('fof_admin') || ''; } catch { return ''; } };
-const api = async (path, body) => {
+// `ms` exists for the one call that legitimately runs long: the whale re-assessment walks every
+// wallet in the window and takes about a minute. Everything else keeps the 30s default.
+const api = async (path, body, ms = 30e3) => {
   const headers = { 'x-admin-token': adminToken() };
   if (body) headers['Content-Type'] = 'application/json';
-  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 30e3);
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
   let res;
   try { res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body), signal: ctl.signal } : { headers, signal: ctl.signal }); }
   catch (e) { throw Object.assign(new Error(e.name === 'AbortError' ? 'The table is slow right now. Try again.' : 'Connection problem. Check your internet and try again.'), { status: 0 }); }
@@ -1550,6 +1552,19 @@ $('alertBtn').onclick = () => ($('alertPanel').hidden ? openAlerts() : ($('alert
 $('alertClose').onclick = () => ($('alertPanel').hidden = true);
 $('notifBtn').onclick = async () => { if ('Notification' in window) await Notification.requestPermission(); renderAlertCfg(); };
 $('notifBtn2').onclick = async () => { if ('Notification' in window) await Notification.requestPermission(); renderAlertCfg(); };
+$('rosterNow').onclick = async (e) => {
+  const btn = e.target, was = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Re-assessing\u2026';
+  toast('Re-scoring every whale in the window. This takes about a minute.');
+  const r = await api('/api/roster/run', {}, 240e3).catch((err) => (toast(err.message), null));
+  btn.disabled = false; btn.textContent = was;
+  if (!r) return;
+  if (r.skipped) return toast(`Not run: ${r.skipped}`);
+  if (r.error) return toast(`Assessment failed: ${r.error}`);
+  toast(`${r.qualifying}/${r.walletsSeen} whales qualify \u00b7 +${(r.entered || []).length} in, ${(r.left || []).length} out \u00b7 top ${(r.leaderboardTop || []).length} on the board`);
+  whaleData = null;                       // the board is now stale: refetch it next time it is opened
+  if (boardTab === 'whales') loadWhaleBoard();
+};
 $('scanNow').onclick = async (e) => { e.target.disabled = true; const r = await api('/api/alerts/scan', {}).catch((err) => (toast(err.message), null)); e.target.disabled = false; if (r) { alertCfg = r.config; renderAlertStatus(); if (!r.created.length) toast('Scan done. No new whale matched your rules.'); else pollAlerts(); } };
 $('testAlert').onclick = async (e) => { e.target.disabled = true; await api('/api/alerts/test', {}).catch((err) => toast(err.message)); e.target.disabled = false; pollAlerts(); };
 $('tgSave').onclick = async () => { try { alertCfg = await api('/api/alerts/telegram', { token: $('tgToken').value }); $('tgToken').value = ''; renderAlertCfg(); } catch (e) { toast(e.message); } };
