@@ -17,6 +17,7 @@ const agent = await import('./lib/agent.js');
 const roster = await import('./lib/roster.js');
 const bots = await import('./lib/bots.js');
 const store = await import('./lib/store.js');
+const proof = await import('./lib/proof.js');
 const PORT = Number(process.env.PORT || 3000);
 // PUBLIC=1 when hosted for everyone: alert settings / Telegram become admin-only and the API is rate limited.
 const PUBLIC = process.env.PUBLIC === '1';
@@ -97,7 +98,7 @@ setInterval(() => { const now = Date.now(); for (const [k, v] of buckets) if (no
 // routes that hit Hyperliquid or Nansen cost more tokens than a plain page read
 const COST = { 'POST /api/player': 20, 'GET /api/round': 4, 'GET /api/live': 2, 'POST /api/alerts/scan': 30, 'POST /api/alerts/test': 30, 'POST /api/optout': 40, 'GET /api/research/intel': 3, 'GET /api/live/one': 6, 'GET /api/challenge': 2, 'GET /api/result': 2, 'GET /api/preview': 2,
   'POST /api/live/bet': 4, 'POST /api/live/cashout': 4, 'POST /api/research/pick/bet': 4, 'GET /api/live/bets': 2, 'POST /api/bet': 2,
-  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2, 'POST /api/roster/run': 40 };
+  'GET /api/status': 2, 'GET /api/leaderboard': 3, 'GET /api/whaleboard': 3, 'GET /api/bots': 2, 'GET /api/alerts': 2, 'POST /api/roster/run': 40, 'GET /api/proof': 3, 'GET /api/proof/raw': 3, 'GET /api/usage': 2 };
 
 const routes = {
   'GET /health': async () => ({ ok: true }),
@@ -106,7 +107,10 @@ const routes = {
   'GET /api/player': async (_, q) => game.getPlayer(q.get('id')) ?? Promise.reject(Object.assign(new Error('Unknown player'), { status: 404 })),
   'GET /api/preview': async () => ({ hand: game.peekHand() }), // the front door shows the hand you're about to play
   'GET /api/round': async (_, q) => game.newRound(q.get('player'), q.get('challenge')),
-  'GET /api/usage': admin(async () => nansen.getUsageDetail()),
+  // Public. The README quotes a call count and a credit spend; a number nobody can verify is worth
+  // nothing, and half this field's entries assert one from a file they gitignored. This is the
+  // ledger behind ours. It exposes endpoint names and totals - no key, no request bodies, no wallets.
+  'GET /api/usage': async () => nansen.getUsageDetail(),
   'GET /api/result': async (_, q) => ({ result: game.resultView(q.get('id')) }),
   'GET /api/challenge': async (_, q) => ({ challenge: game.challengeView(q.get('id')) }),
   'POST /api/bet': async (b) => game.placeBet(b.player, b.roundId, b.choice, b.stake),
@@ -125,6 +129,12 @@ const routes = {
   // The house bots: their own route rather than a new shape for /api/leaderboard, so a browser
   // still holding the old app.js keeps working instead of rendering an object as a table.
   'GET /api/bots': async () => bots.rows(),
+  // The proof desk. Public on purpose: this product claims the odds are fair and that reading the
+  // tells beats blind copying, and a claim a visitor cannot check is just marketing. Costs no
+  // Nansen credits - it reads the prediction journal and the training pool already on disk.
+  'GET /api/proof': async () => proof.report(game.resolvedSamples(), bots.rows()),
+  // Every prediction, one JSON object per line, so anyone who doubts the page can recompute it.
+  'GET /api/proof/raw': async (_, q) => ({ predictions: proof.journal(Math.min(20000, Number(q.get('limit')) || 0)) }),
   // Run the weekly whale assessment now instead of waiting for it to fall due. The comment in
   // roster.js has always promised an admin button for this; there was never a route behind it, so
   // a fresh rule or a new leaderboard cut-off could not be applied until the schedule came round.
