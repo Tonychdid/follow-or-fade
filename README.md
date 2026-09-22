@@ -174,6 +174,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `EARLY_PUMP_PCT` | `0.15` | How big a move has to be, within the horizon, to count as one worth being early to. 15% is the top 15% of all measured opportunities |
 | `EARLY_CAPTURE_PCT` | `0.5` | How much of that move they must keep. The median trader keeps 26%, so half is top-quartile behaviour |
 | `EARLY_HORIZON_HOURS` | `48` | Window after entry for both the move and the return. 24h and 72h select almost the same wallets |
+| `EARLY_MAX_FIND_AGE_HOURS` | `168` | How recently the last good early call must have been made. The tag waives the grade, return, losing-week and size rules, so it has to be current: a wallet with an 88% win rate over 6,001 closes and **−$310K in the last 7 days** was still alerting on finds from three weeks earlier |
 | `EARLY_MIN_FINDS` | `4` | Good early calls needed in 30 days — four, not one, is what separates skill from a lucky week |
 | `EARLY_MIN_CONVERT` / `EARLY_MIN_COINS` / `EARLY_MIN_DAYS` | `0.4` / `2` / `3` | Conversion rate, and spread across coins and days, so one hot streak on one coin cannot qualify |
 | `EARLY_FEW_MIN_FINDS` / `EARLY_FEW_MIN_CONVERT` | `1` / `0.5` | The second route: how few early calls are enough, and how many of their chances they must have converted |
