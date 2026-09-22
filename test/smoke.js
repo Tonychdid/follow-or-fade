@@ -231,6 +231,52 @@ try {
   const S = proof.populations(same);
   ok('a difference smaller than the noise is not called a difference', !S.significant,
      `difference ${(S.difference * 100).toFixed(2)}%, se ${(S.differenceSe * 100).toFixed(2)}%, significant ${S.significant}`);
+  // ---- the hands are not independent draws, and the error bars have to know it ----
+  // Where every hand really does come from its own wallet, the cluster-robust error must reduce to
+  // the textbook one EXACTLY. If it does not, the clustering arithmetic is simply wrong.
+  const solo = proof.meanStats([1, -1, 0.3, -1, 0.5, -1, 0.25, -1, 2, -1], Array.from({ length: 10 }, (_, i) => 'w' + i));
+  ok('with one hand per wallet the clustered error equals the textbook one',
+     Math.abs(solo.seCluster - solo.seIid) < 1e-12, `${solo.seCluster} vs ${solo.seIid}`);
+  // THE REPLICATION TRAP, which is the whole reason this exists. Ten wallets either side, six good
+  // and four bad; copy each wallet's hands thirty times. Nothing new has been learned, so nothing
+  // about the estimate or its uncertainty may move. A test that treats hands as independent sees
+  // thirty times the evidence and announces a discovery.
+  const clustered = (rep) => {
+    const out = [];
+    for (let w = 0; w < 10; w++) for (let i = 0; i < rep; i++) out.push({ p: 0.6, won: w < 6, push: false, pool: true, addr: 'f' + w });
+    for (let w = 0; w < 10; w++) for (let i = 0; i < rep; i++) out.push({ p: 0.6, won: w < 4, push: false, pool: false, addr: 'r' + w });
+    return out;
+  };
+  const thin = proof.populations(clustered(1)), fat = proof.populations(clustered(30));
+  ok('duplicating a wallet does not move the estimate',
+     Math.abs(thin.difference - fat.difference) < 1e-12, `${thin.difference} vs ${fat.difference}`);
+  ok('duplicating a wallet thirty times does not shrink the error bar',
+     Math.abs(thin.differenceSe - fat.differenceSe) < 1e-12,
+     `se ${thin.differenceSe.toFixed(5)} -> ${fat.differenceSe.toFixed(5)}`);
+  ok('the naive test would have been fooled by it, so the guard is earning its keep',
+     Math.abs(fat.difference) > 1.96 * (thin.differenceSe / Math.sqrt(30)));
+  ok('thirty-times-duplicated wallets are still not called significant', !fat.significant,
+     `z ${(fat.difference / fat.differenceSe).toFixed(2)}`);
+  // ALL contains FILTERED, so those two are not independent samples. Written as a contrast over the
+  // disjoint groups, filtered-vs-all is an exact rescaling of filtered-vs-rejected when nothing is
+  // unassessed - same z, to the last decimal. Quadrature gets this wrong, which is the point.
+  const disj = [
+    ...Array.from({ length: 220 }, (_, i) => ({ p: 0.6, won: i % 100 < 78, push: false, pool: true, addr: 'f' + i })),
+    ...Array.from({ length: 180 }, (_, i) => ({ p: 0.6, won: i % 100 < 61, push: false, pool: false, addr: 'r' + i }))];
+  const D = proof.populations(disj);
+  ok('with nothing unassessed, the two comparisons agree on z',
+     D.unknown === 0 && Math.abs(D.tests.return.vsAll.z - D.tests.return.vsRejected.z) < 1e-9,
+     `${D.tests.return.vsAll.z.toFixed(6)} vs ${D.tests.return.vsRejected.z.toFixed(6)}`);
+  // The two claims are scored apart, because the easy one can pass while the hard one is still open.
+  ok('win rate and return are tested separately',
+     D.tests.winRate.vsAll && D.tests.return.vsAll
+     && D.tests.winRate.vsAll.diff !== D.tests.return.vsAll.diff,
+     `win ${D.tests.winRate.vsAll.diff.toFixed(4)}, return ${D.tests.return.vsAll.diff.toFixed(4)}`);
+  // A population measured against itself differs from itself by nothing at all.
+  const selfOnly = proof.populations(Array.from({ length: 200 }, (_, i) =>
+    ({ p: 0.6, won: i % 100 < 70, push: false, pool: true, addr: 'f' + i })));
+  ok('a population compared with itself shows no difference',
+     Math.abs(selfOnly.difference) < 1e-12, String(selfOnly.difference));
   // Cross-validation must never score a sample with a model that saw it.
   const cvSamples = Array.from({ length: 200 }, (_, i) => ({
     at: i, address: '0x' + (i % 9),
