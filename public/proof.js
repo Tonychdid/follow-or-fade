@@ -167,15 +167,19 @@ async function load() {
   }
 
   const F = d.forward, C = d.crossValidated;
-  // The headline runs on whichever set can actually carry it - the one with more hands whose wallet
-  // the roster has assessed, since an unassessed hand cannot take part in the comparison at all.
-  // The forward record wins ties, because a forward prediction is worth more than a rotated fold.
-  // The two are never averaged together: they are different kinds of evidence.
+  // The headline belongs to the HELD-OUT record: hands dealt from the fixed holdout the odds model
+  // never trains on. It is the only evidence here not flattered by the model having seen the trade.
+  // Until it holds enough assessed hands to carry a comparison, the headline shows the in-sample check
+  // and says so, instead of quietly promoting whichever set happens to be bigger.
+  const CL = F?.clean || null;
+  const CLEAN_MIN = 60;
   const assessed = (x) => x?.populations?.assessed || 0;
-  const head = assessed(F) >= assessed(C) && assessed(F) > 0 ? F : C;
-  const headLabel = head === F
-    ? `${num(assessed(F))} hands quoted live, since ${esc((F.since || '').slice(0, 10))}`
-    : `${num(C.n)} resolved Smart Money trades, cross-validated ${C.folds} ways`;
+  const cleanN = assessed(CL);
+  const clean = cleanN >= CLEAN_MIN;
+  const head = clean ? CL : C;
+  const headLabel = clean
+    ? `${num(cleanN)} held-out hands dealt since ${esc((CL.since || '').slice(0, 10))}, each priced by a model that had never trained on that trade`
+    : `${num(C.n)} resolved Smart Money trades, cross-validated ${C.folds} ways. The filters were tuned on this same data, so this is the in-sample check, not proof`;
 
   let h = '';
 
@@ -187,14 +191,19 @@ async function load() {
   // The win rate asks whether the filters pick whales that win more often. The return asks whether
   // they beat the PRICE those whales are quoted at, which is a much higher bar and can fail while
   // the first one passes. Collapsing both into one verdict throws away a result that is already in.
-  const pstr = (p) => (p == null ? '' : p < 0.001 ? 'p &lt; 0.001' : `p = ${p.toFixed(3)}`);
+  // p-values are shown AFTER the Holm adjustment for running four tests on the same hands.
+  const pstr = (p) => (p == null ? '' : p < 0.001 ? 'adjusted p &lt; 0.001' : `adjusted p = ${p.toFixed(3)}`);
   const claim = (title, test, fmt, note) => {
     if (!test || test.se == null) return '';
-    const cls = !test.significant ? 'wait' : test.diff >= 0 ? 'ok' : 'bad';
-    const word = !test.significant ? 'not yet proven' : test.diff >= 0 ? 'proven' : 'refuted';
+    const sig = test.significant, up = test.diff >= 0;
+    // Only the held-out record can PROVE anything. The in-sample check can at most be consistent.
+    const cls = !sig ? 'wait' : !up ? 'bad' : clean ? 'ok' : 'wait';
+    const word = clean
+      ? (!sig ? 'not yet proven' : up ? 'proven' : 'refuted')
+      : (!sig ? 'not supported' : up ? 'supported in-sample' : 'against, in-sample');
     return `<div class="claim ${cls}">
       <div class="ct">${title}</div><div class="cv">${word}</div>
-      <div class="cd">${fmt(test.diff)} &middot; 95% interval ${fmt(test.lo)} to ${fmt(test.hi)} &middot; ${pstr(test.p)}</div>
+      <div class="cd">${fmt(test.diff)} &middot; 95% interval ${fmt(test.lo)} to ${fmt(test.hi)} &middot; ${pstr(test.pAdj ?? test.p)}</div>
       <div class="cn">${note}</div></div>`;
   };
 
@@ -208,6 +217,7 @@ async function load() {
       ${claim('The filters beat the price those whales are quoted at', cmp.tests?.return?.vsAll, (x) => sgn(x, 2),
         'The hard one. The odds already price in how good a wallet is, so a better whale is quoted shorter and simply picking better whales should not move the return. Clearing this bar means the house rules see something the pricing does not.')}
     </div>
+    ${clean ? '' : `<p class="exp"><b>The clean test is still filling.</b> One trade in ${num(CL?.every || 5)} is held out and never used to train the odds, and hands dealt from it are the only record here that a trained model could not have flattered. It holds ${num(cleanN)} assessed ${cleanN === 1 ? 'hand' : 'hands'} so far and takes over this headline at ${CLEAN_MIN}. Until then, read the verdicts above as consistent with the claim, not as proof of it.</p>`}
     <p class="exp">Measured on ${headLabel}. Both intervals are cluster-robust, hands are grouped by
     the wallet that made them, so one busy whale cannot pass itself off as many independent votes.</p>`
     : `<div class="big neutral">not yet</div>
@@ -311,12 +321,12 @@ async function load() {
   beautiful curve and proves nothing, so it is not offered here at any size. There are two kinds of
   evidence below and they are never mixed.</p>`;
 
-  const pf = panel('Forward record', 'fwd', 'Every price quoted, before the outcome was known',
-    F.n ? `Written down at the moment each hand was built and never edited since.
-       ${num(F.n)} predictions, ${num(F.scored)} of them settled${F.pushes ? ` (${num(F.pushes)} pushed: the whale barely moved, so there was no winner)` : ''}${F.since ? `, starting ${esc(F.since.slice(0, 10))}` : ''}.
-       Unfakeable by construction, and the only thing that can finally settle the argument.`
-      : `The journal starts empty and fills as hands are dealt: it has nothing in it yet.
-         Until it does, the cross-validated panel below is the honest answer.`, F, 'F');
+  const pf = panel('Dealt hands', 'fwd', 'Every price the table quoted, logged when the hand was dealt',
+    F.n ? `${num(F.n)} predictions, ${num(F.scored)} of them settled${F.pushes ? ` (${num(F.pushes)} pushed: the whale barely moved, so there was no winner)` : ''}${F.since ? `, starting ${esc(F.since.slice(0, 10))}` : ''}.
+       These are replays of trades that have already closed, and the odds model may have been fitted
+       on some of them, so this is a record of what the table said rather than a clean test. The clean
+       subset is the ${num(CL?.n || 0)} held out from training.`
+      : `The journal starts empty and fills as hands are dealt: it has nothing in it yet.`, F, 'F');
   h += pf.html;
 
   const pc = panel('Cross-validated', '', `${C.folds || 10}-fold on the training pool`,
@@ -355,8 +365,12 @@ async function load() {
     comes from the current weekly roster, and that roster was graded partly on the very outcomes being
     scored here: a mild look-ahead that flatters the filtered side. It is the reason the lookback
     is kept to two weeks rather than stretched for a bigger number: the further back it reaches, the
-    more the comparison leans on a verdict that already knew the answer. The clean version of this test
-    is the forward record, which has no such problem and is the one that will settle it.</li>
+    more the comparison leans on a verdict that already knew the answer. The held-out record removes
+    the odds model's advantage but not this one: the filters themselves were tuned by looking at
+    results like these. The fully clean test is a roster frozen before the trades it judges.</li>
+    <li><b>Four tests, one set of hands.</b> Win rate and return, each against two comparisons. Running
+    four tests makes a lucky pass more likely, so every p-value on this page is Holm-adjusted before
+    anything is called supported or proven.</li>
     <li><b>Hands from one whale are not independent.</b> The filtered set averages under three hands per
     wallet, so every interval on this page is cluster-robust: hands are grouped by the wallet that made
     them before the error is computed, and where that produces a <i>narrower</i> bar than the naive
@@ -369,7 +383,7 @@ async function load() {
     here is a signal, and anything done outside it is the reader's own decision.</li>
   </ul></div>`;
 
-  h += `<footer>The forward record is recomputed on every load; the cross-validated half is rebuilt
+  h += `<footer>The dealt-hands record is recomputed on every load; the cross-validated half is rebuilt
     when the odds recalibrate, because ten fits over the whole pool is real work and a visitor
     should not be the one who waits for it.
     Generated ${esc((d.generatedAt || '').replace('T', ' ').slice(0, 16))} UTC${
