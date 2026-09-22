@@ -14,6 +14,29 @@
 
 Built for the Nansen Meridian Buildathon.
 
+### Nansen data doesn't decorate this app — it prices it
+
+Every hand's odds come out of a logistic model with five features, and all five are Nansen responses:
+the whale's **30-day win rate** shrunk by how many trades it rests on, whether **Smart Money flow** on
+that coin agreed with the trade, whether **the crowd** was already piling in the same way (crowded
+trades fade), which side was **paying funding**, and the **position size** against the usual. The model
+is **refitted every hour against trades that have since resolved** — 356 real Smart Money positions in
+the live sample right now — so the price you bet against is a probability the data argued for, not a
+weight somebody chose. The market settles it: a hand is judged on the whale's own exit, size-weighted
+across every closing fill, read from Hyperliquid.
+
+### The app publishes whether any of this works
+
+Three house bots — **Always Follow**, **Always Fade** and **Coin Flip** — play every hand the table
+builds, at a flat stake, on the same odds and the same real exits, and sit on the Hall of Fame tagged
+BOT. *Always Follow* is the benchmark this whole product is judged against: if blindly copying Smart
+Money beats the people learning to read it, the leaderboard says so in public, and nobody gets to tune
+it. No other number on the site can embarrass the site. That one can.
+
+**Measured on the live deployment, 22 September 2026:** 20,068 Nansen API calls · 27,170 credits ·
+356 resolved trades in the calibration sample · 503 bets placed by real players. The buildathon asks
+for 1,000 calls.
+
 ---
 
 [![Follow or Fade — the Training Table](docs/the-table.jpg)](https://x.com/himerosventures/status/2102130395865043397)
