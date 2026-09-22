@@ -1504,6 +1504,17 @@ function renderAlertCfg() {
   // Telegram is open to everyone when the deployment says so: the bot's @username is then the one
   // thing a visitor needs, and the server only sends it when TELEGRAM_PUBLIC is on.
   const tgOpen = alertCfg.telegram?.public && alertCfg.telegram?.botLink;
+  // The header pill is the one place a visitor sees the offer without going looking for it, so it is
+  // painted from the same flag as the panel copy rather than from a second source of truth.
+  const pill = $('tgPill');
+  if (pill) { pill.hidden = !tgOpen; if (tgOpen) pill.href = alertCfg.telegram.botLink; }
+  // The free-beta strip said the Telegram alerts were in private testing, which stopped being true
+  // the day they opened to everyone. Correct it from the same flag instead of leaving two answers.
+  if (tgOpen) {
+    const long = document.querySelector('#betaStrip .bs-long'), short = document.querySelector('#betaStrip .bs-short');
+    if (long) long.innerHTML = 'The whole game is free \u00b7 <b>Free whale alerts on Telegram</b>';
+    if (short) short.innerHTML = 'Free \u00b7 <b>alerts on Telegram</b>';
+  }
   $('apTgPublic').hidden = !tgOpen;
   if (tgOpen) $('apTgPublic').innerHTML = `\u{1F514} <b>Get these alerts on Telegram, free.</b> Open <a href="${esc(alertCfg.telegram.botLink)}" target="_blank" rel="noopener">@${esc(alertCfg.telegram.botName || 'the bot')}</a> and press <b>Start</b>. Send <code>/stop</code> in the chat any time to stop them. Alerts are information, not advice.`;
   $('cfgEnabled').checked = alertCfg.enabled; $('cfgGrade').value = alertCfg.minGrade; $('cfgWin').value = String(alertCfg.minWinRate);
