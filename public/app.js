@@ -1176,12 +1176,12 @@ function renderWhaleBoard() {
     // underneath made every second row read as the same address twice.
     const named = !!(w.trader && !/^Smart Money (whale|wallet)/.test(w.trader));
     const cls = { 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[w.grade] || 'gc';
-    const url = `https://app.nansen.ai/profiler?address=${encodeURIComponent(w.address)}&chain=hyperliquid`;
+    const url = `/w/${encodeURIComponent(w.address)}`;
     const roi = r.roi == null ? 'n/a' : `<span class="${r.roi >= 0 ? 'pos' : 'neg'}">${pct(r.roi)}</span>`;
     const pnl = r.pnl == null ? 'n/a' : `<span class="${r.pnl >= 0 ? 'pos' : 'neg'}">${compact(r.pnl)}</span>`;
     return `<tr>
       <td>${i + 1}</td>
-      <td><a class="whale-name" href="${esc(url)}" target="_blank" rel="noopener">${esc(whaleName(w))}</a>
+      <td><a class="whale-name" href="${esc(url)}" title="This whale's page: record, open position, alerts, share">${esc(whaleName(w))}</a>
         <div class="whale-addr">${named ? esc(shortAddr(w.address)) + ' ' : ''}${w.inPool ? '<span class="pool-tag" title="Clears the house rules, so this whale is dealt as a hand and can fire an alert">IN THE POOL</span>' : ''}</div></td>
       <td><span class="grade-chip ${cls}">${esc(w.grade || '?')}</span>${whaleTags(w)}</td>
       <td>${roi}</td><td>${pnl}</td>
@@ -1345,7 +1345,7 @@ function liveCard(t) {
   return `<div class="lcard${t.alert ? ' alerted' : ''}" data-key="${k}">${t.alert ? '<div class="ribbon">WHALE ALERT</div>' : ''}
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="row-right"><button class="lc-refresh" data-refresh="${k}" title="Re-check this whale: price, odds, tells and whether they are still in">↻ Re-check</button><div class="size">${compact(t.valueUsd)}</div></div></div>
     <div class="lc-changed" hidden></div>
-    <div class="meta">${esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
+    <div class="meta">${t.address ? `<a class="whale-link" href="/w/${esc(t.address)}" title="This whale's page">${esc(t.trader || 'Smart Money whale')}</a>` : esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
 
     <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span>${ag ? `<span class="was-grade" title="Grade when the alert went out">was ${esc(ag.grade)}</span>` : ''}<span class="lcs-text"><b>${esc(tr.label)}${whaleTags(tr)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
