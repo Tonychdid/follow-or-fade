@@ -81,6 +81,10 @@ try {
   ok('a hand is dealt', typeof round.roundId === 'string');
   ok('hand has a real coin and side', !!round.coin && ['Long', 'Short'].includes(round.side));
   ok('odds are present on both sides', round.odds?.follow > 1 && round.odds?.fade > 1);
+  // The call rail: a hand says which Nansen data priced it, and how far each feature moved the price.
+  ok('a hand carries its Nansen call rail', Array.isArray(round.nansen?.why) && round.nansen.why.length === 5
+    && round.nansen.why.every((w) => Number.isFinite(w.pp)), JSON.stringify(round.nansen?.why || null).slice(0, 120));
+  ok('the rail names no wallet address', !JSON.stringify(round.nansen || {}).match(/0x[0-9a-f]{6,}/i));
 
   // Play a short run rather than one hand. A payout bug only shows on a WINNING hand, so a
   // single-bet test catches an overpay about half the time - it passed three times in a row against
@@ -278,7 +282,21 @@ try {
   // response had no pagination block, and because the feed is ordered newest-first and pool()
   // discards anything younger than MAX_HOLD, the training pool silently stayed small. Every
   // response shape the API can return is pinned here so it cannot happen again.
-  const { wantsNextPage } = await import(path.join(ROOT, 'lib', 'nansen.js'));
+  const { wantsNextPage, whaleName, traced, post } = await import(path.join(ROOT, 'lib', 'nansen.js'));
+  // A Nansen label that is only a referral code is never printed: that would advertise the code.
+  ok('referral-code labels are shown as a short address', whaleName('Uses "ABC" HL Referral Code', '0x1234567890abcdef') === 'Smart Money wallet 0x1234...cdef');
+  ok('real Nansen labels are kept', whaleName('Smart HL Perps Trader', '0x1') === 'Smart HL Perps Trader');
+  {
+    process.env.DEMO = '1';
+    const { calls } = await traced(() => post('perp-screener', { filters: { token_symbol: 'BTC', trader_type: 'sm' } }, 60));
+    ok('traced() records the Nansen calls made inside it', calls.length === 1 && calls[0].endpoint === 'perp-screener' && calls[0].cohort === 'sm');
+  }
+  {
+    const { brier } = await import(path.join(ROOT, 'lib', 'proof.js'));
+    const rows = Array.from({ length: 40 }, (_, i) => ({ p: 0.7, won: i % 4 !== 0, ret: i % 4 ? 0.01 : -0.01, resolved: true }));
+    const b = brier(rows, 0.6);
+    ok('Brier is compared with the trained base rate, not only the hindsight one', b && b.priorReference != null && b.prior === 0.6 && b.priorReference > b.reference);
+  }
   ok('a full page with no pagination block asks for the next one',
      wantsNextPage({ data: [] }, 500, 500) === true);
   ok('a short page ends the paging', wantsNextPage({ data: [] }, 137, 500) === false);
