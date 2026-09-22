@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Proof Desk — Follow or Fade</title>
+<meta name="description" content="Every price this app quoted, against what actually happened. The odds, measured. Raw record downloadable.">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --ink:#070507; --panel:#141015; --panel2:#1b1519;
+  --gold:#d4af37; --gold-l:#f5d77a; --gold-d:#8a6d1d; --ivory:#f3ead7; --muted:#a79d89; --read:#e9e1cf;
+  --emerald:#22c07e; --ruby:#e0445a;
+  --hair:rgba(212,175,55,.28); --hair2:rgba(212,175,55,.14);
+  --display:Cinzel,Georgia,serif; --serif:"Cormorant Garamond",Georgia,serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--ivory);font:15px/1.6 Inter,system-ui,sans-serif}
+body{background:
+  radial-gradient(1200px 600px at 50% -10%,rgba(212,175,55,.07),transparent 60%),
+  radial-gradient(900px 500px at 10% 100%,rgba(34,192,126,.05),transparent 60%),var(--ink)}
+a{color:var(--gold-l)}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 80px}
+header{border-bottom:1px solid var(--hair);margin-bottom:34px}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:900;letter-spacing:.1em;font-size:17px;color:var(--gold-l);text-decoration:none;white-space:nowrap}
+.logo .gem{color:var(--ruby);font-size:.7em;margin:0 .3em}
+.back{font-family:var(--display);font-size:12px;letter-spacing:.09em;padding:8px 15px;border:1px solid var(--hair);border-radius:999px;text-decoration:none;white-space:nowrap}
+.back:hover{border-color:var(--gold)}
+h1{font-family:var(--display);font-weight:900;letter-spacing:.04em;font-size:clamp(26px,5.5vw,40px);margin:8px 0 6px;line-height:1.15}
+.sub{font-family:var(--serif);font-style:italic;font-size:clamp(16px,3vw,20px);color:var(--muted);margin:0 0 30px}
+h2{font-family:var(--display);font-weight:700;letter-spacing:.1em;font-size:13px;color:var(--gold-l);text-transform:uppercase;
+   margin:46px 0 4px;padding-bottom:9px;border-bottom:1px solid var(--hair2)}
+h2 .n{color:var(--gold-d);margin-right:9px}
+.lede{color:var(--read);margin:14px 0 20px;max-width:64ch}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--hair2);border-radius:14px;padding:20px;margin:18px 0}
+.hero{text-align:center;padding:30px 20px}
+.hero .q{font-family:var(--serif);font-style:italic;font-size:clamp(18px,3.6vw,23px);color:var(--read);margin-bottom:14px}
+.big{font-family:var(--mono);font-size:clamp(34px,9vw,60px);font-weight:700;line-height:1;letter-spacing:-.02em}
+.big.pos{color:var(--emerald)} .big.neg{color:var(--ruby)} .big.neutral{color:var(--gold-l)}
+.hero .ci{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:10px}
+.hero .exp{color:var(--read);margin-top:15px;font-size:14.5px;max-width:52ch;margin-left:auto;margin-right:auto}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+.tile{background:rgba(0,0,0,.3);border:1px solid var(--hair2);border-radius:11px;padding:13px 15px}
+.tile small{display:block;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.tile b{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--gold-l)}
+.tile .u{font-size:12px;color:var(--muted);font-family:Inter,sans-serif;margin-left:4px}
+.panel-tag{display:inline-block;font-family:var(--display);font-size:10.5px;letter-spacing:.14em;padding:4px 11px;border-radius:999px;
+  background:rgba(212,175,55,.13);border:1px solid var(--hair);color:var(--gold-l);margin-bottom:11px}
+.panel-tag.fwd{background:rgba(34,192,126,.13);border-color:rgba(34,192,126,.4);color:#7ff0bd}
+.note{font-size:13px;color:var(--muted);margin:12px 0 0;max-width:66ch}
+figure{margin:18px 0 0}
+figcaption{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.ax{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+.rowlbl{font-family:var(--mono);font-size:11.5px;fill:var(--read)}
+.gridline{stroke:rgba(212,175,55,.1);stroke-width:1}
+.zeroline{stroke:rgba(243,234,215,.45);stroke-width:1.5}
+.conn{stroke-width:2;stroke-linecap:round}
+.dotA{fill:var(--gold-l);stroke:var(--panel);stroke-width:2}
+.tickP{stroke:var(--read);stroke-width:2;stroke-linecap:round}
+.whisk{stroke:rgba(243,234,215,.35);stroke-width:1.5;stroke-linecap:round}
+.gaplbl{font-family:var(--mono);font-size:10.5px}
+.bar{rx:4}
+.hitrow{fill:transparent;cursor:default}
+.hitrow:hover + .rowhl,.rowhl.on{opacity:1}
+.rowhl{fill:rgba(212,175,55,.06);opacity:0;pointer-events:none}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin-top:6px}
+th{text-align:right;font-family:var(--display);font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--hair2);font-weight:700}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:7px 8px;border-bottom:1px solid rgba(212,175,55,.07);color:var(--read)}
+tr:last-child td{border-bottom:none}
+.pos{color:var(--emerald)} .neg{color:var(--ruby)} .dim{color:var(--muted)}
+details{margin-top:14px}
+summary{cursor:pointer;font-family:var(--display);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;padding:7px 0}
+summary:hover{color:var(--gold-l)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--read);margin:0 0 14px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.legend .k2 i{border-radius:1px;width:3px;height:13px;background:var(--read)}
+.dl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.dl a{font-family:var(--mono);font-size:12.5px;padding:9px 14px;border:1px solid var(--hair);border-radius:9px;text-decoration:none;background:rgba(0,0,0,.25)}
+.dl a:hover{border-color:var(--gold);background:rgba(212,175,55,.08)}
+.limits li{margin-bottom:9px;color:var(--read)}
+.limits{max-width:68ch}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .12s;background:#0b0809;border:1px solid var(--hair);border-radius:9px;
+  padding:9px 12px;font-family:var(--mono);font-size:11.5px;color:var(--ivory);z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.7);max-width:250px;line-height:1.5}
+footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--hair2);font-size:12.5px;color:var(--muted)}
+.err{color:var(--ruby);font-family:var(--mono);font-size:13px}
+@media (max-width:560px){ .card{padding:15px} .hd{padding:14px 0} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap hd">
+    <a class="logo" href="/">FOLLOW<span class="gem">&#9670;</span>FADE</a>
+    <a class="back" href="/">&larr; Back to the table</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>The Proof Desk</h1>
+  <p class="sub">Every price this app quoted, against what actually happened.</p>
+
+  <p class="lede">This product makes two claims. That the odds are fair &mdash; when it says 60%, that side
+  wins about 60% of the time. And that reading the Nansen tells beats blindly copying Smart Money.
+  Neither is worth anything asserted, so both are measured here, and the raw record is
+  <a href="#check">downloadable</a> so you can recompute every number on this page yourself.</p>
+
+  <div id="app"><p class="dim">Loading the record&hellip;</p></div>
+</main>
+
+<div class="tip" id="tip"></div>
+<script src="/proof.js" defer></script>
+</body>
+</html>
