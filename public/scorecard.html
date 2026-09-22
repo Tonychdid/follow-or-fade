@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alert Scorecard, Follow or Fade</title>
+<meta name="description" content="Every whale alert this site sent, scored from the price you could have had when it went out, to the whale's real exit.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Alert Scorecard · Follow or Fade">
+<meta property="og:description" content="Every Smart Money whale alert, sent before the outcome, scored from the price when it went out to the whale's real exit.">
+<meta property="og:image" content="{{PUBLIC_URL}}/og/scorecard.png">
+<meta property="og:url" content="{{PUBLIC_URL}}/scorecard">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Alert Scorecard · Follow or Fade">
+<meta name="twitter:description" content="Every Smart Money whale alert, sent before the outcome, scored from the price when it went out to the whale's real exit.">
+<meta name="twitter:image" content="{{PUBLIC_URL}}/og/scorecard.png">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/pages.css">
+</head>
+<body>
+<header>
+  <div class="wrap hd">
+    <a class="logo" href="/">FOLLOW<span class="gem">&#9670;</span>FADE</a>
+    <a class="back" href="/">&larr; Back to the table</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>The Alert Scorecard</h1>
+  <p class="sub">Did the whale alerts work? Every one of them, scored.</p>
+
+  <p class="lede">Each alert was sent before anyone knew how the trade would end, so this is the one
+  record here that nothing can have been fitted to. Every alert is scored the way a follower would
+  have lived it: in at the Hyperliquid price when the alert went out, not the whale's fill, which was
+  already gone; out when the whale fully closed; 1x, no fees and no funding. Play money, and not
+  advice: a past alert says nothing certain about the next one.</p>
+
+  <div id="app"><p class="dim">Loading the alerts&hellip;</p></div>
+
+  <footer>Alerts are information, not advice. Built on Nansen Smart Money data and Hyperliquid fills.
+  Get them as they happen on <a href="https://t.me/fadefollowbot" target="_blank" rel="noopener">Telegram</a>,
+  free. The odds are scored separately on the <a href="/proof.html">proof desk</a>.</footer>
+</main>
+<script src="/scorecard.js" defer></script>
+</body>
+</html>
