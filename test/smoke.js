@@ -157,7 +157,34 @@ try {
   const shapes = [renderMessage(wh), renderMessage({ ...wh, record: { ...wh.record, d7: null } }),
     renderMessage({ ...wh, kind: 'add', addedSz: 12.4, sizeNow: 34.8, multiple: 3.2, avgEntry: 111240, markPx: 112400, upnl: 8.8e4, whaleRet: 0.0104 }),
     renderMessage({ ...wh, kind: 'trim', trimPct: 0.4, remainingPct: 0.6, heldMs: 7.2e6, markPx: 112400, whaleRet: 0.0104 }),
-    renderMessage({ ...wh, kind: 'exit', heldMs: 7.2e6, exitPx: 112400, whaleRet: 0.0104 })];
+    renderMessage({ ...wh, kind: 'exit', heldMs: 7.2e6, exitPx: 112400, whaleRet: 0.0104 }),
+    renderMessage({ ...wh, exits: { tp: [{ px: 120000, dist: 0.07, share: 0.25, full: false, kind: 'limit' }], sl: [], adds: [{ px: 105000, dist: -0.06, share: 0.5, kind: 'limit' }] } }),
+    renderMessage({ ...wh, kind: 'orders', changes: ['Stop loss added at 104,000'], markPx: 112400, whaleRet: 0.0104,
+      exits: { tp: [], sl: [{ px: 104000, dist: -0.075, share: null, full: true, kind: 'trigger' }], adds: [] } })];
+  {
+    // A whale's exit plan, read from their resting orders. A short covers by buying: a buy limit
+    // below the price is a take profit, a buy stop above is a stop loss, a sell limit above is an add.
+    const { classify, signature, changes } = await import(path.join(ROOT, 'lib', 'exits.js'));
+    const orders = [
+      { side: 'B', limitPx: '1390', sz: '300', isTrigger: false },
+      { side: 'B', limitPx: '1800', triggerPx: '1800', sz: '0', isTrigger: true, isPositionTpsl: true, orderType: 'Stop Market' },
+      { side: 'A', limitPx: '1720', sz: '58', isTrigger: false },
+    ];
+    const ex = classify(orders, 'Short', 1200, 1619);
+    ok('a resting buy below the price is a short\'s take profit, sized against the position',
+      ex.tp.length === 1 && ex.tp[0].px === 1390 && Math.abs(ex.tp[0].share - 0.25) < 1e-9 && ex.tp[0].dist < 0);
+    ok('a position stop covers the whole position', ex.sl.length === 1 && ex.sl[0].full && ex.sl[0].px === 1800);
+    ok('a sell above the price on a short is an add, never an exit', ex.adds.length === 1 && ex.adds[0].px === 1720);
+    const long = classify([{ side: 'A', limitPx: '100', triggerPx: '90', sz: '0', isTrigger: true, isPositionTpsl: true, orderType: 'Take Profit Market' }], 'Long', 5, 95);
+    ok("a long's take-profit trigger is read from the trigger price", long.tp.length === 1 && long.tp[0].px === 90 && long.sl.length === 0);
+    const moved = classify([{ ...orders[0] }, { ...orders[1], triggerPx: '1750' }], 'Short', 1200, 1619);
+    ok('a moved stop changes the fingerprint and is described as a move', signature(moved) !== signature(ex)
+      && changes(ex, moved).some((c) => /Stop loss moved from 1800 to 1750/.test(c)), JSON.stringify(changes(ex, moved)));
+    ok('an add alone never counts as an exit change', signature(ex) === signature(classify(orders.slice(0, 2), 'Short', 1200, 1619)));
+    const msg = shapes[5], om = shapes[6];
+    ok('the alert shows the exits, and says out loud when there is no stop', /Whale's exits/.test(msg) && /SL <b>none set<\/b>/.test(msg) && /TP <code>120,000<\/code>/.test(msg));
+    ok('an exits-changed follow-up names the change', /WHALE MOVED THEIR EXITS/.test(om) && /Stop loss added at 104,000/.test(om));
+  }
   // Telegram's whole allow-list, so a tag typed by mistake is caught here and not in production.
   const OK_TAGS = ['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'code', 'pre', 'a', 'blockquote', 'tg-spoiler'];
   const balanced = (t) => {
