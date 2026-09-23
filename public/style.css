@@ -284,6 +284,10 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 /* ---------- live floor ---------- */
 .floor-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px}
 .livelist{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.floor-section{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:6px 2px 2px;border-bottom:1px solid var(--hair2)}
+.floor-section b{font-family:var(--display);color:var(--gold);letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
+.floor-section span{color:var(--muted);font-size:.8rem}
+.floor-section:not(:first-child){margin-top:10px}
 .lcard{border-radius:22px;padding:18px;background:radial-gradient(ellipse at 50% 0%,#125c42,var(--felt) 50%,var(--felt-d));border:2px solid var(--gold-d);box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 0 40px rgba(0,0,0,.45);position:relative}
 .lcard .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .lcard .coin{font-family:var(--display);font-weight:900;font-size:30px;margin-left:6px}
