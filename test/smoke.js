@@ -213,6 +213,15 @@ try {
       record: { d30: { pnl: 5, roi: 0.1, winRate: 0.6, closed: 40, coins: 4, fees: 1, perCoin: { BTC: { pnl: 5 } } }, d7: null, trust: { grade: 'A', label: 'Strong hands', earlyStats: {} } } });
     const js = JSON.stringify(pa);
     ok('the public alert feed never prints a referral code', !/referral/i.test(js) && pa.trader === 'Smart Money wallet 0x1234...cdef', js);
+    // An alerted position must stay re-checkable after a restart and after the opening alert ages out:
+    // the trade row is rebuilt from the watch, and the key (hash:address:coin:opened) must survive
+    // builder-dex coins that carry their own colon.
+    const { rawFor } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    const { tradeKey } = await import(path.join(ROOT, 'lib', 'game.js'));
+    const t0 = { transaction_hash: '0xabc', trader_address: '0x1', token_symbol: 'xyz:SNDK', block_timestamp: '2026-09-18T04:11:48Z' };
+    const k0 = tradeKey(t0);
+    ok('a trade key rebuilds from its parts, builder-dex coins included', tradeKey({ ...t0, transaction_hash: k0.split(':')[0] }) === k0);
+    ok('an unknown alerted trade has no row to rebuild', rawFor('nope:0x1:BTC:2026') === null);
     ok('the public alert feed drops the raw Nansen row and per-coin detail', !('raw' in pa) && !('messageId' in pa) && !js.includes('perCoin') && pa.record.d30.winRate === 0.6);
   }
   const drift = gradeDriftLine({ grade: 'C', score: 60 }, { grade: 'A', score: 75 });
