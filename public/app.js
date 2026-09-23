@@ -617,7 +617,7 @@ function railHtml(r) {
   ];
   const fresh = (n.calls || []).filter((c) => c.how === 'fresh');
   const credits = fresh.reduce((a, c) => a + (c.credits || 0), 0);
-  return `<summary><span class="nr-dot"></span>Priced from <b>4 Nansen endpoints</b>${fresh.length ? ` · ${fresh.length} live call${fresh.length === 1 ? '' : 's'}, ${credits} credit${credits === 1 ? '' : 's'}` : ''}<span class="nr-open">show the chain</span></summary>
+  return `<summary><span class="nr-dot"></span><span class="nr-t">Priced by <b>3 Nansen endpoints</b>${fresh.length ? `<span class="nr-x"> · ${fresh.length} live call${fresh.length === 1 ? '' : 's'}, ${credits} credit${credits === 1 ? '' : 's'}</span>` : ''}</span><span class="nr-open">show</span></summary>
     <ol class="nr-list">${rows.map(([ep, what, v, c, fixed]) => `<li><code>${ep}</code><span class="nr-what">${what}</span>${eff(v)}${fixed ? '<span class="nr-how">shared list</span>' : how(c)}</li>`).join('')}
     <li class="nr-exit"><code>Hyperliquid fills</code><span class="nr-what">the whale's real exit, revealed after your call</span><b class="dim">judge</b><span class="nr-how">on-chain</span></li></ol>
     <p class="nr-note">Points are how far each number moved the Follow price on this hand. Weights are refit on resolved trades; the full record is on the <a href="/proof.html">proof desk</a>.</p>`;
