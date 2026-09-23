@@ -312,6 +312,17 @@ async function load() {
     <p class="note">Both strategies are fully determined by a recorded prediction and its outcome,
     which is exactly why they are the right test: there is no parameter to adjust.</p>
   </div>`;
+  {
+    const rc = d.model?.recal;
+    h += `<div class="card"><h3 style="font-family:var(--display);font-size:15px;letter-spacing:.05em;margin:0 0 4px">What this test caught, and what changed</h3>
+    <p class="note" style="margin-top:0">Always Follow was making about 12% a hand. The model was well calibrated on the
+    trades it trained on, but the hands the table deals come from the most recent week and were winning more often
+    than the odds said: 79% against a quoted 69%. So since Sep 23 the quoted odds carry one recalibration shift,
+    fitted on hands already dealt and scored (never the held-out ones), shrunk toward zero while the sample is small.
+    On a time split of this record, fitted on the older half and scored on the newer, it took Always Follow from +14%
+    a hand to about zero.${rc && rc.n ? ` Current shift: <b>${rc.offset >= 0 ? '+' : ''}${rc.offset.toFixed(2)}</b> in log-odds, from ${num(rc.n)} dealt hands.` : ''}
+    Hands priced before the change keep the odds they were dealt at, so the bars above move only as new hands come in.</p></div>`;
+  }
 
   if (d.bots?.length) {
     h += `<div class="card"><h3 style="font-family:var(--display);font-size:15px;letter-spacing:.05em;margin:0 0 4px">The house bots, live on the leaderboard</h3>
