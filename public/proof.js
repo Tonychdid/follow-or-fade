@@ -267,8 +267,8 @@ async function load() {
         const T = cmp.tests; if (!T) return '';
         const cell = (t, fmt) => t && t.se != null
           ? `<td class="${t.significant ? (t.diff >= 0 ? 'y' : 'n') : ''}">${fmt(t.diff)}<span class="pp">${
-              t.significant ? pstr(t.p) : 'not yet &middot; ' + pstr(t.p)}</span></td>`
-          : '<td class="dim">, </td>';
+              t.significant ? pstr(t.pAdj ?? t.p) : 'not yet &middot; ' + pstr(t.pAdj ?? t.p)}</span></td>`
+          : '<td class="dim">n/a</td>';
         const pc = (x) => sgnPP(x, 1), rr = (x) => sgn(x, 2);
         return `<table class="ptab"><thead><tr><th></th>
             <th>vs copying every whale</th><th>vs the whales it rejected</th></tr></thead><tbody>
