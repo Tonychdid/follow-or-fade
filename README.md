@@ -4,7 +4,7 @@
 
 [![tests](https://github.com/Tonychdid/follow-or-fade/actions/workflows/test.yml/badge.svg)](https://github.com/Tonychdid/follow-or-fade/actions/workflows/test.yml)
 
-**[Play it](https://follow-or-fade-production.up.railway.app)** · **[Proof desk](https://follow-or-fade-production.up.railway.app/proof.html)** · **[60s demo video](https://x.com/himerosventures/status/2102130395865043397)** · **[Free Telegram alerts](https://t.me/fadefollowbot)** · **[Live Nansen call ledger](https://follow-or-fade-production.up.railway.app/api/usage)**
+**[Play it](https://follow-or-fade-production.up.railway.app)** · **[Proof desk](https://follow-or-fade-production.up.railway.app/proof.html)** · **[Alert scorecard](https://follow-or-fade-production.up.railway.app/scorecard)** · **[60s demo video](https://x.com/himerosventures/status/2102130395865043397)** · **[Free Telegram alerts](https://t.me/fadefollowbot)** · **[Live Nansen call ledger](https://follow-or-fade-production.up.railway.app/api/usage)**
 
 No signup, no wallet, play chips only. Built for the Nansen Meridian Buildathon.
 
@@ -14,7 +14,8 @@ No signup, no wallet, play chips only. Built for the Nansen Meridian Buildathon.
 
 1. **[Play one hand.](https://follow-or-fade-production.up.railway.app)** A real Smart Money trade from this week, at the whale's exact entry. Open **"Priced from 4 Nansen endpoints"** under the odds bar: it lists each Nansen call behind the hand, whether it was live or cached, and how many points each Nansen number moved the price.
 2. **[Open the proof desk.](https://follow-or-fade-production.up.railway.app/proof.html)** Does copying Smart Money *through our filters* beat copying all of it? The answer, with intervals, adjusted p-values and the raw record to recompute it.
-3. **Run it yourself:** `git clone`, then `node server.js`. No install, no build, no API key needed (demo mode). `npm test` runs 74 checks offline.
+3. **[Open the alert scorecard.](https://follow-or-fade-production.up.railway.app/scorecard)** Every whale alert, sent before the outcome, scored from the price a follower could actually have had to the whale's real exit. Every whale has a share page (`/w/<address>`) with its own preview image.
+4. **Run it yourself:** `git clone`, then `node server.js`. No install, no build, no API key needed (demo mode). `npm test` runs 79 checks offline.
 
 ## What it is
 
@@ -26,7 +27,9 @@ Nansen labels the wallets worth watching. The question nobody answers is whether
 | **Live Floor** | Back whales who are in a position right now, ride them to their exit or cash out at fair value. | Supplies the opens, the whale's 7D and 30D record, and Smart Money positioning on the coin. |
 | **Telegram alerts** | Get the filtered whale entries on your phone, with add, trim and exit follow-ups as replies. | Scans Smart Money perp trades every few minutes and grades each whale. |
 | **Trader Profile** | Seven reading skills, each scored against what the odds expected of you. | Every skill is measured on hands priced from Nansen data. |
-| **Proof desk** | Read whether any of this works. | Every price it scores came from Nansen features. |
+| **Proof desk** | Read whether the odds and the filters hold up. | Every price it scores came from Nansen features. |
+| **Alert scorecard** | See what copying every alert at the alert price would have done, alert by alert. | The alerts are Nansen Smart Money opens that cleared the filters. |
+| **Whale pages** | Share any whale: record, open position, alert history, a preview image drawn on the server. | 30D and 7D records from `profiler/perp-pnl-summary`. |
 
 ## Nansen endpoints used
 
@@ -88,7 +91,7 @@ git clone https://github.com/Tonychdid/follow-or-fade.git
 cd follow-or-fade
 echo "NANSEN_API_KEY=your_key_here" > .env   # optional: without it the app runs on demo data
 npm start                                     # open http://localhost:3000
-npm test                                      # 74 checks, no key and no network needed
+npm test                                      # 79 checks, no key and no network needed
 ```
 
 Windows: download the ZIP, unzip, double-click `start.bat`. First hand in about five seconds. The first launch trains the odds in the background (about 450 credits), then about 3 credits per hand; on a small balance add `CALIBRATION_SAMPLE=20`. Hosting: [DEPLOY.md](DEPLOY.md). Every setting: [docs/METHODOLOGY.md](docs/METHODOLOGY.md#configuration-env).
@@ -102,6 +105,8 @@ lib/odds.js          Nansen features -> probability -> fair odds; hourly refit; 
 lib/game.js          hands, bets, the Live Floor, grades, the whale filters
 lib/proof.js         the proof desk: holdout, cross-validation, clustered intervals, Holm adjustment
 lib/alerts.js        alert scanner and Telegram delivery
+lib/scorecard.js     every alert scored from the price at the alert to the whale's exit
+lib/ogimage.js       share images (1200x630 PNG) drawn with a pixel font and zlib, no dependencies
 lib/hyperliquid.js   prices, positions and fill history (whale exits and settlement)
 lib/coach.js         post-hand lessons and the Trader Profile
 public/              vanilla JS, no build: app.js, proof.js, style.css
