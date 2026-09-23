@@ -284,6 +284,10 @@ h2{font-family:var(--display);font-size:28px;letter-spacing:.06em;margin:0 0 4px
 /* ---------- live floor ---------- */
 .floor-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px}
 .livelist{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.lc-exits{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin:8px 0 2px;padding:7px 10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid var(--hair2);font-size:.8rem;color:var(--read2)}
+.lc-exits .ex-h{font-family:var(--display);color:var(--gold);letter-spacing:.06em;text-transform:uppercase;font-size:.7rem}
+.lc-exits b{color:var(--ivory);font-family:var(--mono);font-weight:600}
+.lc-exits .muted{color:var(--muted)}
 .floor-section{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:6px 2px 2px;border-bottom:1px solid var(--hair2)}
 .floor-section b{font-family:var(--display);color:var(--gold);letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
 .floor-section span{color:var(--muted);font-size:.8rem}
