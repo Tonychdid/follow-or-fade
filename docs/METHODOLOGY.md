@@ -117,6 +117,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `DATA_DIR` | `data` | Where bankrolls, bets and the leaderboard are stored (mount a volume here when hosting) |
 | `BOARD_MIN_BETS` | `3` | Settled hands a player needs before appearing on the Hall of Fame |
 | `ALERT_LOOKBACK_HOURS` | `6` | How far back each alert scan reads the Nansen feed (same 5-credit cost at any window) |
+| `SCAN_MINUTES` / `SCAN_MIN_MINUTES` | `2` / `2` | How often the alert scan reads the Nansen feed, and the floor. The read is cached for just under one scan, so every scan sees fresh trades. It used to be 10 minutes with a 15-minute cache, which meant fresh trades only about every 20 minutes: measured on 15 real alerts, a median 13.7 minutes from the whale's first fill to the alert |
 | `ALERT_MAX_AGE_MIN` | `240` | How old a trade may be and still earn its first alert |
 | `ALERT_MAX_PER_SCAN` | `5` | Most alerts one scan may send, newest first (the rest wait for the next scan) |
 | `TELEGRAM_PUBLIC` | off | `1` opens the alerts to everyone: anyone who sends `/start` to your bot is subscribed, `/stop` unsubscribes, and the site shows the bot link. Costs **no extra Nansen credits** — one scan serves every subscriber |
