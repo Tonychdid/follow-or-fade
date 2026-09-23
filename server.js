@@ -185,10 +185,10 @@ async function whaleView(address) {
   const live = (Array.isArray(liveAll) ? liveAll : []).filter((t) => String(t.address || '').toLowerCase() === a);
   const sc = await scorecard.forWallet(address);
   if (!board && !live.length && !sc.alerts.length) throw Object.assign(new Error('We have not seen this wallet yet'), { status: 404 });
-  const trust = live[0]?.record?.trust || (board ? { grade: board.grade, score: board.score, marketMaker: board.marketMaker, label: board.marketMaker ? 'Market-maker pattern' : null } : null) || (sc.alerts[0] ? { grade: sc.alerts[0].grade, score: sc.alerts[0].score } : null);
+  const trust = live[0]?.record?.trust || (board ? { grade: board.grade, score: board.score, marketMaker: board.marketMaker, tooFast: board.tooFast, label: board.marketMaker ? 'Market-maker pattern' : board.tooFast ? 'Too fast to copy' : null } : null) || (sc.alerts[0] ? { grade: sc.alerts[0].grade, score: sc.alerts[0].score } : null);
   return {
     address, trader: nansen.whaleName(board?.trader || live[0]?.trader || sc.alerts[0]?.trader, address),
-    grade: trust?.grade ?? null, score: trust?.score ?? null, label: trust?.label ?? null, marketMaker: !!trust?.marketMaker,
+    grade: trust?.grade ?? null, score: trust?.score ?? null, label: trust?.label ?? null, marketMaker: !!trust?.marketMaker, tooFast: !!trust?.tooFast,
     inPool: !!board?.inPool, topCoin: board?.topCoin ?? null,
     tags: { specialist: !!board?.specialist, early: !!board?.early, printer: !!board?.printer, scalper: !!board?.scalper, leaderboard: !!board?.leaderboard },
     d30: board?.d30 || live[0]?.record?.d30 || null, d7: board?.d7 || live[0]?.record?.d7 || null,
