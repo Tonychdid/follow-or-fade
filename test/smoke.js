@@ -196,6 +196,10 @@ try {
     ok('a moved stop changes the fingerprint and is described as a move', signature(moved) !== signature(ex)
       && changes(ex, moved).some((c) => /Stop loss moved from 1800 to 1750/.test(c)), JSON.stringify(changes(ex, moved)));
     ok('an add alone never counts as an exit change', signature(ex) === signature(classify(orders.slice(0, 2), 'Short', 1200, 1619)));
+    ok('a whale trimming the position is not an exit change: the orders did not move', signature(ex) === signature(classify(orders, 'Short', 900, 1619))
+      && changes(ex, classify(orders, 'Short', 900, 1619)).length === 0);
+    const resized = classify([{ ...orders[0], sz: '500' }, orders[1]], 'Short', 1200, 1619);
+    ok('a take profit resized on the book is reported', changes(ex, resized).includes('Take profit size changed'), JSON.stringify(changes(ex, resized)));
     const msg = shapes[5], om = shapes[6];
     ok('the alert shows the exits, and says out loud when there is no stop', /Whale's exits/.test(msg) && /SL <b>none set<\/b>/.test(msg) && /TP <code>120,000<\/code>/.test(msg));
     ok('an exits-changed follow-up names the change', /WHALE MOVED THEIR EXITS/.test(om) && /Stop loss added at 104,000/.test(om));
