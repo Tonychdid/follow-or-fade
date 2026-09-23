@@ -127,6 +127,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `MM_MAX_WIN_RATE` / `MM_MIN_SAMPLE` | `0.95` / `200` | **Market-maker pattern.** A wallet winning this share of at least this many 30-day closes is capped at C and never dealt as a strong whale or alerted |
 | `FAST_MAX_WIN_RATE` | `0.88` | **Too fast to copy.** A SCALPER (short holds, measured on real round trips) winning this share of at least `MM_MIN_SAMPLE` closes is capped at C and never alerted: the edge is gone before a follower is in |
 | `HEDGE_MAX_COVER` | `0.8` | A short that the same wallet has covered with this much spot of the same coin (checked on Hyperliquid, `UBTC` counts as BTC) is a hedge and is not alerted |
+| `ORDERS_CHECK_MIN` / `ORDERS_NOTIFY_MIN` | `3` / `10` | For every alerted position still open, the whale's resting orders on that coin (Hyperliquid `frontendOpenOrders`, public) are re-read this often; take profits, stop losses and adds are shown on the alert and the card. A change to a take profit or stop loss sends a follow-up, at most once per `ORDERS_NOTIFY_MIN`, always reporting the net change |
 | `ALERT_PIN_MAX` | `12` | Alerted positions still open are kept in their own "From whale alerts" section at the top of the Live Floor until the whale exits, up to this many (most recent activity first: an add or trim counts) |
 | `PREVIEW_ROTATE_MIN` | `15` | How often the hand on the front door (and therefore a new player's first hand) rotates through the deck |
 | `BOT_STAKE` | `500` | Chips the house bots stake on every hand |
