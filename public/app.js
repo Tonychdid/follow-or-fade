@@ -1232,7 +1232,15 @@ function fetchLive() {
   return livePromise;
 }
 function renderLive(items) {
-  $('liveList').innerHTML = items.length ? items.map(liveCard).join('') : '<p class="muted">No whales opened positions in the last four days that are still open. Check back soon.</p>';
+  // Alerted positions get their own section at the top and stay there until the whale exits, so a
+  // follow-up alert about a whale who has held for days always has a card to land on.
+  const pinned = items.filter((t) => t.alert), rest = items.filter((t) => !t.alert);
+  const head = (title, sub) => `<div class="floor-section"><b>${title}</b><span>${sub}</span></div>`;
+  $('liveList').innerHTML = !items.length ? '<p class="muted">No whales opened positions in the last four days that are still open. Check back soon.</p>'
+    : pinned.length
+      ? head('From whale alerts', 'Still open. They stay here until the whale exits.') + pinned.map(liveCard).join('')
+        + (rest.length ? head('The floor', 'Smart Money positions opened in the last four days') + rest.map(liveCard).join('') : '')
+      : items.map(liveCard).join('');
   wireLive();
   restoreFocus();
 }
