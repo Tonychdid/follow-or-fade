@@ -15,7 +15,7 @@ No signup, no wallet, play chips only. Built for the Nansen Meridian Buildathon.
 1. **[Play one hand.](https://follow-or-fade-production.up.railway.app)** A real Smart Money trade from this week, at the whale's exact entry. Open **"Priced by 3 Nansen endpoints"** under the odds bar: it lists each Nansen request behind the hand, whether it was live or cached, and how many points each Nansen number moved the price.
 2. **[Open the proof desk.](https://follow-or-fade-production.up.railway.app/proof.html)** Does copying Smart Money *through our filters* beat copying all of it? The answer, with intervals, adjusted p-values and the raw record to recompute it.
 3. **[Open the alert scorecard.](https://follow-or-fade-production.up.railway.app/scorecard)** Every whale alert, sent before the outcome, scored from the price a follower could actually have had to the whale's real exit. Early days: it leads with counts until 20 alerts have closed. Every whale has a share page (`/w/<address>`) with its own preview image.
-4. **Run it yourself:** `git clone`, then `node server.js`. No install, no build, no API key needed (demo mode). `npm test` runs 79 checks offline.
+4. **Run it yourself:** `git clone`, then `node server.js`. No install, no build, no API key needed (demo mode). `npm test` runs 88 checks offline.
 
 ## What it is
 
@@ -77,8 +77,10 @@ A whale is dealt, and can fire an alert, only if their Nansen record clears the 
 
 - **Specialists** with proven profit on the exact coin they are opening get through on that coin.
 - **Market-maker pattern.** Winning 95% or more of hundreds of closes is quoting both sides of the book, not calling direction. Those wallets are capped at grade C, below the alert bar.
+- **Too fast to copy.** A wallet that holds for minutes or a few hours and still wins nearly every close keeps its edge in the minutes a follower spends reading the alert. Capped at C, never alerted.
+- **Hedged shorts.** Before a short is alerted, the wallet's Hyperliquid spot balance is checked. A short that is 80% or more covered by spot of the same coin is a hedge, not a call on direction, and is not alerted.
 
-Nansen labels are shown as the whale's name, except labels that are only a Hyperliquid referral code: this site never prints a referral code, so those wallets are named by address.
+Nansen labels are shown as the whale's name, except labels that are only a Hyperliquid referral code: this site never prints a referral code, so those wallets are named by address. The public alert feed carries the summary a follower reads, not the raw Nansen rows behind it.
 
 The full rules, the EARLY and PRINTER routes and the studies behind them are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
@@ -91,7 +93,7 @@ git clone https://github.com/Tonychdid/follow-or-fade.git
 cd follow-or-fade
 echo "NANSEN_API_KEY=your_key_here" > .env   # optional: without it the app runs on demo data
 npm start                                     # open http://localhost:3000
-npm test                                      # 79 checks, no key and no network needed
+npm test                                      # 88 checks, no key and no network needed
 ```
 
 Windows: download the ZIP, unzip, double-click `start.bat`. First hand in about five seconds. The first launch trains the odds in the background (about 450 credits), then about 3 credits per hand; on a small balance add `CALIBRATION_SAMPLE=20`. Hosting: [DEPLOY.md](DEPLOY.md). Every setting: [docs/METHODOLOGY.md](docs/METHODOLOGY.md#configuration-env).
