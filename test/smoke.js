@@ -164,6 +164,8 @@ try {
   {
     // A whale's exit plan, read from their resting orders. A short covers by buying: a buy limit
     // below the price is a take profit, a buy stop above is a stop loss, a sell limit above is an add.
+    const { feedTtlSec } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    ok('the alert feed is cached for just under one scan, so every scan reads fresh trades', feedTtlSec(2) < 120 && feedTtlSec(10) < 600 && feedTtlSec(0.1) >= 30);
     const { classify, signature, changes } = await import(path.join(ROOT, 'lib', 'exits.js'));
     const orders = [
       { side: 'B', limitPx: '1390', sz: '300', isTrigger: false },
