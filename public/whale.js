@@ -33,7 +33,7 @@ async function main() {
   const tags = Object.entries(w.tags || {}).filter(([, v]) => v).map(([k]) => `<span class="row-tag">${esc(k.toUpperCase())}</span>`).join(' ');
   let h = `<div class="who"><h1 style="margin:0">${esc(w.trader)}</h1>${w.grade ? `<span class="grade ${gcls(w.grade)}" title="${esc(w.label || '')}">${esc(w.grade)}</span>` : ''} ${tags}</div>
     <p class="addr">${esc(w.address)}</p>
-    <p class="sub" style="margin-bottom:10px">${esc(w.marketMaker ? 'Trades like a market maker: winning almost every close is spread, not direction.' : w.label || 'A Nansen Smart Money wallet on Hyperliquid.')}</p>`;
+    <p class="sub" style="margin-bottom:10px">${esc(w.marketMaker ? 'Trades like a market maker: winning almost every close is spread, not direction.' : w.tooFast ? 'Too fast to copy: short holds and nearly every close a win, so the edge is gone before a follower is in.' : w.label || 'A Nansen Smart Money wallet on Hyperliquid.')}</p>`;
   for (const p of w.live || []) {
     h += `<div class="card pos-card">
       <div><div class="side ${esc(p.side)}">${p.side === 'Short' ? 'SHORT' : 'LONG'} ${esc(coinName(p.coin))} <span class="dim" style="font-family:var(--mono);font-weight:400">${usd(p.valueUsd)}</span></div>
