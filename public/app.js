@@ -1352,7 +1352,8 @@ function exitsHtml(t) {
   const body = !ex.tp.length && !ex.sl.length
     ? '<span class="muted">No take profit or stop loss resting: exits by hand</span>'
     : part('TP', ex.tp, 'none') + part('SL', ex.sl, 'none set');
-  const adds = ex.adds.length ? `<span class="ex-add">Adds at ${ex.adds.slice(0, 2).map((r) => `<b>${price(r.px)}</b> <span class="muted">${d(r)}</span>`).join(', ')}</span>` : '';
+  const then = (r) => [r.thenTp ? `TP ${price(r.thenTp)}` : '', r.thenSl ? `SL ${price(r.thenSl)}` : ''].filter(Boolean).join(', ');
+  const adds = ex.adds.length ? `<span class="ex-add">Adds at ${ex.adds.slice(0, 2).map((r) => `<b>${price(r.px)}</b> <span class="muted">${d(r)}${then(r) ? ` · then ${then(r)}` : ''}</span>`).join(', ')}</span>` : '';
   return `<div class="lc-exits" title="Resting orders on Hyperliquid, as read ${esc(ago(new Date(ex.at || Date.now()).toISOString()))}"><span class="ex-h">Whale's exits</span>${body}${adds}</div>`;
 }
 function liveCard(t) {
