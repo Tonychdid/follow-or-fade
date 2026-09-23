@@ -202,6 +202,19 @@ try {
   ok('market makers never pass the alert rules, not even from the board', assess({
     d30: { closed: 500, pnl: 1e6, fees: 10, winRate: 0.99, roi: 0.2, coins: 6, perCoin: {} }, d7: { closed: 20, pnl: 1e4, coins: 4 },
     trust: { grade: 'A+', score: 99, marketMaker: true } }, 'BTC', { onBoard: true }).kind === null);
+  ok('wallets too fast to copy never pass the alert rules', assess({
+    d30: { closed: 2154, pnl: 1e6, fees: 10, winRate: 0.9, roi: 0.05, coins: 6, perCoin: {} }, d7: { closed: 200, pnl: 1e4, coins: 4 },
+    trust: { grade: 'A+', score: 99, tooFast: true } }, 'SOL', { onBoard: true }).kind === null);
+  {
+    // The public feed never republishes the raw Nansen row or a referral-code label, old alerts included.
+    const { publicAlert } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    const pa = publicAlert({ id: 'x', t: 1, trader: 'Uses "ABC" HL Referral Code', address: '0x1234567890abcdef', messageId: 7,
+      raw: { trader_address_label: 'Uses "ABC" HL Referral Code' },
+      record: { d30: { pnl: 5, roi: 0.1, winRate: 0.6, closed: 40, coins: 4, fees: 1, perCoin: { BTC: { pnl: 5 } } }, d7: null, trust: { grade: 'A', label: 'Strong hands', earlyStats: {} } } });
+    const js = JSON.stringify(pa);
+    ok('the public alert feed never prints a referral code', !/referral/i.test(js) && pa.trader === 'Smart Money wallet 0x1234...cdef', js);
+    ok('the public alert feed drops the raw Nansen row and per-coin detail', !('raw' in pa) && !('messageId' in pa) && !js.includes('perCoin') && pa.record.d30.winRate === 0.6);
+  }
   const drift = gradeDriftLine({ grade: 'C', score: 60 }, { grade: 'A', score: 75 });
   ok('a grade that moved since the alert is explained', drift.includes('Grade now <b>A</b>') && drift.includes('was <b>C</b>'), drift);
   ok('an unchanged grade adds nothing', gradeDriftLine({ grade: 'A' }, { grade: 'A' }) === '');
@@ -309,6 +322,18 @@ try {
     ok('after recalibration, always following is no longer free money', 0.8 / q - 1 < 0.04, `quote ${q.toFixed(3)}`);
     ok('recalibration ignores a sample too small to trust', odds.recalibrate(rows.slice(0, 10)).offset === 0);
     odds.recalibrate([]);
+    // A reason shown next to a price must pull the same way as the live model does, whatever a
+    // textbook would say: "good" is the sign of weight x value, never an assumed direction.
+    for (const funding of [0.5, -0.5]) {
+      const f = { walletEdge: 0.1, smFlow: 0.4, crowdFlow: 0.3, funding, size: 0 };
+      const rs = odds.reasons(f, { wallet: { closed_trade_count: 40, win_rate: 0.6 }, sm: { volume: 1 }, crowd: { volume: 1 }, coin: 'BTC', side: 'Long' });
+      const w = odds.getModel();
+      const agree = rs.every((r) => {
+        const k = /wallet won/.test(r.text) ? 'walletEdge' : /Smart Money flow/.test(r.text) ? 'smFlow' : /crowd/.test(r.text) ? 'crowdFlow' : /funding/.test(r.text) ? 'funding' : null;
+        return !k || r.good === ((w[k] || 0) * f[k] >= 0);
+      });
+      ok(`reasons agree with the live weights (funding ${funding > 0 ? 'paid' : 'received'})`, agree, JSON.stringify(rs));
+    }
   }
   const { wantsNextPage, whaleName, traced, post } = await import(path.join(ROOT, 'lib', 'nansen.js'));
   // A Nansen label that is only a referral code is never printed: that would advertise the code.
