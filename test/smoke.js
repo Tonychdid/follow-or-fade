@@ -175,8 +175,23 @@ try {
       ex.tp.length === 1 && ex.tp[0].px === 1390 && Math.abs(ex.tp[0].share - 0.25) < 1e-9 && ex.tp[0].dist < 0);
     ok('a position stop covers the whole position', ex.sl.length === 1 && ex.sl[0].full && ex.sl[0].px === 1800);
     ok('a sell above the price on a short is an add, never an exit', ex.adds.length === 1 && ex.adds[0].px === 1720);
-    const long = classify([{ side: 'A', limitPx: '100', triggerPx: '90', sz: '0', isTrigger: true, isPositionTpsl: true, orderType: 'Take Profit Market' }], 'Long', 5, 95);
-    ok("a long's take-profit trigger is read from the trigger price", long.tp.length === 1 && long.tp[0].px === 90 && long.sl.length === 0);
+    const long = classify([{ side: 'A', limitPx: '100', triggerPx: '110', sz: '0', isTrigger: true, isPositionTpsl: true, orderType: 'Take Profit Market', triggerCondition: 'Price above 110' }], 'Long', 5, 95);
+    ok("a long's take-profit trigger is read from the trigger price", long.tp.length === 1 && long.tp[0].px === 110 && long.sl.length === 0);
+    // Sep 23, a real ETH long (avg entry 2,702, price 2,661): three dip-buy brackets, each a buy limit
+    // with its own TP/SL attached. Hyperliquid lists the attached orders on their own rows too. Read
+    // naively they became "TP 2,666, 1,955 · SL 1,855, 1,756" on the open position, which is wrong:
+    // the open position has no exits at all, and those orders only wake if the buy below fills.
+    const kid = (oid, type, px, cond) => ({ oid, side: 'A', sz: '191', isTrigger: true, triggerPx: String(px), orderType: type, reduceOnly: true, triggerCondition: `Price ${cond} ${px}` });
+    const b1 = [kid(2, 'Take Profit Market', 2666, 'above')], b2 = [kid(4, 'Take Profit Market', 1955, 'above'), kid(5, 'Stop Market', 1855, 'below')];
+    const eth = classify([
+      ...b1, { oid: 1, side: 'B', sz: '191', limitPx: '2324', isTrigger: false, children: b1 },
+      ...b2, { oid: 3, side: 'B', sz: '292', limitPx: '1902', isTrigger: false, children: b2 },
+    ], 'Long', 287.8, 2661.45);
+    ok("a bracket's sleeping TP/SL are never read as exits of the open position", eth.tp.length === 0 && eth.sl.length === 0, JSON.stringify(eth));
+    ok('the bracket shows up as a planned add with its own TP/SL', eth.adds.length === 2 && eth.adds[0].px === 2324 && eth.adds[0].thenTp === 2666
+      && eth.adds[1].thenTp === 1955 && eth.adds[1].thenSl === 1855);
+    ok('a trigger whose condition is already true cannot be live and is set aside',
+      classify([kid(9, 'Take Profit Market', 1955, 'above')], 'Long', 287.8, 2661.45).tp.length === 0);
     const moved = classify([{ ...orders[0] }, { ...orders[1], triggerPx: '1750' }], 'Short', 1200, 1619);
     ok('a moved stop changes the fingerprint and is described as a move', signature(moved) !== signature(ex)
       && changes(ex, moved).some((c) => /Stop loss moved from 1800 to 1750/.test(c)), JSON.stringify(changes(ex, moved)));
