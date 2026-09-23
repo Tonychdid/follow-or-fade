@@ -124,6 +124,10 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `LEADERBOARD_ALERT_TOP` | `50` | How many of the whale board's top performers are admitted to the alert pool even when they miss a rule. `0` turns it off |
 | `LEADERBOARD_MAX_7D_LOSS_PCT` | `0.25` | The one bar the board route does **not** waive: a top performer whose last 7 days cost more than this share of the month's profit is turned away anyway |
 | `LEADERBOARD_MIN_CLOSED` | `20` | Closed positions a wallet needs before the board can admit it. Stops a `+300%` on two trades from firing alerts |
+| `MM_MAX_WIN_RATE` / `MM_MIN_SAMPLE` | `0.95` / `200` | **Market-maker pattern.** A wallet winning this share of at least this many 30-day closes is capped at C and never dealt as a strong whale or alerted |
+| `FAST_MAX_WIN_RATE` | `0.88` | **Too fast to copy.** A SCALPER (short holds, measured on real round trips) winning this share of at least `MM_MIN_SAMPLE` closes is capped at C and never alerted: the edge is gone before a follower is in |
+| `HEDGE_MAX_COVER` | `0.8` | A short that the same wallet has covered with this much spot of the same coin (checked on Hyperliquid, `UBTC` counts as BTC) is a hedge and is not alerted |
+| `PREVIEW_ROTATE_MIN` | `15` | How often the hand on the front door (and therefore a new player's first hand) rotates through the deck |
 | `BOT_STAKE` | `500` | Chips the house bots stake on every hand |
 | `WHALE_COOLDOWN` | `10` | Hands that must pass before the same whale can be dealt to a player again |
 | `ROSTER_DAYS` | `7` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off. Costs ~267 Nansen credits per run (~38/day at weekly) |
