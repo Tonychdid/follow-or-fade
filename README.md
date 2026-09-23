@@ -12,9 +12,9 @@ No signup, no wallet, play chips only. Built for the Nansen Meridian Buildathon.
 
 ## Judging this? Sixty seconds
 
-1. **[Play one hand.](https://follow-or-fade-production.up.railway.app)** A real Smart Money trade from this week, at the whale's exact entry. Open **"Priced from 4 Nansen endpoints"** under the odds bar: it lists each Nansen call behind the hand, whether it was live or cached, and how many points each Nansen number moved the price.
+1. **[Play one hand.](https://follow-or-fade-production.up.railway.app)** A real Smart Money trade from this week, at the whale's exact entry. Open **"Priced by 3 Nansen endpoints"** under the odds bar: it lists each Nansen request behind the hand, whether it was live or cached, and how many points each Nansen number moved the price.
 2. **[Open the proof desk.](https://follow-or-fade-production.up.railway.app/proof.html)** Does copying Smart Money *through our filters* beat copying all of it? The answer, with intervals, adjusted p-values and the raw record to recompute it.
-3. **[Open the alert scorecard.](https://follow-or-fade-production.up.railway.app/scorecard)** Every whale alert, sent before the outcome, scored from the price a follower could actually have had to the whale's real exit. Every whale has a share page (`/w/<address>`) with its own preview image.
+3. **[Open the alert scorecard.](https://follow-or-fade-production.up.railway.app/scorecard)** Every whale alert, sent before the outcome, scored from the price a follower could actually have had to the whale's real exit. Early days: it leads with counts until 20 alerts have closed. Every whale has a share page (`/w/<address>`) with its own preview image.
 4. **Run it yourself:** `git clone`, then `node server.js`. No install, no build, no API key needed (demo mode). `npm test` runs 79 checks offline.
 
 ## What it is
@@ -64,10 +64,10 @@ Each dealt hand carries its own call rail (`nansen.calls` and `nansen.why` in `/
 [`/proof.html`](https://follow-or-fade-production.up.railway.app/proof.html) publishes three kinds of evidence and never mixes them:
 
 - **Held out.** One trade in five is hashed into a permanent holdout the odds model never trains on. Hands dealt from it are the cleanest record here. It started on Sep 22 and is filling; it takes over the headline at 150 assessed hands.
-- **Cross-validated** (10 folds, 377 resolved trades on Sep 22). In-sample for the filters, which were tuned on this data, so it is labelled "in-sample only". On Sep 22, filtered whales won about 8 points more often than all Smart Money and returned about 10% more per hand (Holm-adjusted p below 0.03 for both). Against the rejected whales alone, the gap is not significant yet.
+- **Cross-validated** (10 folds, 377 resolved trades on Sep 22). In-sample for the filters, which were tuned on this data, so it is labelled "in-sample only". On Sep 22, filtered whales won about 8 points more often than all Smart Money and returned about 10 percentage points more per hand (Holm-adjusted p below 0.03 for both). Part of that gap comes from wallets that were never assessed. Against the rejected whales alone, the gap is not significant yet.
 - **Dealt hands.** Every price the table quoted, logged when dealt, scored against the whale's exit.
 
-What the numbers show today: the model's skill is modest (a few percent better Brier than always guessing the trained base rate), the odds have underpriced following this week, and the roster was graded on windows that overlap the trades it is scored on. Nothing on the page is labelled proven. Four tests share one set of hands, so every p-value is Holm-adjusted; intervals are cluster-robust by wallet.
+What the numbers show today: the model's skill is modest (a few percent better Brier than always guessing the trained base rate, and level with guessing each set's own win rate after the fact), the odds have underpriced following this week, and the roster was graded on windows that overlap the trades it is scored on. Nothing on the page is labelled proven. Four tests share one set of hands, so every p-value is Holm-adjusted; intervals are cluster-robust by wallet.
 
 **House bots** (Always Follow, Always Fade, Coin Flip) play every hand at a flat stake and sit on the Hall of Fame tagged BOT. *Always Follow* is the benchmark that can embarrass the site.
 
