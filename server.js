@@ -169,7 +169,7 @@ const routes = {
   // The alert scorecard: every alert ever sent, scored from the price a follower could have had.
   // Public for the same reason the proof desk is: these were sent before the outcome, so they are
   // the one record nobody can have fitted after the fact. Reads the journal on disk, no credits.
-  'GET /api/scorecard': async () => scorecard.scorecard(),
+  'GET /api/scorecard': async () => { const { all, ...rest } = await scorecard.scorecard(); return rest; },
   // One whale, for its share page: the roster record, any open position on the floor, its alerts.
   'GET /api/whale': async (_, q) => whaleView(q.get('address')),
 };
@@ -185,7 +185,7 @@ async function whaleView(address) {
   const live = (Array.isArray(liveAll) ? liveAll : []).filter((t) => String(t.address || '').toLowerCase() === a);
   const sc = await scorecard.forWallet(address);
   if (!board && !live.length && !sc.alerts.length) throw Object.assign(new Error('We have not seen this wallet yet'), { status: 404 });
-  const trust = live[0]?.record?.trust || (board ? { grade: board.grade, score: board.score } : null) || (sc.alerts[0] ? { grade: sc.alerts[0].grade, score: sc.alerts[0].score } : null);
+  const trust = live[0]?.record?.trust || (board ? { grade: board.grade, score: board.score, marketMaker: board.marketMaker, label: board.marketMaker ? 'Market-maker pattern' : null } : null) || (sc.alerts[0] ? { grade: sc.alerts[0].grade, score: sc.alerts[0].score } : null);
   return {
     address, trader: nansen.whaleName(board?.trader || live[0]?.trader || sc.alerts[0]?.trader, address),
     grade: trust?.grade ?? null, score: trust?.score ?? null, label: trust?.label ?? null, marketMaker: !!trust?.marketMaker,
@@ -230,13 +230,19 @@ function whaleDesc(w) {
   ].filter(Boolean).join(' · ') + '. Real Nansen Smart Money data. Would you follow or fade?';
 }
 const ogCache = new Map();
+const ogBusy = new Map();
 async function ogImage(key, make) {
   const hit = ogCache.get(key);
   if (hit && Date.now() - hit.t < 10 * 60e3) return hit.buf;
-  const buf = og.card(await make());
-  ogCache.set(key, { t: Date.now(), buf });
-  if (ogCache.size > 300) ogCache.delete(ogCache.keys().next().value);
-  return buf;
+  if (ogBusy.has(key)) return ogBusy.get(key);   // one render per key, however many ask at once
+  const p = (async () => {
+    const buf = og.card(await make());
+    ogCache.set(key, { t: Date.now(), buf });
+    if (ogCache.size > 300) ogCache.delete(ogCache.keys().next().value);
+    return buf;
+  })().finally(() => ogBusy.delete(key));
+  ogBusy.set(key, p);
+  return p;
 }
 async function servePage(req, res, url) {
   const p = url.pathname;
@@ -253,8 +259,10 @@ async function servePage(req, res, url) {
   }
   if ((m = p.match(/^\/og\/w\/(0x[0-9a-fA-F]{40})\.png$/))) {
     if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
-    return png(await ogImage('w:' + m[1].toLowerCase(), async () => {
-      const w = await whaleView(m[1]).catch(() => null);
+    // An address we have never seen gets the one shared card, so made-up addresses cannot each cost a render.
+    const known = await whaleView(m[1]).catch(() => null);
+    return png(await ogImage(known ? 'w:' + m[1].toLowerCase() : 'w:unknown', async () => {
+      const w = known;
       if (!w) return { kicker: 'SMART MONEY WHALE ON HYPERLIQUID', lines: [{ text: 'FOLLOW OR FADE?', scale: 12, color: og.COLORS.goldL }] };
       const l = whaleLines(w);
       return { kicker: 'SMART MONEY WHALE ON HYPERLIQUID · NANSEN DATA', lines: [
@@ -270,6 +278,11 @@ async function servePage(req, res, url) {
     if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
     return png(await ogImage('scorecard', async () => {
       const s = (await scorecard.scorecard()).summary;
+      if (s.closed < scorecard.HEADLINE_MIN) return { kicker: 'ALERT SCORECARD · EVERY WHALE ALERT, SENT BEFORE THE OUTCOME', lines: [
+        { text: `${s.alerts} ALERTS SCORED IN PUBLIC`, scale: 9, color: og.COLORS.goldL },
+        { text: `${s.closed} CLOSED · ${s.open} STILL OPEN`, scale: 6, color: og.COLORS.ivory },
+        { text: 'IN AT THE PRICE WHEN THE ALERT WENT OUT, OUT AT THE WHALE\'S EXIT', scale: 3, color: og.COLORS.muted },
+      ] };
       return { kicker: 'ALERT SCORECARD · EVERY WHALE ALERT, SENT BEFORE THE OUTCOME', lines: s.closed ? [
         { text: `${Math.round(s.winRate * 100)}% OF ${s.closed} ALERTS WON`, scale: 10, color: og.COLORS.goldL },
         { text: `${pctS(s.avgRet, 2)} AVERAGE PER ALERT AT 1X`, scale: 6, color: s.avgRet >= 0 ? og.COLORS.emerald : og.COLORS.ruby },
@@ -289,6 +302,14 @@ async function servePage(req, res, url) {
         { text: 'THE RAW RECORD IS PUBLIC', scale: 4, color: og.COLORS.muted, gap: 0 },
       ] };
     }));
+  }
+  if (p === '/og/home.png') {
+    if (limited(req, 3)) return json(res, 429, { error: 'Too many requests' });
+    return png(await ogImage('home', async () => ({ kicker: 'REAL NANSEN SMART MONEY TRADES ON HYPERLIQUID', lines: [
+      { text: 'A WHALE OPENED A TRADE.', scale: 7, color: og.COLORS.ivory },
+      { text: 'FOLLOW OR FADE?', scale: 12, color: og.COLORS.goldL },
+      { text: 'PRICED BY NANSEN DATA · JUDGED ON THE WHALE\'S REAL EXIT', scale: 3, color: og.COLORS.muted },
+    ] })));
   }
   if (p === '/scorecard' || p === '/scorecard.html') {
     return html(renderPage('scorecard.html', {}));
