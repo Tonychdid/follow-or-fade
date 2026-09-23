@@ -298,6 +298,18 @@ try {
   // response had no pagination block, and because the feed is ordered newest-first and pool()
   // discards anything younger than MAX_HOLD, the training pool silently stayed small. Every
   // response shape the API can return is pinned here so it cannot happen again.
+  {
+    // Recalibration: if dealt hands win more often than quoted, the shift moves the quote up, stays
+    // bounded, and does nothing on a sample too small to trust.
+    const odds = await import(path.join(ROOT, 'lib', 'odds.js'));
+    const rows = Array.from({ length: 300 }, (_, i) => ({ p: 0.6, won: i % 5 !== 0 }));   // quoted 60%, won 80%
+    const rc = odds.recalibrate(rows);
+    ok('recalibration moves the odds toward what dealt hands actually did', rc.offset > 0.5 && rc.offset <= 1 && rc.n === 300);
+    const q = 1 / (1 + Math.exp(-(Math.log(0.6 / 0.4) + rc.offset)));
+    ok('after recalibration, always following is no longer free money', 0.8 / q - 1 < 0.04, `quote ${q.toFixed(3)}`);
+    ok('recalibration ignores a sample too small to trust', odds.recalibrate(rows.slice(0, 10)).offset === 0);
+    odds.recalibrate([]);
+  }
   const { wantsNextPage, whaleName, traced, post } = await import(path.join(ROOT, 'lib', 'nansen.js'));
   // A Nansen label that is only a referral code is never printed: that would advertise the code.
   ok('referral-code labels are shown as a short address', whaleName('Uses "ABC" HL Referral Code', '0x1234567890abcdef') === 'Smart Money wallet 0x1234...cdef');
