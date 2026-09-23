@@ -8,10 +8,10 @@ const px = (x) => (x == null ? 'n/a' : x >= 1000 ? x.toLocaleString('en-US', { m
 const gcls = (g) => ({ 'A+': 'ga', A: 'ga', B: 'gb', C: 'gc', D: 'gd', F: 'gf' }[g] || 'gb');
 const day = (iso) => { const d = new Date(iso); return d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' ' + d.toISOString().slice(11, 16); };
 const hrs = (h) => (h == null ? 'n/a' : h < 1 ? `${Math.round(h * 60)}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`);
-const ROUTE = { standard: 'house rules', specialist: 'specialist', leaderboard: 'leaderboard', early: 'early finder', printer: 'printer' };
+const ROUTE = { earlier: 'earlier alerts', standard: 'house rules', specialist: 'specialist', leaderboard: 'leaderboard', early: 'early finder', printer: 'printer' };
 
 function groupTable(title, groups, label = (k) => k) {
-  const rows = Object.entries(groups || {}).filter(([, g]) => g.closed).sort((a, b) => b[1].closed - a[1].closed);
+  const rows = Object.entries(groups || {}).filter(([, g]) => g.closed >= 3).sort((a, b) => b[1].closed - a[1].closed);
   if (!rows.length) return '';
   return `<h2>${esc(title)}</h2><div class="tbl-wrap"><table><thead><tr><th>Group</th><th>Closed</th><th>Won</th><th>Average</th><th>Median</th></tr></thead><tbody>
     ${rows.map(([k, g]) => `<tr><td>${esc(label(k))}</td><td>${g.closed}</td><td>${Math.round(g.winRate * 100)}%</td>
@@ -23,24 +23,40 @@ async function main() {
   let d;
   try { const r = await fetch('/api/scorecard'); d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); }
   catch (e) { $('app').innerHTML = `<p class="err">Could not load the alerts: ${esc(e.message)}</p>`; return; }
-  const s = d.summary;
+  const s = d.summary, om = s.openMarked || {};
+  const early = s.closed < (d.headlineMin || 20);
   let h = '';
-  if (!s.closed) {
-    h += `<div class="card hero"><div class="q">No alert has closed yet.</div><p class="note" style="margin:auto">${s.open} open, marked below as the whale holds.</p></div>`;
+  const openLine = om.n ? `<div class="tile"><small>Still open, marked to now</small><b class="${cls(om.avgRet)}">${pct(om.avgRet)}</b><span class="u">${om.up} of ${om.n} up</span></div>` : '';
+  if (!s.closed || early) {
+    h += `<div class="card hero">
+      <div class="q">Every alert, scored in public from the price when it went out</div>
+      <div class="big neutral">${s.alerts}<span style="font-size:.35em;letter-spacing:0"> alerts</span></div>
+      <div class="ci">${s.closed} closed &middot; ${s.open} still open${s.untracked ? ` &middot; ${s.untracked} lost track` : ''} &middot; since ${esc(d.since ? day(d.since) : 'n/a')} UTC</div>
+      <div class="tiles" style="max-width:640px;margin:22px auto 0">
+        <div class="tile"><small>Closed so far</small><b>${s.closed}</b></div>
+        ${s.closed ? `<div class="tile"><small>Closed, average at 1x</small><b class="${cls(s.avgRet)}">${pct(s.avgRet)}</b><span class="u">${s.wins} of ${s.closed} won</span></div>` : ''}
+        ${openLine}
+      </div>
+      <p class="note" style="margin:14px auto 0">Too few alerts have closed to call a result yet. The headline switches to the result once ${d.headlineMin || 20} have closed; until then, every alert and its outcome is listed below as it happens.</p>
+      <div class="share" style="justify-content:center">
+        <a class="btn gold" id="shareX" target="_blank" rel="noopener">Share on X</a>
+        <a class="btn" href="https://t.me/fadefollowbot" target="_blank" rel="noopener">Get the alerts on Telegram</a>
+      </div>
+    </div>`;
   } else {
-    const ci = s.lo != null ? `95% interval ${pct(s.lo)} to ${pct(s.hi)}, grouped by wallet` : 'too few wallets for an interval yet';
+    const ci = s.clustersEnough && s.lo != null ? `95% interval ${pct(s.lo)} to ${pct(s.hi)}, grouped by wallet` : `${s.wallets} wallets, too few for an interval yet`;
     h += `<div class="card hero">
       <div class="q">If you had copied every alert the moment it landed</div>
       <div class="big ${s.avgRet >= 0 ? 'pos' : 'neg'}">${pct(s.avgRet)}</div>
-      <div class="ci">average per alert at 1x &middot; ${ci}</div>
-      <div class="tiles" style="max-width:640px;margin:22px auto 0">
+      <div class="ci">average per closed alert at 1x &middot; ${ci}</div>
+      <div class="tiles" style="max-width:720px;margin:22px auto 0">
         <div class="tile"><small>Alerts closed</small><b>${s.closed}<span class="u">of ${s.alerts}</span></b></div>
         <div class="tile"><small>Won</small><b>${Math.round(s.winRate * 100)}%</b></div>
         <div class="tile"><small>Median</small><b class="${cls(s.medianRet)}">${pct(s.medianRet)}</b></div>
         <div class="tile"><small>Whale's own, same trades</small><b class="${cls(s.whaleAvgRet)}">${pct(s.whaleAvgRet)}</b></div>
+        ${openLine}
       </div>
-      <p class="note" style="margin:14px auto 0">The gap between the last two numbers is the cost of arriving late: the whale
-      filled first, and the alert could only offer the price that was left. ${s.untracked ? `${s.untracked} alert${s.untracked === 1 ? '' : 's'} lost tracking before the whale's exit and ${s.untracked === 1 ? 'is' : 'are'} left out.` : ''}</p>
+      <p class="note" style="margin:14px auto 0">Compare the average with the whale's own: the difference is what arriving after the whale cost or earned. ${s.untracked ? `${s.untracked} alert${s.untracked === 1 ? '' : 's'} lost tracking before the whale's exit and ${s.untracked === 1 ? 'is' : 'are'} left out.` : ''}</p>
       <div class="share" style="justify-content:center">
         <a class="btn gold" id="shareX" target="_blank" rel="noopener">Share on X</a>
         <a class="btn" href="https://t.me/fadefollowbot" target="_blank" rel="noopener">Get the alerts on Telegram</a>
@@ -64,7 +80,9 @@ async function main() {
   $('app').innerHTML = h;
   const x = $('shareX');
   if (x) {
-    const text = `If you had copied every Smart Money whale alert the moment it landed: ${pct(s.avgRet)} per alert at 1x, ${Math.round(s.winRate * 100)}% won, ${s.closed} closed. Scored in public, play money.`;
+    const text = early
+      ? `${s.alerts} Smart Money whale alerts, each timestamped before the outcome and scored in public from the price when it went out. ${s.closed} closed so far, ${s.open} still open.`
+      : `If you had copied every Smart Money whale alert the moment it landed: ${pct(s.avgRet)} per alert at 1x, ${Math.round(s.winRate * 100)}% won, ${s.closed} closed. Scored in public, play money.`;
     x.href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(location.origin + '/scorecard');
   }
 }
