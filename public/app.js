@@ -1340,6 +1340,21 @@ function whaleTags(tr, a) {
   return t.length ? ' ' + t.join(' ') : '';
 }
 
+// The whale's own exit plan: take profits and stops resting on Hyperliquid, nearest first. Shown on
+// alerted cards (read by the watcher) and after a re-check (read fresh). "None set" is shown too.
+function exitsHtml(t) {
+  const ex = t.exits;
+  if (!ex) return '';
+  const d = (r) => `${r.dist >= 0 ? '+' : ''}${(r.dist * 100).toFixed(1)}%`;
+  const sh = (r) => (r.full ? 'all' : r.share == null ? '' : `${Math.round(r.share * 100)}%`);
+  const lvl = (r) => `<b>${price(r.px)}</b> <span class="muted">${d(r)}${sh(r) ? ' · ' + sh(r) : ''}</span>`;
+  const part = (name, rows, none) => `<span class="ex-${name.toLowerCase()}">${name} ${rows.length ? rows.slice(0, 2).map(lvl).join(', ') : `<span class="muted">${none}</span>`}</span>`;
+  const body = !ex.tp.length && !ex.sl.length
+    ? '<span class="muted">No take profit or stop loss resting: exits by hand</span>'
+    : part('TP', ex.tp, 'none') + part('SL', ex.sl, 'none set');
+  const adds = ex.adds.length ? `<span class="ex-add">Adds at ${ex.adds.slice(0, 2).map((r) => `<b>${price(r.px)}</b> <span class="muted">${d(r)}</span>`).join(', ')}</span>` : '';
+  return `<div class="lc-exits" title="Resting orders on Hyperliquid, as read ${esc(ago(new Date(ex.at || Date.now()).toISOString()))}"><span class="ex-h">Whale's exits</span>${body}${adds}</div>`;
+}
 function liveCard(t) {
   t.seenAt ??= Date.now();
   liveItems.set(t.key, t);
@@ -1354,6 +1369,7 @@ function liveCard(t) {
     <div class="row"><div><span class="side ${t.side}">${t.side.toUpperCase()}</span><span class="coin">${coinHtml(t.coin)}</span></div><div class="row-right"><button class="lc-refresh" data-refresh="${k}" title="Re-check this whale: price, odds, tells and whether they are still in">↻ Re-check</button><div class="size">${compact(t.valueUsd)}</div></div></div>
     <div class="lc-changed" hidden></div>
     <div class="meta">${t.address ? `<a class="whale-link" href="/w/${esc(t.address)}" title="This whale's page">${esc(t.trader || 'Smart Money whale')}</a>` : esc(t.trader || 'Smart Money whale')} · ${ago(t.openedAt)} · entry ${price(t.entryPrice)} → now ${price(t.mid)} · whale <span class="${t.moveSinceEntry >= 0 ? 'pos' : 'neg'}">${pct(t.moveSinceEntry, 2)}</span> · ${t.trimmed >= 0.1 ? `<span class="hold trim">trimmed ${Math.round(t.trimmed * 100)}%</span>` : '<span class="hold">still holding</span>'}</div>
+    ${exitsHtml(t)}
 
     <button class="lc-summary" aria-expanded="false"><span class="grade ${gradeCls}">${tr.grade}</span>${ag ? `<span class="was-grade" title="Grade when the alert went out">was ${esc(ag.grade)}</span>` : ''}<span class="lcs-text"><b>${esc(tr.label)}${whaleTags(tr)}</b><small>${t.record?.d30?.closed ? `30D ${t.record.d30.pnl >= 0 ? '+' : ''}${compact(t.record.d30.pnl)} · ${Math.round((t.record.d30.winRate || 0) * 100)}% wins · ${t.record.d30.coins} coins` : 'No 30D track record'}</small></span><span class="lcs-more">Details</span></button>
     ${t.research ? researchBlock(t) : ''}
@@ -1494,6 +1510,9 @@ function updateBadge() {
 function exitLine(a) {
   const ret = a.whaleRet != null ? `<b class="${a.whaleRet >= 0 ? 'pos' : 'neg'}">${pct(a.whaleRet, 2)}</b>` : 'n/a';
   const base = a.coin.split(':').pop(), sz = (n) => (+n).toLocaleString('en-US', { maximumFractionDigits: n >= 100 ? 1 : 4 });
+  if (a.kind === 'orders') return {
+    title: `moved their exits on <span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b>`,
+    stats: esc((a.changes || []).join(' · ') || 'Take profit or stop loss changed') };
   if (a.kind === 'add') return {
     title: `added <b>${sz(a.addedSz)} ${esc(base)}</b> to <span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b>`,
     stats: `Now ${sz(a.sizeNow)} ${esc(base)} (${compact(a.valueUsd || 0)}) · <b>${a.multiple.toFixed(1)}x</b> the alerted size · avg entry ${price(a.avgEntry)} → ${a.markPx != null ? price(a.markPx) : 'n/a'} · whale ${ret}` };
@@ -1744,7 +1763,7 @@ function announceExit(a, count) {
   const x = exitLine(a), pop = $('alertPop');
   sfx.alarm();
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding · conviction rising', orders: 'Whale moved their exits' }[a.kind]}${a.specialist ? ' · SPECIALIST' : ''}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="exit-ico ${a.kind}">${a.kind.toUpperCase()}</div>
       <div><b>${esc(a.trader)}</b> ${x.title}<div class="ai-stats">${x.stats}</div><div class="ai-stats">${a.kind === 'add' ? 'The whale is doubling down.' : 'Following this whale? Check your position.'}</div></div></div>
     <div class="ai-actions">${a.kind === 'add' ? `<button class="gold-btn sm" data-betalert="${esc(a.key)}">Open full card</button>` : ''}<button class="${a.kind === 'add' ? 'ghost-btn' : 'gold-btn'} sm" data-mybets>My bets</button><button class="link" id="popClose">Dismiss</button></div></div>`;
@@ -1752,7 +1771,7 @@ function announceExit(a, count) {
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding' }[a.kind]}${a.specialist ? ' · specialist' : ''} · ${a.coin}`, { body: `${a.trader} ${a.kind === 'exit' ? 'closed' : a.kind === 'add' ? `grew to ${a.multiple.toFixed(1)}x on` : `cut ${Math.round(a.trimPct * 100)}% of`} ${a.side.toUpperCase()} ${a.coin}`, tag: a.id });
+    const n = new Notification(`${{ exit: 'Whale exit', trim: 'Whale trimming', add: 'Whale adding', orders: 'Whale moved their exits' }[a.kind]}${a.specialist ? ' · specialist' : ''} · ${a.coin}`, { body: a.kind === 'orders' ? `${a.trader}: ${(a.changes || []).join('; ')}` : `${a.trader} ${a.kind === 'exit' ? 'closed' : a.kind === 'add' ? `grew to ${a.multiple.toFixed(1)}x on` : `cut ${Math.round(a.trimPct * 100)}% of`} ${a.side.toUpperCase()} ${a.coin}`, tag: a.id });
     n.onclick = () => { window.focus(); n.close(); };
   }
 }
@@ -2163,6 +2182,7 @@ async function recheckCard(card) {
   if (btn) { btn.disabled = true; btn.textContent = '↻ Checking…'; }
   try {
     const t = await api('/api/live/one?key=' + encodeURIComponent(key));
+    if (before?.alert) t.alert = true;   // a re-checked alert card stays in the alerts section
     const box = card.querySelector('.lc-changed');
     const lines = [];
     if (base) {
