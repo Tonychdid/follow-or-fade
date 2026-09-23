@@ -11,6 +11,7 @@ const coinName = (c) => String(c || '').replace(/^\w+:/, '');
 
 function recordTiles(title, r) {
   if (!r || r.closed == null) return '';
+  if (!r.closed) return `<div class="card"><h2 style="margin-top:0">${esc(title)}</h2><p class="note">No closed trades in this window.</p></div>`;
   return `<div class="card"><h2 style="margin-top:0">${esc(title)}</h2><div class="tiles">
     <div class="tile"><small>Return</small><b class="${cls(r.roi)}">${pct(r.roi)}</b></div>
     <div class="tile"><small>Realized PnL</small><b class="${cls(r.pnl)}">${usd(r.pnl)}</b></div>
