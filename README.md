@@ -25,7 +25,7 @@ Nansen labels the wallets worth watching. The question nobody answers is whether
 |---|---|---|
 | **Training Table** | Call a real, already-closed Smart Money trade. The reveal shows the whale's real exit and which signal called it. | Supplies the trade, the whale's 30 days before it, and the Smart Money and crowd flow on the coin. |
 | **Live Floor** | Back whales who are in a position right now, ride them to their exit or cash out at fair value. | Supplies the opens, the whale's 7D and 30D record, and Smart Money positioning on the coin. |
-| **Telegram alerts** | Get the filtered whale entries on your phone, with the whale's own take-profit and stop-loss orders, and add, trim, exit and moved-exit follow-ups as replies. | Scans Smart Money perp trades every few minutes and grades each whale. |
+| **Telegram alerts** | Get the filtered whale entries on your phone, with the whale's own take-profit and stop-loss orders (also on every re-check), and add, trim and exit follow-ups as replies. | Scans Smart Money perp trades every few minutes and grades each whale. |
 | **Trader Profile** | Seven reading skills, each scored against what the odds expected of you. | Every skill is measured on hands priced from Nansen data. |
 | **Proof desk** | Read whether the odds and the filters hold up. | Every price it scores came from Nansen features. |
 | **Alert scorecard** | See what copying every alert at the alert price would have done, alert by alert. | The alerts are Nansen Smart Money opens that cleared the filters. |
