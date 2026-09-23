@@ -198,7 +198,10 @@ try {
   // The alert freezes a grade; the card grades the whale now. A whale that alerted at C and reads A
   // on the card is one whale on two days, and the re-check has to say so instead of leaving two
   // surfaces contradicting each other with nothing to explain it.
-  const { gradeDriftLine } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+  const { gradeDriftLine, assess } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+  ok('market makers never pass the alert rules, not even from the board', assess({
+    d30: { closed: 500, pnl: 1e6, fees: 10, winRate: 0.99, roi: 0.2, coins: 6, perCoin: {} }, d7: { closed: 20, pnl: 1e4, coins: 4 },
+    trust: { grade: 'A+', score: 99, marketMaker: true } }, 'BTC', { onBoard: true }).kind === null);
   const drift = gradeDriftLine({ grade: 'C', score: 60 }, { grade: 'A', score: 75 });
   ok('a grade that moved since the alert is explained', drift.includes('Grade now <b>A</b>') && drift.includes('was <b>C</b>'), drift);
   ok('an unchanged grade adds nothing', gradeDriftLine({ grade: 'A' }, { grade: 'A' }) === '');
