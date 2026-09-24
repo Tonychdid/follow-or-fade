@@ -79,6 +79,11 @@ A whale is dealt, and can fire an alert, only if their Nansen record clears the 
 - **Market-maker pattern.** Winning 95% or more of hundreds of closes is quoting both sides of the book, not calling direction. Those wallets are capped at grade C, below the alert bar.
 - **Too fast to copy.** A wallet that holds for minutes or a few hours and still wins nearly every close keeps its edge in the minutes a follower spends reading the alert. Capped at C, never alerted.
 - **Hedged shorts.** Before a short is alerted, the wallet's Hyperliquid spot balance is checked. A short that is 80% or more covered by spot of the same coin is a hedge, not a call on direction, and is not alerted.
+- **Account health.** Every route, the whale board included, checks the whale's Hyperliquid account first: an open loss worse than 15% of the account, a losing 30 days, a 7-day loss past 10%, or positions over 10x the account means no alert. An open loss of 15% also caps the grade at B (30% caps it at D).
+- **HOLDS LOSERS.** Winning 95% or more of 20+ closes while sitting on deep open losses is a record built by never closing a loser. Capped at B and never let in on an exception.
+- **LATE.** An alert sent when the price is already more than 0.5% past the whale's entry says so. The Telegram score is the whale-trade score: the whale's odds, not a copier's.
+
+The PRINTER and proven-early routes were removed on Sep 24; EARLY now needs grade B or better and a week that is not losing. Each alert in `/api/alerts` carries `botEligible` and `botReason`, and a shadow grade (`gradeV2`) that does not gate anything yet.
 
 Nansen labels are shown as the whale's name, except labels that are only a Hyperliquid referral code: this site never prints a referral code, so those wallets are named by address. The public alert feed carries the summary a follower reads, not the raw Nansen rows behind it.
 

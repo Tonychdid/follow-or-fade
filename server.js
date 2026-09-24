@@ -139,7 +139,7 @@ const routes = {
   'GET /api/proof': async () => proof.report(game.resolvedSamples(), bots.rows()),
   // Every prediction, one JSON object per line, so anyone who doubts the page can recompute it.
   'GET /api/proof/raw': async (_, q) => ({ predictions: proof.journal(Math.min(20000, Number(q.get('limit')) || 0)) }),
-  // Run the weekly whale assessment now instead of waiting for it to fall due. The comment in
+  // Run the daily whale assessment now instead of waiting for it to fall due. The comment in
   // roster.js has always promised an admin button for this; there was never a route behind it, so
   // a fresh rule or a new leaderboard cut-off could not be applied until the schedule came round.
   'POST /api/roster/run': admin(async () => roster.assessPool({ force: true })),
@@ -381,7 +381,8 @@ async function handle(req, res) {
   // Browser-openable admin views, same token-in-the-URL pattern as the ledger above.
   //   /admin/roster.json   who is in the whale pool right now, who entered, who dropped and why
   //   /admin/journal.jsonl every alert ever sent and how the whale's position ended (the study data)
-  if (url.pathname === '/admin/roster.json' || url.pathname === '/admin/journal.jsonl') {
+  //   /admin/rejects.jsonl every trade the scanner assessed, passed or not, and the first rule it broke
+  if (url.pathname === '/admin/roster.json' || url.pathname === '/admin/journal.jsonl' || url.pathname === '/admin/rejects.jsonl') {
     const t = url.searchParams.get('token') || '';
     if (!ADMIN_TOKEN || t.length !== ADMIN_TOKEN.length
         || !crypto.timingSafeEqual(sha(t), sha(ADMIN_TOKEN))) {
@@ -390,6 +391,18 @@ async function handle(req, res) {
     }
     if (url.pathname === '/admin/roster.json') {
       return json(res, 200, { current: roster.lastRoster(), due: roster.isDue(), everyDays: roster.ROSTER_DAYS(), history: roster.rosterHistory(20) });
+    }
+    if (url.pathname === '/admin/rejects.jsonl') {
+      // The reject log rotates at its size cap, so the older half (if any) is streamed first and the
+      // download is still one file in time order.
+      const parts = [store.jsonlPath('rejectjournal.1'), store.jsonlPath('rejectjournal')].filter((f) => fs.existsSync(f));
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Content-Disposition': 'attachment; filename="rejectjournal.jsonl"', ...SECURITY });
+      const next = () => {
+        const f = parts.shift();
+        if (!f) return res.end();
+        fs.createReadStream(f).on('error', () => { try { res.end(); } catch {} }).on('end', next).pipe(res, { end: false });
+      };
+      return next();
     }
     // Streamed straight off disk: this file is meant to grow for months and must never be
     // read into memory whole just to be handed over.
@@ -449,7 +462,7 @@ const calibrate = () => game.calibrate().then((m) => {
 setTimeout(calibrate, 2000);
 setTimeout(() => alerts.scan().catch(() => {}), 8000);
 alerts.schedule();
-// The whale pool re-assesses itself every ROSTER_DAYS (7): new whales in, non-performers out, with a
+// The whale pool re-assesses itself every ROSTER_DAYS (1, daily): new whales in, non-performers out, with a
 // written diff each time. Delayed on boot so it never competes with the first alert scan.
 setTimeout(() => roster.assessPool().catch(() => {}), 45e3);
 roster.schedule();
