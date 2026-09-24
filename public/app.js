@@ -1139,7 +1139,7 @@ async function loadBoard() {
 
 // ================================================= hall of fame: the whales
 // Two boards under one roof. The player board ranks the people betting; this one ranks the whales
-// they are betting ON, straight from the weekly roster snapshot. It costs no Nansen credits: every
+// they are betting ON, straight from the daily roster snapshot. It costs no Nansen credits: every
 // number here was already paid for when the roster was assessed.
 let boardTab = 'players';
 let whaleData = null, whaleSort = 'roi';
@@ -1308,7 +1308,7 @@ function whaleTags(tr, a) {
   // Admitted by the whale board rather than by the rules. It goes first because it is the reason
   // this whale is in front of you at all when the other tags would have turned them away.
   if (tr.leaderboard || a?.leaderboard) {
-    t.push(`<span class="spec-tag lb-tag" title="Top 30 on the whale board by 30-day return on closed positions, over a real sample of closed trades. Re-assessed with the weekly roster.">LEADERBOARD</span>`);
+    t.push(`<span class="spec-tag lb-tag" title="Top 30 on the whale board by 30-day return on closed positions, over a real sample of closed trades. Re-assessed with the daily roster.">LEADERBOARD</span>`);
   }
   if (tr.specialist) t.push(`<span class="spec-tag" title="Trades few coins, but has proven realised profit on this one">SPECIALIST</span>`);
   if (tr.early) {
@@ -1336,6 +1336,15 @@ function whaleTags(tr, a) {
       ? `Typically holds a position about ${h < 1 ? `${Math.round(h * 60)} minutes` : `${h.toFixed(1)} hours`}${q != null && q >= 0.3 ? `, and closes ${Math.round(q * 100)}% of them inside an hour` : ''}. This whale works the tape, so the position may not last long.`
       : 'Works the tape rather than holding, so the position may not last long';
     t.push(`<span class="spec-tag scalp-tag" title="${esc(tip)}">SCALPER</span>`);
+  }
+  if (tr.holdsLosers) {
+    // A near-perfect win rate built by never closing a loser. Says so, with the numbers when we have them.
+    const tip = `Holds losers: ${tr.holdsLosersWhy ? tr.holdsLosersWhy + '.' : 'wins almost every close while sitting on deep open losses.'} A clean win rate can come from never closing a loser, so the grade is capped at B.`;
+    t.push(`<span class="spec-tag holds-tag" title="${esc(tip)}">HOLDS LOSERS</span>`);
+  }
+  if (tr.late && tr.lateBy > 0) {
+    // Set on alerts only: the price had already run past the whale's entry when the alert went out.
+    t.push(`<span class="spec-tag late-tag" title="${esc(`LATE: price was already ${+(tr.lateBy * 100).toFixed(tr.lateBy < 0.01 ? 2 : 1)}% past the whale's entry when this alert went out.`)}">LATE</span>`);
   }
   return t.length ? ' ' + t.join(' ') : '';
 }
@@ -1535,7 +1544,7 @@ function alertLine(a) {
   return `<div class="alert-item${a.t > seenAlerts() ? ' unread' : ''}" data-id="${a.id}">
     <div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
     <div class="ai-body">
-      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''}${whaleTags({ early: a.early, printer: a.printer, scalper: a.scalper, tradesPerDay: a.tradesPerDay, earlyStats: a.earlyStats, printerStats: a.printerStats })} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
+      <div class="ai-title"><span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> <span class="mono">${compact(a.valueUsd)}</span> ${a.specialist ? `<span class="spec-tag" title="${Math.round(a.specialist.share * 100)}% of 30D closes on ${esc(a.coin)} · +${compact(a.specialist.pnl)} realized · ${(a.specialist.roi * 100).toFixed(1)}% return">SPECIALIST</span>` : ''}${whaleTags({ early: a.early, printer: a.printer, scalper: a.scalper, tradesPerDay: a.tradesPerDay, earlyStats: a.earlyStats, printerStats: a.printerStats, holdsLosers: a.holdsLosers, holdsLosersWhy: a.holdsLosersWhy, late: a.late, lateBy: a.lateBy })} <span class="muted">· ${ago(a.openedAt)}${a.test ? ' · test' : ''}</span></div>
       <div class="ai-who">${esc(a.trader)} · ${esc(tr.label || '')}</div>
       ${a.specialist ? `<div class="ai-spec">${esc(a.coin)} specialist: ${Math.round(a.specialist.share * 100)}% of trades, <b class="pos">+${compact(a.specialist.pnl)}</b> realized on ${esc(a.coin)} (${(a.specialist.roi * 100).toFixed(1)}% return) in 30D</div>` : ''}
       <div class="ai-stats">30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins · ${d30.coins || 0} coins${d7 && d7.closed ? ` · 7D <b class="${d7.pnl >= 0 ? 'pos' : 'neg'}">${d7.pnl >= 0 ? '+' : ''}${compact(d7.pnl)}</b> · ${d7.coins} coins` : ''}</div>
@@ -1746,7 +1755,7 @@ function announceAlert(a, count) {
   sfx.alarm();
   const pop = $('alertPop');
   pop.innerHTML = `<div class="ap-glow"></div><div class="ap-inner">
-    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${a.early ? ' · Early finder' : ''}${a.printer ? ' · Printer' : ''}${a.scalper ? ' · Scalper' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
+    <div class="ap-kicker">Whale alert${a.specialist ? ' · Specialist' : ''}${a.early ? ' · Early finder' : ''}${a.printer ? ' · Printer' : ''}${a.scalper ? ' · Scalper' : ''}${a.holdsLosers ? ' · Holds losers' : ''}${a.late ? ' · LATE' : ''}${count > 1 ? ` · +${count - 1} more` : ''}</div>
     <div class="ap-main"><div class="grade ${gradeClass(tr.grade)}">${tr.grade}</div>
       <div><b>${esc(a.trader)}</b> just opened <span class="side ${esc(a.side)}">${esc(a.side).toUpperCase()}</span> <b>${esc(a.coin)}</b> ${compact(a.valueUsd)}
       <div class="ai-stats">${a.specialist ? `${esc(a.coin)} specialist · <b class="pos">+${compact(a.specialist.pnl)}</b> on ${esc(a.coin)} · ${Math.round(a.specialist.share * 100)}% of trades` : `30D <b class="${d30.pnl >= 0 ? 'pos' : 'neg'}">${d30.pnl >= 0 ? '+' : ''}${compact(d30.pnl || 0)}</b> · ${Math.round((d30.winRate || 0) * 100)}% wins`} · trust ${tr.score ?? '–'}/100</div></div></div>
@@ -1755,7 +1764,7 @@ function announceAlert(a, count) {
   $('popClose').onclick = () => (pop.hidden = true);
   clearTimeout(pop._h); pop._h = setTimeout(() => (pop.hidden = true), 15000);
   if ('Notification' in window && Notification.permission === 'granted') {
-    const n = new Notification(`Whale alert · Grade ${tr.grade}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
+    const n = new Notification(`Whale alert · Grade ${tr.grade}${a.early ? ' · EARLY' : ''}${a.printer ? ' · PRINTER' : ''}${a.scalper ? ' · SCALPER' : ''}${a.holdsLosers ? ' · HOLDS LOSERS' : ''}${a.late ? ' · LATE' : ''}`, { body: `${a.trader} opened ${a.side.toUpperCase()} ${a.coin} ${compact(a.valueUsd)} · ${a.specialist ? `${a.coin} specialist, +${compact(a.specialist.pnl)} on ${a.coin} (30D)` : `30D ${compact(d30.pnl || 0)}, ${Math.round((d30.winRate || 0) * 100)}% wins`}`, tag: a.id });
     n.onclick = () => { window.focus(); pop.querySelector('[data-betalert]')?.click(); n.close(); };
   }
 }
@@ -2173,7 +2182,7 @@ function alertBaseline(key) {
   if (!a) return null;
   // a.base is frozen at send time; a.read is overwritten by every re-check, so it is not a baseline
   const b = a.base || {};
-  return { at: b.at ?? a.t, pFollow: b.pFollow ?? null, entry: b.mid ?? a.entryPrice ?? null, label: `the alert ${ago(new Date(b.at ?? a.t).toISOString())}` };
+  return { at: b.at ?? a.t, pFollow: b.pFollow ?? null, entry: b.mid ?? a.entryPrice ?? null, label: `the alert ${ago(new Date(b.at ?? a.t).toISOString())}`, fromAlert: true };
 }
 async function recheckCard(card) {
   const key = card.dataset.key;
@@ -2199,7 +2208,9 @@ async function recheckCard(card) {
       }
       if (base.pFollow != null) {
         const d = t.pFollow - base.pFollow;
-        lines.push(`Follow odds ${Math.round(base.pFollow * 100)}% → <b>${Math.round(t.pFollow * 100)}%</b>${Math.abs(d) < 0.005 ? ' (unchanged)' : d > 0 ? ' <span class="pos">▲</span>' : ' <span class="neg">▼</span>'}`);
+        // Measured from an alert, the number is the whale-trade score: the whale's odds, not a copier's.
+        // On a card the player opened themselves it is the table's Follow odds for the play-money bet.
+        lines.push(`${base.fromAlert ? 'Whale-trade score' : 'Follow odds'} ${Math.round(base.pFollow * 100)}% → <b>${Math.round(t.pFollow * 100)}%</b>${Math.abs(d) < 0.005 ? ' (unchanged)' : d > 0 ? ' <span class="pos">▲</span>' : ' <span class="neg">▼</span>'}${base.fromAlert ? ' <span class="muted">(the whale\'s odds, not a copier\'s)</span>' : ''}`);
       }
     }
     lines.push(t.gone ? '<b class="neg">The whale has closed this position.</b>'

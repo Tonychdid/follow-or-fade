@@ -277,7 +277,7 @@ async function load() {
         </tbody></table>`;
       })()}
       <p class="note">The rejected row is shown because it is the other half of the argument: filters that
-      help must leave something worse behind. Hands from a wallet the weekly roster has never assessed
+      help must leave something worse behind. Hands from a wallet the daily roster has never assessed
       count in the raw population and in neither of the other two, folding them into either would
       flatter whichever side they landed on.</p>
       <p class="note"><b>Read the two numbers separately.</b> The win rate is the plain question: how
@@ -382,7 +382,7 @@ async function load() {
     <li><b>The sample is small and recent.</b> The training pool reaches back about two weeks. A
     fortnight is a market regime, not a law, and a whisker that crosses zero means exactly what it says.</li>
     <li><b>The roster verdict is today's, applied to older trades.</b> Which population a hand lands in
-    comes from the current weekly roster, and that roster was graded partly on the very outcomes being
+    comes from the current daily roster, and that roster was graded partly on the very outcomes being
     scored here: a look-ahead that flatters the filtered side and may explain much of the gap. It is the reason the lookback
     is kept to two weeks rather than stretched for a bigger number: the further back it reaches, the
     more the comparison leans on a verdict that already knew the answer. The held-out record removes

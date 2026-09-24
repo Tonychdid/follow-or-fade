@@ -1472,6 +1472,8 @@ a.ref-under{display:block;flex-basis:100%;text-align:center;margin-top:8px}
    for direction and money, and violet/orange for FOLLOW/FADE, so these take teal and magenta. */
 .spec-tag.early-tag{color:#a7f3e0;border-color:rgba(45,212,191,.75);background:rgba(20,184,166,.18);margin-left:5px}
 .spec-tag.printer-tag{color:#f5d0fe;border-color:rgba(232,121,249,.75);background:rgba(217,70,239,.18);margin-left:5px}
+.spec-tag.holds-tag{color:#fecaca;border-color:rgba(248,113,113,.75);background:rgba(239,68,68,.18);margin-left:5px}
+.spec-tag.late-tag{color:#fde68a;border-color:rgba(251,191,36,.75);background:rgba(245,158,11,.18);margin-left:5px}
 
 /* Tag rows: the pill is wider than a grade chip, so give that column room and stop it wrapping
    mid-word. Narrow phones stack the pill above its description rather than squeezing both. */

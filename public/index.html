@@ -311,16 +311,18 @@
       <tr><td><span class="grade gf">F</span></td><td><b>Fade material</b><small>Score under 35. The record argues against following them.</small></td></tr>
     </tbody>
   </table>
-  <p class="lv-foot gr-note"><b>From</b> realised return, win rate and sample size over the <b>last 30 days</b>, adjusted by the <b>last 7</b>. One or two coins caps a whale at B.
+  <p class="lv-foot gr-note"><b>From</b> realised return, win rate and sample size over the <b>last 30 days</b>, adjusted by the <b>last 7</b>. One or two coins caps a whale at B. So does an open loss of 15% of their account, read live from Hyperliquid; at 30% the cap is D.
   <br>A grade is the <b>past</b>, not a prediction: an A+ whale is still often wrong, and the odds on each card say how often.</p>
 
-  <p class="lv-foot gr-note"><b>The tags.</b> Any, several or none. They never change the grade. Hover one on a card for that whale's numbers.</p>
+  <p class="lv-foot gr-note"><b>The tags.</b> Any, several or none. Only HOLDS LOSERS changes the grade. Hover one on a card for that whale's numbers.</p>
   <table class="gr-table tag-table">
     <tbody>
       <tr><td><span class="spec-tag">SPECIALIST</span></td><td><b>Few coins, but expert in this one</b><small>Proven profit on the exact coin they are opening. The one exception to the B cap.</small></td></tr>
       <tr><td><span class="spec-tag scalp-tag">SCALPER</span></td><td><b>Does not hold</b><small>Typically in and out within hours. Expect this one to be short-lived.</small></td></tr>
       <tr><td><span class="spec-tag early-tag">EARLY</span></td><td><b>Early on big moves: not all of them</b><small>Repeatedly in before a 15%+ move, keeping half of it. Hits roughly half their chances.</small></td></tr>
       <tr><td><span class="spec-tag printer-tag">PRINTER</span></td><td><b>Small size, outsized returns</b><small>$15K–$50K a position, under the whale bar, with a record better than most whales'.</small></td></tr>
+      <tr><td><span class="spec-tag holds-tag">HOLDS LOSERS</span></td><td><b>Clean closes, deep open losses</b><small>Wins 95% or more of 20+ closes while sitting on open losses of 15% of the account, or a position down 20% held over 3 days. Capped at B and never let in on an exception.</small></td></tr>
+      <tr><td><span class="spec-tag late-tag">LATE</span></td><td><b>Alerts only: the price had already moved</b><small>When the alert went out, the price was more than 0.5% past the whale's entry in their favour. You would enter at a worse price than they did.</small></td></tr>
     </tbody>
   </table>
   <div class="actions"><button class="gold-btn" data-close-dialog>Got it</button></div>
@@ -414,8 +416,8 @@
       <label>Minimum profit per closed trade<select id="cfgPpt"><option value="0">Any</option><option value="5">$5</option><option value="10">$10 (suggested)</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></label>
       <label class="switch"><input type="checkbox" id="cfgProfit"><span></span> Whale must be profitable over 30D</label>
       <label class="switch"><input type="checkbox" id="cfgProfit7"><span></span> Whale must also be profitable over the last 7D</label>
-      <label class="switch"><input type="checkbox" id="cfgEarly"><span></span> Let EARLY whales through: repeatedly in before big moves, even if their % return is thin</label>
-      <label class="switch"><input type="checkbox" id="cfgPrinter"><span></span> Let printers through: $15K&ndash;$50K positions with a record better than most whales'</label>
+      <label class="switch"><input type="checkbox" id="cfgEarly"><span></span> Let EARLY whales through: repeatedly in before big moves, even if their % return is thin (grade B or better, and no losing week)</label>
+      <label class="switch"><input type="checkbox" id="cfgPrinter"><span></span> Look at printers' $15K&ndash;$50K positions (they still have to pass the rules above)</label>
       <label class="switch wide"><input type="checkbox" id="cfgMajority"><span></span> More than half the coins they traded must be profitable: keeps out whales carried by one lucky coin</label>
       <label class="switch wide"><input type="checkbox" id="cfgSpec"><span></span> Let proven specialists through: trading only a few coins is OK if the coin they're opening is one of their main coins (40%+ of their trades) with $25K+ realized profit and a 3%+ return over 30D, and no losing week on it</label>
     </div>
