@@ -254,6 +254,132 @@ try {
     d30: { closed: 2154, pnl: 1e6, fees: 10, winRate: 0.9, roi: 0.05, coins: 6, perCoin: {} }, d7: { closed: 200, pnl: 1e4, coins: 4 },
     trust: { grade: 'A+', score: 99, tooFast: true } }, 'SOL', { onBoard: true }).kind === null);
   {
+    // --- Sep 24 panel decisions: routes, account health, HOLDS LOSERS, open-loss caps, LATE, the bot
+    // flag, grade v2 in shadow and the reject log. Everything below is pure: no network, no Nansen.
+    const A = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    const H = await import(path.join(ROOT, 'lib', 'health.js'));
+    const TC = await import(path.join(ROOT, 'lib', 'traderclass.js'));
+    const G = await import(path.join(ROOT, 'lib', 'game.js'));
+    const V2 = await import(path.join(ROOT, 'lib', 'gradev2.js'));
+    const DAYMS = 864e5;
+    // A record that fails the generic bars on its 2% return floor, so only a route could admit it.
+    const weak = { d30: { closed: 120, pnl: 5e5, fees: 1e3, winRate: 0.6, roi: 0.01, coins: 6, perCoin: {} }, d7: { closed: 20, pnl: -1e3, roi: -0.01, coins: 4 } };
+    const greenWeek = { closed: 20, pnl: 1e3, roi: 0.01, coins: 4 };
+    ok('the PRINTER route is gone: a printer that fails the rules is not alerted',
+      A.assess({ ...weak, d7: greenWeek, trust: { grade: 'C', score: 55, printer: true } }, 'BTC').kind === null);
+    const eC = A.assess({ ...weak, d7: greenWeek, trust: { grade: 'C', score: 55, early: true } }, 'BTC');
+    ok('EARLY needs grade B or better', eC.kind === null && eC.gate === 'EARLY_GRADE', JSON.stringify(eC));
+    const eB = A.assess({ ...weak, trust: { grade: 'B', score: 70, early: true } }, 'BTC');
+    ok('EARLY no longer waives the losing-week rule', eB.kind === null && eB.gate === 'EARLY_7D', JSON.stringify(eB));
+    ok('EARLY at grade B with a green week still gets in', A.assess({ ...weak, d7: greenWeek, trust: { grade: 'B', score: 70, early: true } }, 'BTC').kind === 'early');
+    ok('every rejection carries a gate code for the reject log', A.assess({ ...weak, trust: { grade: 'A', score: 80, marketMaker: true } }, 'BTC').gate === 'MARKET_MAKER'
+      && A.assess({ ...weak, trust: { grade: 'A', score: 80 } }, 'BTC').gate === 'ROI_30D');
+    {
+      // Only the proven-early source is gone from the code, not just switched off.
+      const tcSrc = await readFile(path.join(ROOT, 'lib', 'traderclass.js'), 'utf8');
+      const gSrc = await readFile(path.join(ROOT, 'lib', 'game.js'), 'utf8');
+      ok('the proven-early route is removed', !/earlyFew|FEW_MIN_FINDS|provenEarly/.test(tcSrc + gSrc));
+    }
+
+    // Account health, from raw Hyperliquid answers.
+    const now = Date.now();
+    const series = (days, ret, av = 1e6) => ({
+      accountValueHistory: Array.from({ length: days + 1 }, (_, i) => [now - (days - i) * DAYMS, String(av)]),
+      pnlHistory: Array.from({ length: days + 1 }, (_, i) => [now - (days - i) * DAYMS, String((av * ret * i) / days)]) });
+    const port = (r30, r7) => ({ month: series(30, r30), week: series(7, r7), allTime: series(400, 0.5) });
+    const st = (av, ntl, upnl, pos = []) => ({ marginSummary: { accountValue: String(av), totalNtlPos: String(ntl) },
+      assetPositions: [{ position: { coin: 'ZEC', szi: '-1000', entryPx: '100', positionValue: String(ntl), unrealizedPnl: String(upnl), liquidationPx: '150' } }, ...pos] });
+    const good = H.evaluate([st(1e6, 2e6, 1e4)], port(0.05, 0.01));
+    ok('a healthy account passes the health gate', good.status === 'ok' && good.ok === true, JSON.stringify(good).slice(0, 200));
+    ok('health reads 30D and 7D account returns from the portfolio history', Math.abs(good.ret30 - 0.05) < 1e-6 && Math.abs(good.ret7 - 0.01) < 1e-6);
+    ok('an open loss past 15% of the account fails', H.evaluate([st(1e6, 2e6, -2e5)], port(0.05, 0.01)).failedGate === 'HEALTH_UPNL');
+    ok('a losing 30 days fails', H.evaluate([st(1e6, 2e6, 0)], port(-0.01, 0.01)).failedGate === 'HEALTH_30D');
+    ok('a 7D loss past 10% fails', H.evaluate([st(1e6, 2e6, 0)], port(0.05, -0.12)).failedGate === 'HEALTH_7D');
+    ok('notional over 10x the account fails', H.evaluate([st(1e6, 1.2e7, 0)], port(0.05, 0.01)).failedGate === 'HEALTH_LEV');
+    const unk = H.evaluate([st(1e6, 2e6, 0)], null);
+    ok('a missing portfolio reads as unknown, never as failing', unk.status === 'unknown' && unk.ok === null && !unk.failedGate);
+    const jf = H.journalFields(good, 'ZEC', 'Short');
+    ok('journal health fields: account value, leverage and liquidation distance', jf.health === 'ok' && jf.whaleAccountValue === 1e6
+      && jf.positionLeverage === 2 && jf.liqDist > 0 && jf.liqDist < 1, JSON.stringify(jf));
+    const strong = { d30: { closed: 200, pnl: 1e6, fees: 1e3, winRate: 0.7, roi: 0.2, coins: 6, perCoin: {} }, d7: { closed: 30, pnl: 1e5, roi: 0.05, coins: 4 } };
+    const bad = H.evaluate([st(1e6, 2e6, -2e5)], port(0.05, 0.01));
+    const onBoardFail = A.assess({ ...strong, health: bad, trust: { grade: 'A+', score: 99 } }, 'BTC', { onBoard: true });
+    ok('the health gate applies to every route, the board included', onBoardFail.kind === null && onBoardFail.gate === 'HEALTH_UPNL', JSON.stringify(onBoardFail));
+    ok('an unreadable account does not block a public alert (fails open)', A.assess({ ...strong, health: unk, trust: { grade: 'A+', score: 99 } }, 'BTC').kind === 'standard');
+
+    // Open-loss caps on the live grade.
+    const noHL = { holdsLosers: false, why: null };
+    const g0 = G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: null, holdsLosers: noHL });
+    const g15 = G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: { upnlPct: -0.2 }, holdsLosers: noHL });
+    const g30 = G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: { upnlPct: -0.35 }, holdsLosers: noHL });
+    ok('an open loss of 15% of the account caps the score at 74', g0.score > 74 && g15.score <= 74 && g15.grade === 'B', `${g0.score} -> ${g15.score}`);
+    ok('an open loss of 30% caps it at 35 and takes the wallet out', g30.score <= 35 && g30.openLossOut === true
+      && A.assess({ ...strong, trust: g30 }, 'BTC', { onBoard: true }).gate === 'OPEN_LOSS_OUT');
+
+    // HOLDS LOSERS.
+    const perfect = { winRate: 1, closed: 23 };
+    ok('HOLDS LOSERS: perfect closes with an open loss of 45% of the account', TC.holdsLosersOf(perfect, { upnlPct: -0.45, positions: [] }).holdsLosers === true);
+    ok('HOLDS LOSERS needs the win rate as well', TC.holdsLosersOf({ winRate: 0.8, closed: 23 }, { upnlPct: -0.45, positions: [] }).holdsLosers === false
+      && TC.holdsLosersOf({ winRate: 1, closed: 12 }, { upnlPct: -0.45, positions: [] }).holdsLosers === false);
+    const deep = { upnlPct: -0.05, positions: [{ coin: 'ZEC', side: 'Short', retOnNotional: -0.25 }] };
+    ok('HOLDS LOSERS: a -25% position held over 72h counts, a fresh one does not',
+      TC.holdsLosersOf(perfect, deep, { 'ZEC|Short': 100 }).holdsLosers === true && TC.holdsLosersOf(perfect, deep, { 'ZEC|Short': 10 }).holdsLosers === false);
+    const gH = G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: null, holdsLosers: { holdsLosers: true, why: 'x' } });
+    ok('HOLDS LOSERS caps the grade at B', gH.holdsLosers === true && gH.score <= 74 && gH.grade === 'B');
+    const hlBoard = A.assess({ ...weak, d7: greenWeek, trust: { grade: 'B', score: 74, holdsLosers: true, early: true } }, 'BTC', { onBoard: true });
+    ok('HOLDS LOSERS gets no route exemption', hlBoard.kind === null && hlBoard.gate === 'HOLDS_LOSERS', JSON.stringify(hlBoard));
+
+    // LATE and the whale-trade score in Telegram.
+    const l1 = A.lateOf('Long', 100, 100.8), l2 = A.lateOf('Short', 100, 99.6), l3 = A.lateOf('Short', 100, 99), l4 = A.lateOf('Long', 100, 99);
+    ok('LATE is measured past the entry in the whale\'s favour, over 0.5%', l1.late === true && Math.abs(l1.lateBy - 0.008) < 1e-9
+      && l2.late === false && l3.late === true && l4.late === false && l4.lateBy === 0 && l4.moveAtSend < 0);
+    const lateMsg = renderMessage({ ...wh, late: true, lateBy: 0.008 });
+    ok('a late alert says so in one plain line', lateMsg.includes("LATE: price is already 0.8% past the whale's entry."), lateMsg.split('\n').find((x) => /LATE/.test(x)));
+    ok('an alert on time has no LATE line', !renderMessage(wh).includes('LATE:'));
+    ok('Telegram names pFollow as the whale-trade score, not the follower\'s odds',
+      renderMessage(wh).includes('Whale-trade score 63%') && renderMessage(wh).includes("not a copier's") && !/Follow 63%/.test(renderMessage(wh)));
+    const hlMsg = renderMessage({ ...wh, holdsLosers: true, holdsLosersWhy: '100% of closes won, but open losses are 45% of the account' });
+    ok('the HOLDS LOSERS tag and its explainer travel in Telegram', /HOLDS LOSERS/.test(hlMsg) && /Holds losers: 100% of closes won/.test(hlMsg) && !balanced(hlMsg));
+    ok('the new alert lines carry no em dash', ![lateMsg, hlMsg].flatMap((m) => m.split('\n')).filter((x) => /LATE:|Holds losers|Whale-trade score/.test(x)).some((x) => x.includes('\u2014')));
+
+    // The bot flag.
+    const el = { admittedVia: 'standard', lateBy: 0.002, acct: { health: 'ok' }, record: { trust: { grade: 'A' } } };
+    ok('a clean A alert is bot-eligible', A.botEligibility(el)[0] === true);
+    ok('EARLY and LEADERBOARD routes are never bot-eligible', A.botEligibility({ ...el, admittedVia: 'early' })[0] === false && A.botEligibility({ ...el, admittedVia: 'leaderboard' })[0] === false);
+    ok('late over 1%, unknown health, holds losers or grade under A: not bot-eligible',
+      A.botEligibility({ ...el, lateBy: 0.012 })[0] === false && A.botEligibility({ ...el, acct: { health: 'unknown' } })[0] === false
+      && A.botEligibility({ ...el, holdsLosers: true })[0] === false && A.botEligibility({ ...el, record: { trust: { grade: 'B' } } })[0] === false);
+    const pa2 = A.publicAlert({ id: 'y', t: 1, trader: 'x', address: '0xabc', raw: { a: 1 }, late: true, lateBy: 0.008, botEligible: false, botReason: 'grade B is below A',
+      record: { d30: null, d7: null, trust: { grade: 'B', score: 70, gradeV2: 'C', scoreV2: 55, holdsLosers: false } } });
+    ok('the public alert carries late, the bot flag and the shadow grade, never the raw row', pa2.late === true && pa2.lateBy === 0.008
+      && pa2.botEligible === false && pa2.botReason && pa2.record.trust.gradeV2 === 'C' && !('raw' in pa2));
+    ok('an alert from before the bot flag reads as not eligible', A.publicAlert({ id: 'z', t: 1, trader: 'x', address: '0x1' }).botEligible === false);
+
+    // Grade v2, shadow only.
+    const v0 = V2.gradeV2({ d30: strong.d30, d7: strong.d7 });
+    ok('grade v2 scores without account data and says what it substituted', v0.scoreV2 >= 0 && v0.scoreV2 <= 100 && v0.v2.partial && v0.v2.subs.includes('s:fills/300'));
+    const daily = Array.from({ length: 24 }, (_, i) => (i % 6 === 0 ? -2000 : 9000));
+    const acct = { ret30: 0.2, mdd30: 0.05, ret7: 0.03, activeDays30: 24, dailyPnl30: daily, medAv30: 1e6, ageDays: 400, upnlPct: 0.01 };
+    const vGood = V2.gradeV2({ d30: { ...strong.d30, roi: 0.1 }, d7: strong.d7, cls: { closed: 30, winRate: 0.65 }, health: acct });
+    ok('grade v2 rewards a strong account', vGood.scoreV2 >= 75 && ['A', 'A+'].includes(vGood.gradeV2), JSON.stringify(vGood));
+    ok('grade v2 caps a red account and a deep open loss', V2.gradeV2({ d30: strong.d30, d7: strong.d7, cls: { closed: 30, winRate: 0.65 }, health: { ...acct, ret30: -0.05 } }).scoreV2 <= 74
+      && V2.gradeV2({ d30: strong.d30, d7: strong.d7, cls: { closed: 30, winRate: 0.65 }, health: { ...acct, upnlPct: -0.35 } }).scoreV2 <= 35);
+    ok('grade v2: market makers and thin samples are unrated', V2.gradeV2({ d30: strong.d30, marketMaker: true }).gradeV2 === 'NR'
+      && V2.gradeV2({ d30: strong.d30, cls: { closed: 5, winRate: 0.8 } }).gradeV2 === 'NR');
+    ok('grade v2 rides beside the live grade and does not change it', g0.gradeV2 != null && g0.scoreV2 != null
+      && G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: null, holdsLosers: noHL }).score === g0.score);
+
+    // The reject log rotates at its cap rather than growing for ever.
+    const store = await import(path.join(ROOT, 'lib', 'store.js'));
+    for (let i = 0; i < 6; i++) store.appendJsonlCapped('rottest', { i, pad: 'x'.repeat(40) }, 100);
+    const { existsSync, statSync } = await import('node:fs');
+    ok('a capped log rotates to .1 and stays small', existsSync(store.jsonlPath('rottest.1')) && statSync(store.jsonlPath('rottest')).size < 200);
+    ok('the reject log download is admin-only', (await get('/admin/rejects.jsonl')).status === 403 && (await get('/admin/rejects.jsonl?token=nope')).status === 403);
+    const idx = await readFile(path.join(ROOT, 'public', 'index.html'), 'utf8');
+    ok('the tag guide explains HOLDS LOSERS and LATE without an em dash', /HOLDS LOSERS/.test(idx) && /late-tag/.test(idx)
+      && !idx.split('\n').filter((x) => /holds-tag|late-tag/.test(x)).some((x) => x.includes('\u2014')));
+  }
+  {
     // The public feed never republishes the raw Nansen row or a referral-code label, old alerts included.
     const { publicAlert } = await import(path.join(ROOT, 'lib', 'alerts.js'));
     const pa = publicAlert({ id: 'x', t: 1, trader: 'Uses "ABC" HL Referral Code', address: '0x1234567890abcdef', messageId: 7,
