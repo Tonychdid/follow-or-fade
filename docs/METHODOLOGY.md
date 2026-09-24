@@ -18,7 +18,7 @@ The app opens on the **Training Table**.
 | **Your Table** (always on screen) | Only your open live bets, grouped by table, with countdown rings and a live meme face: a money-printing face when you are winning and a crying face when you are losing, getting more intense as the bet moves. Settled bets move to Recent hands. |
 | **Cash Out** | End a live bet early. The offer is the bet's fair value: stake × odds × the probability you are still winning at the bell, starting from the probability the odds were priced at and updated with how far price has moved, the time left and the coin's current 1-minute volatility on Hyperliquid, with no fee at all: cashing out the moment you bet returns exactly your stake. Cash out in profit: *"The whale is my exit liquidity."* Cash out at a loss: *"Cashing out before the whale gets rekt."* |
 | **Whale Alerts** (bell icon) | A background scanner checks Nansen Smart Money perp opens every few minutes, grades each whale's 7D and 30D track record, and alerts you when a top whale opens a trade. Default rules: grade A or better, 55%+ win rate, profitable over 30D, $50K+ position, and **3+ coins traded in 7D and 5+ in 30D** so win rates can't be inflated by one-coin wallets. **Specialists** are the exception: a whale trading only 1–2 coins still gets through, tagged SPECIALIST, if the coin they're opening is one of their main coins (40%+ of their closes) with $25K+ realized profit and a 3%+ return on it over 30D, and no losing week on it. You get a sound, an on-screen alert, optional desktop notifications and optional **Telegram** messages. Each alert has **Open full card** (jumps to that whale's card, pinned at the top of the Live Floor) and **See it on Nansen** (opens that market where the data came from). After an alert, the app keeps reading that whale's Hyperliquid position and sends an **add alert** when they grow the position by 50%+ (conviction rising), a **trim alert** when they cut 25%, 50% or 75% and an **exit alert** when they fully close (with exit price and the whale's return), so nobody following them gets left in the trade. Every Telegram alert carries three buttons: **🔄 Re-check the numbers** (rewrites that same message with the price then versus now, how far it has moved for or against the trade since the alert, the current odds, fresh tells and whether the whale is still in, trimmed or out), **📊 Full whale card** and **🔎 See it on Nansen**. On the site each whale card has its own **↻ Re-check** button, so one whale can be re-priced without refreshing the whole floor; arriving from an alert link re-checks automatically and shows what changed since the alert. Telegram alerts link straight to that whale's full card on the Live Floor (position, 7D/30D track record, the dealer's tells, Smart Money positioning and, for stocks, the Nansen Agent insider brief). |
-| **Hall of Fame** | Two boards, plus the house bots. **Always Follow**, **Always Fade** and **Coin Flip** play every hand the table builds, $500 a hand, priced by the same odds and settled by the same real whale exits, and sit pinned above the rankings tagged BOT — so the board is never empty and every player has a line to beat. *Always Follow* is the one that matters: this whole product claims that reading the tells beats blindly following Smart Money, and that bot is the claim's scoreboard, in public, where nobody gets to tune it. **Players** ranks bankrolls on net profit — every $10,000 the house has staked you counts against you, and chips won from a challenge link do not count at all. **Whales** ranks the Smart Money wallets themselves on their real Nansen record: 30-day return on closed positions, realised profit, win rate and the number of closes behind those numbers, with the whales that can actually reach you flagged **IN THE POOL** — whether they cleared the house rules or were rescued by their place on the board, which the **LEADERBOARD** tag says. It reads the weekly roster snapshot, so it costs no Nansen credits. |
+| **Hall of Fame** | Two boards, plus the house bots. **Always Follow**, **Always Fade** and **Coin Flip** play every hand the table builds, $500 a hand, priced by the same odds and settled by the same real whale exits, and sit pinned above the rankings tagged BOT — so the board is never empty and every player has a line to beat. *Always Follow* is the one that matters: this whole product claims that reading the tells beats blindly following Smart Money, and that bot is the claim's scoreboard, in public, where nobody gets to tune it. **Players** ranks bankrolls on net profit — every $10,000 the house has staked you counts against you, and chips won from a challenge link do not count at all. **Whales** ranks the Smart Money wallets themselves on their real Nansen record: 30-day return on closed positions, realised profit, win rate and the number of closes behind those numbers, with the whales that can actually reach you flagged **IN THE POOL** — whether they cleared the house rules or were rescued by their place on the board, which the **LEADERBOARD** tag says. It reads the daily roster snapshot, so it costs no Nansen credits. |
 | **The front door** | The first thing a visitor reads is the hand they are about to play — *"A Smart Money whale just opened a $52.6K LONG on ENA. Do you FOLLOW or FADE?"* — with the real coin, side and size pulled from the deck (`GET /api/preview`). Nothing is invented: if the deck is still warming up, the line stays generic rather than showing a made-up trade. |
 | **Challenge a friend** | After any training hand, "Challenge a friend" mints a link that deals **that exact whale** to whoever opens it — same size, same tells, same odds — and a card for X that shows the whale and the call you made but **never the result**. They have to make the call to find out. When they do, their reveal says how the two of you read it: *"Maya faded, you followed — you read it better."* |
 | **If a trader objects** | Wallet addresses, third-party labels and derived statistics are published under legitimate interests, which carries an unconditional right to object. A trader writes in, proves control of the address by signing a message, and the address goes on a permanent exclusion list: it is dropped from the live floor, the training pool, the pre-built deck, stored alerts, live watches, shared challenge links and anyone's open bets, and never returns on a later data refresh. There is deliberately **no self-service removal button** — an unverified one would let any visitor blank the game by excluding the whales it shows, and a public "is this address excluded?" check would publish who had asked to be hidden. |
@@ -133,7 +133,7 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `PREVIEW_ROTATE_MIN` | `15` | How often the hand on the front door (and therefore a new player's first hand) rotates through the deck |
 | `BOT_STAKE` | `500` | Chips the house bots stake on every hand |
 | `WHALE_COOLDOWN` | `10` | Hands that must pass before the same whale can be dealt to a player again |
-| `ROSTER_DAYS` | `7` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off. Costs ~267 Nansen credits per run (~38/day at weekly) |
+| `ROSTER_DAYS` | `1` | How often the whale pool is re-assessed: new whales in, non-performers out, with a written diff. `0` turns it off, `7` makes it weekly. Costs ~267 Nansen credits per run (once a day by default) |
 | `ROSTER_LOOKBACK_HOURS` | `168` | The window the re-assessment reads to decide who is "in the pool" |
 | `ROSTER_MIN_USD` | `25000` | Smallest position that counts as being active in the pool |
 | `EARLY_PUMP_PCT` | `0.15` | How big a move has to be, within the horizon, to count as one worth being early to. 15% is the top 15% of all measured opportunities |
@@ -142,10 +142,13 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `EARLY_MAX_FIND_AGE_HOURS` | `168` | How recently the last good early call must have been made. The tag waives the grade, return, losing-week and size rules, so it has to be current: a wallet with an 88% win rate over 6,001 closes and **−$310K in the last 7 days** was still alerting on finds from three weeks earlier |
 | `EARLY_MIN_FINDS` | `4` | Good early calls needed in 30 days — four, not one, is what separates skill from a lucky week |
 | `EARLY_MIN_CONVERT` / `EARLY_MIN_COINS` / `EARLY_MIN_DAYS` | `0.4` / `2` / `3` | Conversion rate, and spread across coins and days, so one hot streak on one coin cannot qualify |
-| `EARLY_FEW_MIN_FINDS` / `EARLY_FEW_MIN_CONVERT` | `1` / `0.5` | The second route: how few early calls are enough, and how many of their chances they must have converted |
-| `EARLY_PROVEN_MIN_SCORE` / `_ROI` / `_WIN` / `_CLOSED` | `75` / `0.05` / `0.65` / `50` | How good the 30-day record has to be for that second route to open |
+| `HEALTH_MAX_UPNL_LOSS` / `HEALTH_MIN_RET30` / `HEALTH_MIN_RET7` / `HEALTH_MAX_NOTIONAL_X` | `0.15` / `0` / `-0.10` / `10` | **Account health gate**, every route: open uPnL below -15% of account value, a losing 30 days, a 7D loss past 10%, or notional over 10x the account rejects the alert. Read from Hyperliquid, cached `HEALTH_CACHE_SEC` (180) |
+| `OPEN_LOSS_CAP_PCT` / `OPEN_LOSS_OUT_PCT` | `0.15` / `0.30` | Open-loss caps on the live grade: uPnL at or below -15% of account value caps the score at 74, at or below -30% caps it at 35 and the wallet is not alert-eligible |
+| `HOLDS_LOSERS_MIN_WIN` / `_MIN_CLOSED` / `_UPNL_PCT` / `_POSITION_LOSS` / `_HELD_HOURS` | `0.95` / `20` / `0.15` / `0.20` / `72` | **HOLDS LOSERS**: 95%+ of 20+ closes won, and open uPnL below -15% of the account or a position at -20% held over 72h. Capped at B, no route exemption |
+| `ALERT_LATE_PCT` / `BOT_MAX_LATE_PCT` | `0.005` / `0.01` | **LATE** label when the price at send is more than 0.5% past the whale's entry in their favour; past 1% the alert is not bot-eligible. Never blocks a public alert |
+| `REJECT_LOG_MAX_MB` | `20` | Size at which `data/rejectjournal.jsonl` rotates to `rejectjournal.1.jsonl` |
 | `FAST_CLOSES_PER_DAY` | `3` | Closing fills a day above which the Live Floor treats a wallet as one that would crowd it. **Not** the same scale as `SCALPER_TRADES_PER_DAY`: fills are read aggregated by time, so this runs ~10x lower. Calibrated against Nansen's own flag on 70 wallets (74% agreement) |
-| `CLASS_WARM_PER_BUILD` | `10` | Wallets classified in the background per Live Floor build, so a fresh deployment fills its map in minutes instead of waiting for the weekly roster |
+| `CLASS_WARM_PER_BUILD` | `10` | Wallets classified in the background per Live Floor build, so a fresh deployment fills its map in minutes instead of waiting for the daily roster |
 | `PRINTER_MIN_USD` / `PRINTER_MAX_USD` | `15000` / `50000` | The size band for a printer. **Never set the minimum lower**: below $15K is noise |
 | `PRINTER_MIN_TRADES` / `PRINTER_MIN_WIN` / `PRINTER_MIN_RET` | `8` / `0.55` / `0.01` | Sample, win rate and typical return per closed trade a printer must beat |
 | `CLASS_WINDOW_DAYS` | `30` | History read from Hyperliquid when classifying a wallet |
@@ -158,11 +161,13 @@ Credit use is kept low with caching: whale and market data are cached per hour, 
 | `ADMIN_TOKEN` | none | Required in public mode. **Set it and the admin routes fail closed**, even if `PUBLIC` is ever missing |
 | `PUBLIC_URL` | none | Your public URL, used for X / social preview cards |
 
-The **whale board's top 50** are admitted to the alert pool on every weekly sweep even if a house rule
+The **whale board's top 50** are admitted to the alert pool on every daily sweep even if a house rule
 would turn them away — the rules are a filter, the board is a verdict. With one exception: the board
 ranks on thirty days, which is slow to notice a record coming apart, so a top performer whose last
 seven days cost more than `LEADERBOARD_MAX_7D_LOSS_PCT` of the month's profit is turned away anyway.
-A wallet that simply did not trade this week has no loss to weigh and passes. They are ranked the way the
+A wallet that simply did not trade this week has no loss to weigh and passes. The board does **not**
+waive the $50K size floor, and the account health gate applies to it like every other route. The
+board route feeds the public alerts only: its alerts are never bot-eligible. They are ranked the way the
 board ranks (30-day return on closes) but only among wallets with at least `LEADERBOARD_MIN_CLOSED`
 closed positions, so a lucky two-trade wallet cannot buy its way into everyone's Telegram. Their
 alerts carry a **LEADERBOARD** tag and a line saying how they got in. The list is recomputed on every
@@ -170,7 +175,9 @@ sweep, so it adds and drops with the assessment rather than going stale. To run 
 rather than waiting for it to fall due, POST to `/api/roster/run` with your admin token.
 
 Every Telegram message is a dashboard: the grade and tags on top, then the trade, then the whale's
-30-day record beside their last 7 days in an aligned table, then the odds. It is sent as Telegram
+30-day record beside their last 7 days in an aligned table, then the whale-trade score (the game's
+Follow odds, which are the whale's odds, not a copier's). A LATE line is added when the price was
+already more than 0.5% past the whale's entry at send. It is sent as Telegram
 HTML, and every string that came from Nansen — wallet labels, coin symbols, the Agent's prose — is
 escaped on the way in. If Telegram ever refuses the formatting anyway, the same message is resent
 immediately as plain text: losing the alignment is cosmetic, losing an exit alert on a position
@@ -237,17 +244,11 @@ and was profitable overall. **7 of 143 wallets (4.9%) qualify.**
 Horizon is not doing the work: 24h gives 6 wallets and 72h gives 5, and every wallet in the 72h set is
 in the 48h set.
 
-**A second route, for traders who have not had four chances.** A wallet with only one or two early
-calls still qualifies if it converted them **and** its 30-day record is exceptional: score 75+, a 5%+
-return and a 65%+ win rate over 50+ closed trades. Measured, this admits **14 more wallets, every one
-of them A+, returning 5–47% over 30 days** — and still turns away two excellent traders who were in
-front of nine and twelve big moves and held two. Being a great trader is not the same as being early,
-so both halves have to be true. Tooltips and Telegram say plainly when a tag rests on a small sample.
-
-> This is what reopened the AVAX case. `0x2175ce7c…` opened within 0.1% of a three-day low before a
-> **51.8%** run and kept 88% of it — one call in 30 days, but an **A+ record with a 47.2% return and an
-> 80% win rate over 241 trades.** It now carries the tag, on the strength of the record rather than the
-> pattern. A wallet with one lucky call and an ordinary record still does not.
+**The EARLY route (Sep 24 change).** The second, "proven-early" route (one to three finds on an
+exceptional record) was removed: 9 of 15 EARLY tags rested on 1 to 3 finds and the route's alerts
+averaged -1.72%. EARLY is the pattern route only, it now needs **grade B or better**, and it no longer
+waives the losing-week rule. It still waives the size floor and the return floor. EARLY alerts are
+public only and never bot-eligible.
 
 > The trade that prompted this feature does not qualify, and that is the filter working. One wallet
 > opened AVAX within 0.1% of a three-day low before a **51.8%** run — but it is their only such call in
@@ -277,14 +278,40 @@ study (79%), rejected for 1.50%.
 Neither tag changes the grade. They describe a kind of edge the score cannot represent, and letting
 them move a number already built from win rate and return would count the same record twice.
 
-Classification runs inside the weekly roster and costs **no Nansen credits** — the entire 143-wallet
+Classification runs inside the daily roster and costs **no Nansen credits** — the entire 143-wallet
 study spent 5, all of them on the Smart Money feed that produced the candidate list. It reads
 Hyperliquid fills (one call per wallet, covering every trade they made) and candles (one series per
 coin, reused). A wallet with more fills than the API will page through is left unclassified rather
 than judged on a slice of its record.
 
-Turn either path off with the switches in **bell → Alert rules & channels**, or with `allowEarly` /
-`allowPrinter` in the config.
+**The PRINTER route was removed on Sep 24.** It only ever fired after the quality rules had failed
+(its one alert: a grade C wallet, -$21.7K over 7 days, -1.53%). PRINTER is now a descriptive tag. The
+size waiver stays in the feed, so a printer's $15K to $50K trades are still looked at, but they have
+to pass the standard or specialist rules like anyone else.
+
+Turn either off with the switches in **bell → Alert rules & channels**, or with `allowEarly` /
+`allowPrinter` in the config (`allowPrinter` now only controls the feed-level size waiver).
+
+## Account health, HOLDS LOSERS, LATE and the bot flag (Sep 24 panel)
+
+- **Account health gate, every route.** Before an alert, the whale's Hyperliquid account is read
+  (`clearinghouseState` on the main and xyz dexes, and `portfolio` for the 'month' and 'week'
+  history; free). The alert is rejected when open uPnL is below -15% of account value, the 30D
+  account return is below 0, the 7D return is below -10%, or total notional is over 10x the account.
+  Returns are the change in PnL history (net of deposits) over the median account value. A failed
+  read never rejects: the verdict is `unknown`.
+- **Open-loss caps on the live grade.** uPnL at or below -15% of account value caps the score at 74
+  (B); at or below -30% caps it at 35 and the wallet cannot be alerted.
+- **HOLDS LOSERS.** 95%+ of 20+ closes won, while open uPnL is below -15% of the account or a
+  position sits at -20% or worse for over 72 hours. Capped at B, no route exemption.
+- **LATE.** If the price at send is more than 0.5% past the whale's average entry in their favour,
+  the alert carries `late` / `lateBy`, a LATE badge on the site and one line in Telegram. It is
+  labelled, never blocked.
+- **`botEligible` / `botReason`** on every alert in `/api/alerts`: false for the EARLY and LEADERBOARD
+  routes, late over 1%, account health not `ok`, HOLDS LOSERS, or a grade below A.
+- **Grade v2, in shadow.** `gradeV2` / `scoreV2` are computed beside the live grade on alerts, the
+  journal, the reject log and the whale board, and never gate anything. Formula and data
+  substitutions are documented in `lib/gradev2.js`.
 
 ## The SCALPER tag was wrong on 80 of 85 whales
 
@@ -386,7 +413,7 @@ Before: 8 of 8 scalpers, 6 distinct coins. After: **4 of 8 scalpers, 8 wallets, 
 commodity (`xyz:GOLD`) on the floor for the first time.
 
 **The first version of this shipped broken, in a way only a cold start revealed.** All of it depended
-on classifications the weekly roster writes, so on a fresh deployment — an empty volume — every rule
+on classifications the daily roster writes, so on a fresh deployment — an empty volume — every rule
 was inert and the floor looked exactly as it had before. Worse, the fallback meant to cover that case
 counted opens from a list already de-duplicated to one row per wallet, so every count was 1 and the
 test could never fire. Two fixes: the count now comes from the raw feed, and the floor warms its own
@@ -439,6 +466,16 @@ a follower could actually have got**. The whale's own fill is already gone by th
 the opening line through `parentId`.
 
 Test alerts are journaled too, flagged `test: true`. A flagged row is easier to explain than a gap.
+
+**Schema v3** (Sep 24) adds `sentAt`, `telegramSentAt`, the whale's account at the alert (`health`,
+`whaleAccountValue`, `whaleUpnl`, `whaleUpnlPct`, `whaleNotionalX`, `whaleRet30`, `whaleRet7`,
+`positionLeverage`, `liqDist`), `late` / `lateBy` / `priceAtSend`, `botEligible` / `botReason`,
+`holdsLosers` and the shadow `gradeV2` / `scoreV2`. The row is written once the Telegram send
+resolves (at most 30 seconds later).
+
+**`/admin/rejects.jsonl?token=…`**: one line for every trade the scanner assessed, passed or not,
+with the first rule it broke (`failedGate`, `reason`), the route, grades v1 and v2, the account
+health fields and lateness at scan. Capped by `REJECT_LOG_MAX_MB` with one rotated file kept.
 
 **Schema v2** adds the fields the tag work made necessary. The important one is **`admittedVia`** —
 `standard`, `specialist`, `early` or `printer` — which is *how the whale got in*, not merely which
