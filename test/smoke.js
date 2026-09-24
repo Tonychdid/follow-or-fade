@@ -330,6 +330,11 @@ try {
     ok('journal health fields: account value, leverage and liquidation distance', jf.health === 'ok' && jf.whaleAccountValue === 1e6
       && jf.positionLeverage === 2 && jf.liqDist > 0 && jf.liqDist < 1, JSON.stringify(jf));
     const strong = { d30: { closed: 200, pnl: 1e6, fees: 1e3, winRate: 0.7, roi: 0.2, coins: 6, perCoin: {} }, d7: { closed: 30, pnl: 1e5, roi: 0.05, coins: 4 } };
+    ok('a grade B SCALPER with a real record gets in on the scalper route', A.assess({ ...strong, trust: { grade: 'B', score: 70, scalper: true } }, 'BTC').kind === 'scalper');
+    ok('a grade B scalper with a losing week, or a grade C scalper, stays out',
+      A.assess({ ...strong, d7: { closed: 30, pnl: -1e4, roi: -0.02, coins: 4 }, trust: { grade: 'B', score: 70, scalper: true } }, 'BTC').gate === 'SCALPER_7D'
+      && A.assess({ ...strong, trust: { grade: 'C', score: 60, scalper: true } }, 'BTC').kind === null);
+    ok('a scalper-route alert is public only for the B1 bot', A.botEligibility({ admittedVia: 'scalper', scalper: true, lateBy: 0, acct: { health: 'ok' }, record: { trust: { grade: 'A', scalper: true } }, holdHours: 1 })[0] === false);
     const bad = H.evaluate([st(1e6, 2e6, -2e5)], port(0.05, 0.01));
     const onBoardFail = A.assess({ ...strong, health: bad, trust: { grade: 'A+', score: 99 } }, 'BTC', { onBoard: true });
     ok('the health gate applies to every route, the board included', onBoardFail.kind === null && onBoardFail.gate === 'HEALTH_UPNL', JSON.stringify(onBoardFail));
