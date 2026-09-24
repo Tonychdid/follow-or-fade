@@ -168,6 +168,22 @@ try {
     const own = renderMessage({ ...wh, botEligible: false, botReason: 'grade B is below A' }, null, true), pub = renderMessage({ ...wh, botEligible: false, botReason: 'grade B is below A' });
     ok("the owner's alert says PUBLIC ONLY and why; the public copy says nothing about a bot",
       /PUBLIC ONLY<\/b> · the bot skips it: grade B is below A/.test(own) && !/bot/i.test(pub.replace(/Nansen|whale|about/gi, '')), own);
+    // The dashboard as a picture (big numbers), the rest as the caption.
+    const AL = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    const IMG = await import(path.join(ROOT, 'lib', 'cardimg.js'));
+    if (IMG.available()) {
+      const pic = AL.photoFor(wh, renderMessage(wh));
+      ok('an alert is drawn as a picture of its grid, the rest as the caption', pic && pic.png[0] === 0x89 && pic.png[1] === 0x50 && !/<pre>/.test(pic.caption)
+        && /WHALE ALERT/.test(pic.caption) && pic.caption.length <= 1024, pic && pic.caption);
+      const exitPic = AL.photoFor({ ...wh, kind: 'exit', heldMs: 7.2e6, exitPx: 112400, whaleRet: 0.0104 }, renderMessage({ ...wh, kind: 'exit', heldMs: 7.2e6, exitPx: 112400, whaleRet: 0.0104 }));
+      ok('an exit is drawn as a picture too', !!exitPic && /WHALE EXIT/.test(exitPic.caption));
+      ok('a message with no grid stays text', AL.photoFor(wh, '<b>hello</b>') === null);
+      const long = renderMessage(wh) + '\n\n' + 'x'.repeat(700) + '\n\n' + 'y'.repeat(500);
+      const cap = AL.captionOf(long);
+      ok('a long caption drops the extra paragraphs, never the headline', cap && cap.length <= 1024 && /WHALE ALERT/.test(cap) && !/xxxxx|yyyyy/.test(cap), cap && cap.length);
+      const secs = IMG.sectionsOf([[ '', ]]);
+      ok('an empty grid draws nothing', secs.length === 0);
+    } else ok('the picture renderer is installed (npm install)', false);
     ok("the owner's alert says BOT ELIGIBLE when the bot may copy it", /BOT ELIGIBLE/.test(renderMessage({ ...wh, botEligible: true }, null, true)));
     shapes.push(own);
     const { feedTtlSec } = await import(path.join(ROOT, 'lib', 'alerts.js'));
