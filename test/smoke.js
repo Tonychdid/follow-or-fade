@@ -164,6 +164,12 @@ try {
   {
     // A whale's exit plan, read from their resting orders. A short covers by buying: a buy limit
     // below the price is a take profit, a buy stop above is a stop loss, a sell limit above is an add.
+    // The owner's copy says whether the private bot copies the alert; a subscriber's copy never mentions a bot.
+    const own = renderMessage({ ...wh, botEligible: false, botReason: 'grade B is below A' }, null, true), pub = renderMessage({ ...wh, botEligible: false, botReason: 'grade B is below A' });
+    ok("the owner's alert says PUBLIC ONLY and why; the public copy says nothing about a bot",
+      /PUBLIC ONLY<\/b> · the bot skips it: grade B is below A/.test(own) && !/bot/i.test(pub.replace(/Nansen|whale|about/gi, '')), own);
+    ok("the owner's alert says BOT ELIGIBLE when the bot may copy it", /BOT ELIGIBLE/.test(renderMessage({ ...wh, botEligible: true }, null, true)));
+    shapes.push(own);
     const { feedTtlSec } = await import(path.join(ROOT, 'lib', 'alerts.js'));
     ok('the alert feed is cached for just under one scan, so every scan reads fresh trades', feedTtlSec(2) < 120 && feedTtlSec(10) < 600 && feedTtlSec(0.1) >= 30);
     // Sep 24: the scan is back to 10 minutes, but the cache fix must survive it: the feed read has to
