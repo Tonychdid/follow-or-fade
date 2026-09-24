@@ -166,6 +166,12 @@ try {
     // below the price is a take profit, a buy stop above is a stop loss, a sell limit above is an add.
     const { feedTtlSec } = await import(path.join(ROOT, 'lib', 'alerts.js'));
     ok('the alert feed is cached for just under one scan, so every scan reads fresh trades', feedTtlSec(2) < 120 && feedTtlSec(10) < 600 && feedTtlSec(0.1) >= 30);
+    // Sep 24: the scan is back to 10 minutes, but the cache fix must survive it: the feed read has to
+    // expire BEFORE the next scan, or every other scan re-reads the old answer (the old ~20-minute lag).
+    const { scanIntervalMin } = await import(path.join(ROOT, 'lib', 'alerts.js'));
+    const iv = scanIntervalMin();
+    ok('a fresh deployment scans every 10 minutes', iv === 10, `got ${iv}`);
+    ok('the feed cache still expires before the next 10-minute scan', feedTtlSec(iv) < iv * 60 && feedTtlSec(iv) >= iv * 60 - 60, `ttl ${feedTtlSec(iv)}s`);
     const { classify, signature, changes } = await import(path.join(ROOT, 'lib', 'exits.js'));
     const orders = [
       { side: 'B', limitPx: '1390', sz: '300', isTrigger: false },
