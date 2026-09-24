@@ -338,6 +338,13 @@ try {
       TC.holdsLosersOf(perfect, deep, { 'ZEC|Short': 100 }).holdsLosers === true && TC.holdsLosersOf(perfect, deep, { 'ZEC|Short': 10 }).holdsLosers === false);
     const gH = G.trustGrade(strong.d30, strong.d7, 'BTC', undefined, { health: null, holdsLosers: { holdsLosers: true, why: 'x' } });
     ok('HOLDS LOSERS caps the grade at B', gH.holdsLosers === true && gH.score <= 74 && gH.grade === 'B');
+    // A whale card dealt long after the account was read still gets the caps and the tag (kept reading).
+    const addrK = '0x' + 'ab'.repeat(20);
+    H.rememberHolds(addrK, { holdsLosers: true, why: 'kept verdict' });
+    const gK = G.trustGrade(strong.d30, strong.d7, 'BTC', addrK);
+    ok('every whale card uses the kept HOLDS LOSERS verdict, not only a 3-minute live read', gK.holdsLosers === true && gK.grade === 'B' && gK.holdsLosersWhy === 'kept verdict', JSON.stringify(gK).slice(0, 200));
+    const addrN = '0x' + 'cd'.repeat(20);
+    ok('a whale never read grades as before (no kept reading)', G.trustGrade(strong.d30, strong.d7, 'BTC', addrN).holdsLosers === false && H.latest(addrN).health === null);
     const hlBoard = A.assess({ ...weak, d7: greenWeek, trust: { grade: 'B', score: 74, holdsLosers: true, early: true } }, 'BTC', { onBoard: true });
     ok('HOLDS LOSERS gets no route exemption', hlBoard.kind === null && hlBoard.gate === 'HOLDS_LOSERS', JSON.stringify(hlBoard));
 
