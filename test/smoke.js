@@ -378,12 +378,17 @@ try {
     ok('the new alert lines carry no em dash', ![lateMsg, hlMsg].flatMap((m) => m.split('\n')).filter((x) => /LATE:|Holds losers|Whale-trade score/.test(x)).some((x) => x.includes('\u2014')));
 
     // The bot flag.
-    const el = { admittedVia: 'standard', lateBy: 0.002, acct: { health: 'ok' }, record: { trust: { grade: 'A' } } };
+    const el = { admittedVia: 'standard', lateBy: 0.002, acct: { health: 'ok' }, record: { trust: { grade: 'A' } }, holdHours: 30, openedAt: new Date(Date.now() - 10 * 60e3).toISOString() };
     ok('a clean A alert is bot-eligible', A.botEligibility(el)[0] === true);
     ok('EARLY and LEADERBOARD routes are never bot-eligible', A.botEligibility({ ...el, admittedVia: 'early' })[0] === false && A.botEligibility({ ...el, admittedVia: 'leaderboard' })[0] === false);
     ok('late over 1%, unknown health, holds losers or grade under A: not bot-eligible',
       A.botEligibility({ ...el, lateBy: 0.012 })[0] === false && A.botEligibility({ ...el, acct: { health: 'unknown' } })[0] === false
       && A.botEligibility({ ...el, holdsLosers: true })[0] === false && A.botEligibility({ ...el, record: { trust: { grade: 'B' } } })[0] === false);
+    ok('a PRINTER-tagged alert on the standard route stays bot-eligible (the bot copies printers)', A.botEligibility({ ...el, printer: true })[0] === true);
+    ok('scalpers, short or unknown hold times and old fills are public only, as the bot would skip them',
+      A.botEligibility({ ...el, scalper: true })[0] === false && A.botEligibility({ ...el, holdHours: null })[0] === false
+      && /under the bot's 4h minimum/.test(A.botEligibility({ ...el, holdHours: 2.5 })[1])
+      && /filled 9\d min ago/.test(A.botEligibility({ ...el, openedAt: new Date(Date.now() - 95 * 60e3).toISOString() })[1] || ''));
     const pa2 = A.publicAlert({ id: 'y', t: 1, trader: 'x', address: '0xabc', raw: { a: 1 }, late: true, lateBy: 0.008, botEligible: false, botReason: 'grade B is below A',
       record: { d30: null, d7: null, trust: { grade: 'B', score: 70, gradeV2: 'C', scoreV2: 55, holdsLosers: false } } });
     ok('the public alert carries late, the bot flag and the shadow grade, never the raw row', pa2.late === true && pa2.lateBy === 0.008
