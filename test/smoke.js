@@ -408,6 +408,12 @@ try {
     // The bot flag.
     const el = { admittedVia: 'standard', lateBy: 0.002, acct: { health: 'ok' }, record: { trust: { grade: 'A' } }, holdHours: 30, openedAt: new Date(Date.now() - 10 * 60e3).toISOString() };
     ok('a clean A alert is bot-eligible', A.botEligibility(el)[0] === true);
+    // Sep 25: BOT ELIGIBLE mirrors B1's route list and minimum whale position (a $20K PRINTER call was labelled eligible, then skipped).
+    ok('a position under the desk minimum ($25K) is public only', A.botEligibility({ ...el, valueUsd: 20000 })[0] === false
+      && /under the bot's \$25K minimum/.test(A.botEligibility({ ...el, valueUsd: 20000 })[1]) && A.botEligibility({ ...el, valueUsd: 30000 })[0] === true);
+    ok('only the routes B1 takes (standard, specialist) are bot-eligible', A.botEligibility({ ...el, admittedVia: 'specialist' })[0] === true
+      && A.botEligibility({ ...el, admittedVia: 'printer' })[0] === false);
+    ok('a PRINTER tag on a standard-route whale does not stop it (the tag is not a route)', A.botEligibility({ ...el, printer: true, valueUsd: 60000 })[0] === true);
     ok('EARLY and LEADERBOARD routes are never bot-eligible', A.botEligibility({ ...el, admittedVia: 'early' })[0] === false && A.botEligibility({ ...el, admittedVia: 'leaderboard' })[0] === false);
     ok('late over 1%, unknown health, holds losers or grade under A: not bot-eligible',
       A.botEligibility({ ...el, lateBy: 0.012 })[0] === false && A.botEligibility({ ...el, acct: { health: 'unknown' } })[0] === false
