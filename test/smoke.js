@@ -186,6 +186,9 @@ try {
       const rc = { hhmm: '19:14', ago: '1.6h', baseMid: 112000, mid: 112400, since: 0.0036, whaleNow: 0.008, whaleThen: 0.004, pThen: 0.63, pNow: 0.6, exits: { tp: [], sl: [], adds: [] }, gone: false, trimmed: 0 };
       const re = AL.photoFor(wh, renderMessage(wh), { recheck: rc });
       ok('a re-checked picture says in one line whether the whale is still in', re && /Re-checked<\/b> 19:14 UTC · 1.6h after · ✅ whale still in/.test(re.caption) && re.caption.length < 450, re && re.caption);
+      ok('the caption gives the whale average entry', /@ avg <code>/.test(short.caption), short.caption);
+      const rc2 = { ...rc, avgThen: 111800, avgNow: 111950, sizeThen: 2.4e5, sizeNow: 3.1e5 };
+      ok('a re-checked picture still draws with the average entry', !!AL.photoFor(wh, renderMessage(wh), { recheck: rc2 }));
       ok("a subscriber's picture caption never mentions a bot", !/bot/i.test(AL.captionFor({ ...wh, botEligible: true }).replace(/whale/gi, '')));
       const long = renderMessage(wh) + '\n\n' + 'x'.repeat(700) + '\n\n' + 'y'.repeat(500);
       const cap = AL.captionOf(long);
