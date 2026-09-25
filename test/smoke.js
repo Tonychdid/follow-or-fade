@@ -189,6 +189,17 @@ try {
       ok('the caption gives the whale average entry', /@ avg <code>/.test(short.caption), short.caption);
       const rc2 = { ...rc, avgThen: 111800, avgNow: 111950, sizeThen: 2.4e5, sizeNow: 3.1e5 };
       ok('a re-checked picture still draws with the average entry', !!AL.photoFor(wh, renderMessage(wh), { recheck: rc2 }));
+      // Sep 25 (owner: "same format as the Elite bot"): POSITION first/now, then RECORD 30D/7D, then the exits.
+      const secs0 = AL.pictureSections({ ...wh, avgEntry: 111200, valueUsd: 2.5e5, pos0: { sz: 2.2, upnl: 900, lev: 5, liqPx: 90000 },
+        exits: { tp: [{ px: 120000, dist: 0.07 }], sl: [], adds: [] } });
+      ok('the alert picture is laid out like the Elite card', secs0.map((x) => x.header[0]).join() === "POSITION,RECORD,WHALE'S EXITS"
+        && secs0[0].header.join() === 'POSITION,FIRST,NOW' && secs0[1].header.join() === 'RECORD,30D,7D'
+        && secs0[0].rows.some((r) => r[0] === 'Avg entry' && r[1] === '111,200') && secs0[0].rows.some((r) => r[0] === 'Lev · Liq' && r[1] === '5x'), JSON.stringify(secs0));
+      const secsGone = AL.pictureSections({ ...wh, avgEntry: 111200 }, { ...rc, gone: true, posNow: null });
+      ok('after the whale closes, NOW says closed and the exits are gone', secsGone[0].rows.find((r) => r[0] === 'Size')[2] === 'closed'
+        && !secsGone.some((x) => x.header[0] === "WHALE'S EXITS"));
+      const secsAdd = AL.pictureSections({ ...wh, kind: 'add', addedSz: 12.4, sizeNow: 34.8, multiple: 3.2, avgEntry: 111240, entryPrice: 110000, markPx: 112400, upnl: 8.8e4, whaleRet: 0.0104, valueUsd: 3.9e6 });
+      ok('an add shows the position before and after, like the Elite ADDING card', secsAdd[0].rows.find((r) => r[0] === 'Size').slice(1).join() === '22.4,34.8');
       ok("a subscriber's picture caption never mentions a bot", !/bot/i.test(AL.captionFor({ ...wh, botEligible: true }).replace(/whale/gi, '')));
       const long = renderMessage(wh) + '\n\n' + 'x'.repeat(700) + '\n\n' + 'y'.repeat(500);
       const cap = AL.captionOf(long);
