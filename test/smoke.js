@@ -189,6 +189,10 @@ try {
       ok('the caption gives the whale average entry', /@ avg <code>/.test(short.caption), short.caption);
       const rc2 = { ...rc, avgThen: 111800, avgNow: 111950, sizeThen: 2.4e5, sizeNow: 3.1e5 };
       ok('a re-checked picture still draws with the average entry', !!AL.photoFor(wh, renderMessage(wh), { recheck: rc2 }));
+      // Sep 25 (owner: "That alert is too old to re-check"): alerts past the latest 200 stay re-checkable for 7 days.
+      AL._archive.retire({ id: 'old-3h', t: Date.now() - 3 * 3600e3, coin: 'SOL' });
+      AL._archive.retire({ id: 'old-8d', t: Date.now() - 8 * 86400e3, coin: 'SOL' });
+      ok('an alert that scrolled out of the latest 200 can still be re-checked for 7 days', AL._archive.byId('old-3h')?.coin === 'SOL' && AL._archive.byId('old-8d') === null);
       // Sep 25 (owner: "same format as the Elite bot"): POSITION first/now, then RECORD 30D/7D, then the exits.
       const secs0 = AL.pictureSections({ ...wh, avgEntry: 111200, valueUsd: 2.5e5, pos0: { sz: 2.2, upnl: 900, lev: 5, liqPx: 90000 },
         exits: { tp: [{ px: 120000, dist: 0.07 }], sl: [], adds: [] } });
